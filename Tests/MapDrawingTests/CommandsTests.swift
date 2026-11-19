@@ -69,6 +69,24 @@ import Testing
                 == .move(units: [clubman], to: pen.position))
     }
 
+    @Test func aCompleteFarmOrWorkshopTakesWorkers() {
+        var v = view
+        v.age = .alchemy
+        let worker = id(.unit(.worker)), clubman = id(.unit(.clubman))
+        for kind in [BuildingKind.farm, .alchemistsWorkshop] {
+            let place = EntityView(id: EntityID(9000 + kind.rawValue), owner: v.player, kind: .building(kind),
+                                   position: MapPosition(x: 20.5, y: 20.5), tile: GridPoint(20, 20), facing: .right, health: 100, maxHealth: 100,
+                                   activity: .idle)
+            v.entities.append(place)
+            #expect(MapCommands.contextualOrder(on: .entity(place), view: v, selection: [worker, clubman])
+                    == .work(units: [worker], at: place.id), "\(kind)")
+            var unfinished = place
+            unfinished.activity = .underConstruction(0.5)
+            #expect(MapCommands.contextualOrder(on: .entity(unfinished), view: v, selection: [worker])
+                    == .move(units: [worker], to: place.position), "\(kind)")
+        }
+    }
+
     @Test func anOpponentGivesAttack() {
         let clubman = id(.unit(.clubman))
         let enemy = view.entity(id(.unit(.spearman), owner: 1))!

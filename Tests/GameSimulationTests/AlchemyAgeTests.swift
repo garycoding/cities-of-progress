@@ -14,6 +14,7 @@ import Testing
         #expect(sim.apply(.advanceAge, from: me) == .accepted)
         #expect(sim.players[0].age == .alchemy)
         #expect(Catalogue.standard.lastAge == .alchemy)
+        #expect(sim.apply(.advanceAge, from: me) != .accepted)
         #expect(UnitKind.worker.stageName(at: .alchemy) == "Craftsman")
     }
 
@@ -43,7 +44,7 @@ import Testing
         let castle = Catalogue.standard.stats(.castle)
         #expect(Set(castle.trains) == [.knight, .musketeer, .cannon])
         #expect(castle.attack != nil && castle.housing > 0)
-        #expect(castle.health > Catalogue.standard.stats(.townCentre).health)
+        #expect(BuildingKind.allCases.allSatisfy { $0 == .castle || Catalogue.standard.stats($0).health < castle.health })
         var sim = duel()
         sim.players[0].age = .alchemy
         sim.give(me, [.food: 1000, .gold: 1000, .gunpowder: 1000, .wood: 1000, .iron: 1000])

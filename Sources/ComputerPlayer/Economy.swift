@@ -123,7 +123,7 @@ extension Turn {
             (.worker, w, tuning.workers(at: view.age)),
             (.scholar, s, w < tuning.workersBeforeScholars ? 0 : studying ? tuning.scholars : researchable.isEmpty ? 0 : 2),
             (.engineer, e, tuning.engineers(at: view.age)),
-            (.merchant, merchants.count + training[UnitKind.merchant.rawValue], catalogue.merchants != nil && view.age >= .bronze && w >= 12 ? 1 : 0),
+            (.merchant, merchants.count + training[UnitKind.merchant.rawValue], wantedMerchants(workers: w)),
         ]
         var best: UnitKind?
         var bestGap = 0.0
@@ -132,6 +132,15 @@ extension Turn {
             if gap > bestGap { best = kind; bestGap = gap }
         }
         return best
+    }
+
+    /// One merchant from the Bronze age once twelve workers gather, and three
+    /// whilst a resource has piled up to 3000, so that the surplus is traded
+    /// for what is short.
+    private func wantedMerchants(workers w: Int) -> Int {
+        guard catalogue.merchants != nil, view.age >= .bronze, w >= 12 else { return 0 }
+        let largest = view.shownResources.map { view.resources[$0] }.max() ?? 0
+        return largest >= 3000 ? 3 : 1
     }
 
     // MARK: Workers
@@ -233,8 +242,8 @@ extension Turn {
         } else {
             set(.food, 0.34); set(.wood, 0.24); set(.stone, 0.08); set(.bronze, 0.22); set(.gold, 0.12)
             if view.age >= .iron { set(.iron, 0.1) }
-            // Craftsmen turn wood into gunpowder, so the Alchemy age fells more.
-            if view.age >= .alchemy { set(.wood, 0.32) }
+            // Craftsmen turn wood into gunpowder, so the Alchemy age fells more; the castle needs stone.
+            if view.age >= .alchemy { set(.wood, 0.32); set(.stone, 0.16) }
         }
         for resource in Resource.allCases where share[resource.rawValue] > 0 {
             let short = max(0, reserve[resource] - view.resources[resource])
@@ -345,11 +354,18 @@ extension Turn {
         memory.assign(Assignment(worker: mover.id, task: task, site: site.id, building: nil, tick: view.tick))
     }
 
+    /// Workers herding at a stock pen or farming, craftsmen not counted.
+    var herders: Int {
+        workers.filter { $0.activity == .working && memory.assignment(of: $0.id)?.task != .crafting }.count
+    }
+
     /// Craftsmen at the first alchemist's workshop: as many as it holds whilst
-    /// gunpowder is under 300 and the stock holds 100 wood or more, taken from
-    /// the idle workers and then from those felling; none once gunpowder
-    /// reaches 500 or wood falls under 40, when they are stopped and go back
-    /// to other work.
+    /// gunpowder is under 300 and the stock holds 100 wood or more beyond what
+    /// is set aside, taken from the idle workers and then from those felling;
+    /// none once gunpowder reaches 500 or wood falls under 40 beyond what is set
+    /// aside, when they are stopped and go back to other work. A worker that
+    /// came back idle soon after it was sent is not sent again for a while: it
+    /// could not reach the workshop.
     func employCraftsmen() {
         guard let workshop = catalogue.workshop,
               let place = Turn.nearest(completeBuildings(.alchemistsWorkshop), to: base) else { return }
@@ -357,7 +373,7 @@ extension Turn {
             guard let last = memory.assignment(of: worker.id), last.task == .crafting, last.building == place.id else { return false }
             return worker.activity == .working || worker.activity == .moving
         }
-        let powder = view.resources[.gunpowder], wood = view.resources[.wood]
+        let powder = view.resources[.gunpowder], wood = view.resources[.wood] - reserve[.wood]
         if powder >= 500 || wood < 40 {
             let stopping = crafting.filter { isFree($0) }.map(\.id)
             guard !stopping.isEmpty else { return }
@@ -366,7 +382,12 @@ extension Turn {
             return
         }
         guard powder < 300, wood >= 100, crafting.count < workshop.workers, workers.count >= 10 else { return }
-        let candidates = workers.filter { isFree($0) && !crafting.contains($0) }
+        let candidates = workers.filter { worker in
+            guard isFree(worker), !crafting.contains(worker) else { return false }
+            if worker.activity == .idle, let last = memory.assignment(of: worker.id), last.task == .crafting,
+               view.tick - last.tick < Tick.seconds(90) { return false }
+            return true
+        }
         let idle = candidates.filter { $0.activity == .idle }
         let felling = candidates.filter { $0.activity == .gathering(.tree) }
         var chosen: [EntityID] = []
@@ -421,12 +442,13 @@ extension Turn {
     }
 
     /// An idle merchant trades the largest surplus for the resource the player
-    /// most lacks of those it is saving for, or else of bronze, gold and iron.
+    /// most lacks of those it is saving for (under 150, or short of what is set
+    /// aside), or else of bronze, gold and iron.
     func employMerchants() {
         guard catalogue.merchants != nil, !completeBuildings(.townCentre).isEmpty else { return }
         // A trade under way stops once what it gives falls to 300 or what it takes is no longer short.
         if let trade = memory.trade {
-            if view.resources[trade.give] < 300 || view.resources[trade.take] >= 400 {
+            if view.resources[trade.give] < 300 || view.resources[trade.take] >= max(400, reserve[trade.take]) {
                 let trading = merchants.filter { isFree($0) && $0.activity == .working }.map(\.id)
                 if !trading.isEmpty { give(.stop(units: trading), to: trading) }
                 memory.trade = nil
@@ -438,7 +460,7 @@ extension Turn {
 
         let shown = view.shownResources.filter { $0 != .food || view.age >= .bronze }
         guard let surplus = shown.max(by: { view.resources[$0] < view.resources[$1] }), view.resources[surplus] >= 600 else { return }
-        let wanted = shown.filter { $0 != surplus && view.resources[$0] < 150 }
+        let wanted = shown.filter { $0 != surplus && (view.resources[$0] < 150 || view.resources[$0] < reserve[$0]) }
         let short = wanted.max { (reserve[$0] - view.resources[$0]) < (reserve[$1] - view.resources[$1]) }
             ?? [Resource.iron, .gold, .bronze].first { shown.contains($0) && $0 != surplus && view.resources[$0] < 300 }
         guard let take = short else { return }

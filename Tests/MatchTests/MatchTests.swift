@@ -132,22 +132,34 @@ func reportHowEqualsPlay() {
 }
 
 /// Two hard computer players on a larger map, seed 3: one reaches the Alchemy
-/// age, makes gunpowder at its workshop and trains a warfighter of the age
+/// age, completes an alchemist's workshop and a castle, and makes gunpowder
 /// (plan step 4 of the Alchemy age). The match is followed until then.
 @Test func aHardComputerPlayerReachesTheAlchemyAgeAndMakesGunpowder() {
     var host = Host(setup: computerMatch(seed: 3, size: 96, difficulties: [.hard, .hard]))
-    var done = false
+    var powder = [false, false], done = false
     while !done && host.outcome == nil && host.tick < Tick.seconds(60 * 60) {
         host.advance()
         guard host.tick % 200 == 0 else { continue }
         for p in 0..<2 {
             let v = host.peek(for: PlayerID(p))
             guard v.age == .alchemy else { continue }
-            let alchemyKinds: [UnitKind] = [.knight, .musketeer, .cannon]
-            let trained = v.entities.contains { e in e.owner == PlayerID(p) && alchemyKinds.contains { e.kind == .unit($0) } }
-            let workshop = v.entities.contains { $0.owner == PlayerID(p) && $0.kind == .building(.alchemistsWorkshop) }
-            if trained && workshop { done = true }
+            let own = v.entities.filter { $0.owner == PlayerID(p) }
+            func complete(_ kind: BuildingKind) -> Bool {
+                own.contains { e in
+                    guard e.kind == .building(kind) else { return false }
+                    if case .underConstruction = e.activity { return false }
+                    return true
+                }
+            }
+            let gunpowderKinds: [UnitKind] = [.musketeer, .cannon]
+            if v.resources[.gunpowder] > 0 || own.contains(where: { e in gunpowderKinds.contains { e.kind == .unit($0) } }) {
+                powder[p] = true
+            }
+            if powder[p] && complete(.alchemistsWorkshop) && complete(.castle) {
+                done = true
+                print("player \(p) has made gunpowder and completed its workshop and castle at \(host.tick / Tick.rate / 60) minutes")
+            }
         }
     }
-    #expect(done, "no one reached the Alchemy age, built a workshop and trained an Alchemy warfighter by \(host.tick / Tick.rate / 60) minutes")
+    #expect(done, "no one reached the Alchemy age, made gunpowder and completed a workshop and a castle by \(host.tick / Tick.rate / 60) minutes (\(String(describing: host.outcome)))")
 }

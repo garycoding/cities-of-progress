@@ -62,6 +62,11 @@ public enum MapCommands {
                     let hands = ids { $0 == .worker || $0 == .scholar || $0 == .engineer }
                     if !hands.isEmpty { return .work(units: hands, at: entity.id) }
                 }
+                // A complete farm takes a farmer, a complete alchemist's workshop its craftsmen.
+                if (kind == .farm || kind == .alchemistsWorkshop) && !unfinished {
+                    let workers = ids { $0 == .worker }
+                    if !workers.isEmpty { return .work(units: workers, at: entity.id) }
+                }
                 return .move(units: everyone, to: entity.position)
             }
             if view.isAlly(entity.owner) { return .move(units: everyone, to: entity.position) }

@@ -51,7 +51,7 @@ extension Turn {
             for want in first where count(want.0) == 0 { out.append(want) }
             if count(.watchTower) == 0 { out.append((.watchTower, Turn.toward(base, front, by: 5), 0...6)) }
             if count(.barracks) < tuning.barracks && !completeBuildings(.barracks).isEmpty { out.append(barracks) }
-            let herders = workers.filter { $0.activity == .working }.count
+            let herders = herders
             let pens = count(.stockPen)
             if pens > 0 && pens < 3 && herders >= 6 * pens { out.append(pen) }
         }
@@ -59,7 +59,7 @@ extension Turn {
             // Farms, which never run out, as the herds and prey thin; then the stable and the siege workshop.
             // A farm is wanted once the pens are full and no prey is near, at most a quarter of the workers.
             let farms = count(.farm), wantedFarms = tuning.workers(at: view.age) / 4
-            let herders = workers.filter { $0.activity == .working }.count
+            let herders = herders
             let full = herders >= 6 * count(.stockPen) + completeBuildings(.farm).count
             if farms < wantedFarms && full && !surroundings().preyNear && memory.plans.allSatisfy({ $0.kind != .farm }) {
                 out.append((.farm, homeSide(by: 6), 0...10))

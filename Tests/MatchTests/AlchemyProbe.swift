@@ -23,10 +23,10 @@ func alchemyProbe() {
                 for p in 0..<2 {
                     let v = host.peek(for: PlayerID(p))
                     if v.age != ages[p] { ages[p] = v.age; reached.append("p\(p) \(v.age) \(host.tick / Tick.rate / 60)m") }
-                    if v.age == .alchemy && host.tick % Tick.seconds(60) == 0 {
+                    if v.age >= .iron && host.tick % Tick.seconds(60) == 0 && p == 1 {
                         let own = v.entities.filter { $0.owner == PlayerID(p) }
                         func n(_ k: EntityKind) -> Int { own.filter { $0.kind == k }.count }
-                        print("  \(size)/\(seed) t\(host.tick / Tick.rate / 60) p\(p) powder \(v.resources[.gunpowder]) wood \(v.resources[.wood]) workshop \(n(.building(.alchemistsWorkshop))) castle \(n(.building(.castle))) knights \(n(.unit(.knight))) musketeers \(n(.unit(.musketeer))) cannon \(n(.unit(.cannon))) working \(own.filter { $0.kind == .unit(.worker) && $0.activity == .working }.count)")
+                        print("  \(size)/\(seed) t\(host.tick / Tick.rate / 60) p\(p) stone \(v.resources[.stone]) gold \(v.resources[.gold]) food \(v.resources[.food]) iron \(v.resources[.iron]) unfinished \(own.filter { if case .underConstruction = $0.activity { return true } else { return false } }.map { "\($0.kind)".replacingOccurrences(of: "building(GameCore.BuildingKind.", with: "") }) castleState \(own.filter { $0.kind == .building(.castle) }.map { "\($0.activity)" }) engineers \(n(.unit(.engineer))) quarrying \(own.filter { $0.activity == .gathering(.stone) }.count) powder \(v.resources[.gunpowder]) wood \(v.resources[.wood]) workshop \(n(.building(.alchemistsWorkshop))) castle \(n(.building(.castle))) knights \(n(.unit(.knight))) musketeers \(n(.unit(.musketeer))) cannon \(n(.unit(.cannon))) working \(own.filter { $0.kind == .unit(.worker) && $0.activity == .working }.count)")
                     }
                 }
             }
