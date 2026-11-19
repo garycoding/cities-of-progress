@@ -74,9 +74,6 @@ public final class MapScene: SKScene {
     static let scrollSpeed = 900.0
     /// The width of the band at the screen's edges that scrolls the map.
     static let edgeMargin = 6.0
-    /// Frames of limited animation a second.
-    static let animationRate = 4.0
-
     public init(session: PlayerSession, sprites: any SpriteSource, size: CGSize = CGSize(width: 1280, height: 800)) {
         self.session = session
         cache = SpriteCache(source: sprites, catalogue: session.catalogue)
@@ -297,7 +294,7 @@ public final class MapScene: SKScene {
         lastTime = now
         pollPointer()
         scrollFromInput(elapsed: elapsed)
-        let frame = Int((now * Self.animationRate).rounded(.down)) % 2
+        let frame = Int((now * SpriteKey.frameRate).rounded(.down)) % SpriteKey.framesPerPose
         if frame != animationFrame {
             animationFrame = frame
             changes.mark(.view)
