@@ -61,7 +61,7 @@ public struct Autosaves: Sendable {
 
     private static let stampLength = 19
     private static func stamp(_ date: Date) -> String { formatter.string(from: date) }
-    nonisolated(unsafe) private static let formatter: DateFormatter = {
+    private static let formatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.timeZone = TimeZone.current
