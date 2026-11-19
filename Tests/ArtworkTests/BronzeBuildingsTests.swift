@@ -1,0 +1,117 @@
+// SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import CoreGraphics
+import Foundation
+import GameCore
+import Testing
+@testable import Artwork
+
+@Suite struct BronzeBuildingsTests {
+    /// One source shared by the tests that only look at the sprites.
+    private static let source = BronzeBuildingSprites()
+
+    /// Every key of the batch: each building of the standard catalogue in the
+    /// Bronze age's look, complete and under construction, at frame 0.
+    private static let batch: [SpriteKey] = Catalogue.standard.buildings.flatMap { stats in
+        [SpriteKey(.building(stats.kind, .bronze), .complete), SpriteKey(.building(stats.kind, .bronze), .underConstruction)]
+    }
+
+    @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
+        #expect(Self.batch.count == 14)
+        var keys = SpriteKey.required(through: .ai)
+        for key in Self.batch {
+            keys.append(SpriteKey(key.subject, key.pose, frame: 1))
+            keys.append(SpriteKey(key.subject, key.pose, frame: 11))
+            keys.append(SpriteKey(key.subject, .standing))
+            keys.append(SpriteKey(key.subject, .working))
+        }
+        let supplied = Set(keys.filter { Self.source.sprite($0) != nil })
+        #expect(supplied == Set(Self.batch))
+    }
+
+    @Test func everySpriteCarriesTeamColour() throws {
+        for key in Self.batch {
+            let sprite = try #require(Self.source.sprite(key), "\(key)")
+            let mask = try #require(sprite.teamMask, "no mask for \(key)")
+            #expect(mask.width == sprite.base.width && mask.height == sprite.base.height)
+            // Enough of the mask is coloured to be seen at game size.
+            let pixels = Pixels(mask)
+            var coloured = 0
+            for y in 0..<pixels.height { for x in 0..<pixels.width where pixels.alpha(x, y) > 200 { coloured += 1 } }
+            #expect(coloured >= 60, "only \(coloured) pixels of team colour in \(key)")
+        }
+    }
+
+    /// The anchor is the centre of the footprint's diamond: the diamond placed by
+    /// the anchor is what the drawing covers, reaching its left, bottom and right
+    /// corners and overhanging none of them.
+    @Test func theAnchorIsTheCentreOfTheFootprintsDiamond() throws {
+        for key in Self.batch {
+            guard case .building(let kind, _) = key.subject else { continue }
+            let sprite = try #require(Self.source.sprite(key))
+            let footprint = Catalogue.standard.stats(kind).footprint
+            let pixels = Pixels(sprite.base)
+            let centreX = sprite.anchor.x * Double(pixels.width)
+            let centreY = (1 - sprite.anchor.y) * Double(pixels.height)
+            // Two pixels a point: a tile's diamond is 128 by 64 pixels.
+            let halfWidth = Double(footprint.x + footprint.y) * 32, halfHeight = Double(footprint.x + footprint.y) * 16
+            let drawn = try #require(pixels.bounds(alphaAbove: 128), "\(key) is empty")
+            let tolerance = 5.0
+            #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
+            #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+            #expect(abs(Double(drawn.maxY + 1) - (centreY + halfHeight)) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+        }
+    }
+
+    @Test func theSameKeyGivesTheSamePixels() throws {
+        let first = BronzeBuildingSprites(), second = BronzeBuildingSprites()
+        for key in Self.batch {
+            let a = try #require(first.sprite(key)), b = try #require(second.sprite(key))
+            #expect(Pixels(a.base).bytes == Pixels(b.base).bytes, "\(key)")
+            let maskA = try #require(a.teamMask), maskB = try #require(b.teamMask)
+            #expect(Pixels(maskA).bytes == Pixels(maskB).bytes, "\(key)")
+            #expect(a.anchor == b.anchor)
+        }
+    }
+
+    @Test func theBatchRendersInUnderThreeSeconds() {
+        let fresh = BronzeBuildingSprites()
+        let elapsed = ContinuousClock().measure {
+            for key in Self.batch { _ = fresh.sprite(key) }
+        }
+        #expect(elapsed < .seconds(3), "the batch took \(elapsed)")
+    }
+}
+
+/// An image's pixels, premultiplied RGBA, the top row first.
+private struct Pixels {
+    let width: Int, height: Int
+    let bytes: [UInt8]
+
+    init(_ image: CGImage) {
+        width = image.width
+        height = image.height
+        var data = [UInt8](repeating: 0, count: image.width * image.height * 4)
+        data.withUnsafeMutableBytes { buffer in
+            let context = CGContext(data: buffer.baseAddress, width: image.width, height: image.height, bitsPerComponent: 8,
+                                    bytesPerRow: image.width * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                    bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            context?.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+        }
+        bytes = data
+    }
+
+    func alpha(_ x: Int, _ y: Int) -> UInt8 { bytes[(y * width + x) * 4 + 3] }
+
+    /// The smallest box holding every pixel more opaque than `alphaAbove`.
+    func bounds(alphaAbove threshold: UInt8) -> (minX: Int, minY: Int, maxX: Int, maxY: Int)? {
+        var minX = width, minY = height, maxX = -1, maxY = -1
+        for y in 0..<height {
+            for x in 0..<width where alpha(x, y) > threshold {
+                minX = min(minX, x); maxX = max(maxX, x); minY = min(minY, y); maxY = max(maxY, y)
+            }
+        }
+        return maxX < 0 ? nil : (minX, minY, maxX, maxY)
+    }
+}
