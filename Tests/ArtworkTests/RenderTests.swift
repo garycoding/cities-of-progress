@@ -88,7 +88,9 @@ struct RenderTests {
         let sprites = CartoonSprites()
         let colour = TeamColour.of(.sumer)
         let large = Canvas.person.scaled(to: 4)
-        let width = 1080, height = 520, groundLine = 104.0
+        // The enlarged canvas reaches 408 px above the ground line, so the title
+        // is set above it.
+        let width = 1080, height = 580, groundLine = 104.0
         let ground = Preview.ground(width: width, height: height, tile: 256, grained: false)
         for kind in Self.kinds {
             let look = try #require(StonePeople.person(kind))
