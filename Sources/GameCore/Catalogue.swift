@@ -83,9 +83,19 @@ public struct ImprovementStats: Hashable, Codable, Sendable {
     public var cost: ResourceAmounts
     /// Scholar-ticks of work: one scholar takes this many ticks, two take half.
     public var work: Int
+    /// Workers take this many times as much from a site in the same time
+    /// (herding excepted); the effects of several improvements multiply.
+    public var gatheringMultiplier: Double
+    /// Added to the damage of each blow a warfighter strikes.
+    public var warfighterDamage: Int
+    /// Added to the armour of each warfighter.
+    public var warfighterArmour: Int
 
-    public init(improvement: Improvement, age: Age, cost: ResourceAmounts, work: Int) {
+    public init(improvement: Improvement, age: Age, cost: ResourceAmounts, work: Int,
+                gatheringMultiplier: Double = 1, warfighterDamage: Int = 0, warfighterArmour: Int = 0) {
         self.improvement = improvement; self.age = age; self.cost = cost; self.work = work
+        self.gatheringMultiplier = gatheringMultiplier; self.warfighterDamage = warfighterDamage
+        self.warfighterArmour = warfighterArmour
     }
 }
 
@@ -237,9 +247,12 @@ public struct Catalogue: Hashable, Codable, Sendable {
                           footprint: GridPoint(1, 1), sight: 1),
         ]
         let improvements: [ImprovementStats] = [
-            ImprovementStats(improvement: .betterTools, age: .stone, cost: cost([.food: 80, .wood: 60]), work: s(40)),
-            ImprovementStats(improvement: .bronzeWeapons, age: .bronze, cost: cost([.food: 100, .bronze: 60]), work: s(60)),
-            ImprovementStats(improvement: .shields, age: .bronze, cost: cost([.wood: 80, .bronze: 40]), work: s(60)),
+            ImprovementStats(improvement: .betterTools, age: .stone, cost: cost([.food: 80, .wood: 60]), work: s(40),
+                             gatheringMultiplier: 1.2),
+            ImprovementStats(improvement: .bronzeWeapons, age: .bronze, cost: cost([.food: 100, .bronze: 60]), work: s(60),
+                             warfighterDamage: 1),
+            ImprovementStats(improvement: .shields, age: .bronze, cost: cost([.wood: 80, .bronze: 40]), work: s(60),
+                             warfighterArmour: 1),
         ]
         let advances: [AdvanceStats] = [
             AdvanceStats(from: .stone, cost: cost([.food: 300, .wood: 100]), study: s(4 * 90)),

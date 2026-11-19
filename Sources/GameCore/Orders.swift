@@ -17,11 +17,18 @@ public enum Order: Hashable, Codable, Sendable {
     case gather(units: [EntityID], site: SiteID)
     /// Work at a building: workers tend a stock pen; engineers finish or repair
     /// it; scholars research where research is under way at that building, and
-    /// otherwise, at a town centre, study toward the next age.
+    /// otherwise, at a town centre, study toward the next age. Repair costs
+    /// nothing and restores health at the rate of construction.
     case work(units: [EntityID], at: EntityID)
     /// Engineers construct a new building with its footprint's origin at `at`.
     case construct(engineers: [EntityID], building: BuildingKind, at: GridPoint)
-    /// Attack a person or building that is not an ally's.
+    /// Engineers pull down one of the player's own buildings, taking half its
+    /// construction time; the player receives half its cost, and training or
+    /// research under way there is cancelled and refunded (requirement 28).
+    case demolish(engineers: [EntityID], building: EntityID)
+    /// Attack a person or building that is not an ally's. A warfighter whose
+    /// target is gone takes the nearest opponent in sight. Towers and town
+    /// centres shoot people only.
     case attack(units: [EntityID], target: EntityID)
     /// Queue a person for training at a building.
     case train(at: EntityID, unit: UnitKind)
@@ -35,9 +42,12 @@ public enum Order: Hashable, Codable, Sendable {
     case advanceAge
     /// A founder builds a new town centre, free of cost, at `at`; it comes with
     /// `Catalogue.founderWorkers` workers and the founder disappears (requirement 26).
+    /// It takes effect when ordered; the founder need not walk there.
     case found(founder: EntityID, at: GridPoint)
     /// Pay to turn warfighters into the kind a later age brings, at a building
     /// that trains that kind (requirement 17; see `Catalogue.upgrades`).
+    /// `UpgradeStats.time` applies to each warfighter, all of them at once,
+    /// wherever each stands.
     case upgrade(units: [EntityID], to: UnitKind, at: EntityID)
     /// Pause or resume the match for everyone (docs/requirements.md, "The match").
     /// Accepted from any human player, and accepted whilst paused.
