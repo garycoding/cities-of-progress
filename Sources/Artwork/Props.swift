@@ -144,6 +144,18 @@ extension Drawing {
         svg.path(d, stroke: .colour(Ink.line), width: 1.3)
     }
 
+    /// Short lines bursting from `p` between the directions `from` and `to`
+    /// (degrees from straight down, positive toward the front; 180 is straight up).
+    mutating func burst(at p: P, from: Double, to: Double, size: Double = 1) {
+        var d = PathData()
+        for i in 0..<5 {
+            let u = P.direction(mix(from, to, Double(i) / 4))
+            d.move(p + u * (2.6 * size))
+            d.line(p + u * (6 * size))
+        }
+        svg.path(d, stroke: .colour(Ink.line), width: 1.2)
+    }
+
     /// The arc a swung weapon leaves behind it: around `centre`, at `radius`,
     /// from `from` to `to` degrees.
     mutating func swish(around centre: P, radius: Double, from: Double, to: Double) {
