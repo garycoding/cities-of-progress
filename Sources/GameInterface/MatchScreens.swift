@@ -23,7 +23,7 @@ struct PillButton: View {
             Text(title).font(Typeface.text(size, bold: true))
                 .foregroundStyle(enabled ? Palette.ink : Palette.inkSoft)
                 .padding(.horizontal, size + 4).padding(.vertical, size * 0.55)
-                .cartoonBox(fill: enabled ? fill : Palette.paperDeep, radius: size + 2, lineWidth: 1.3)
+                .cartoonBox(fill: enabled ? fill : Palette.paperDeep, radius: 100, lineWidth: 1.3)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -121,7 +121,7 @@ struct CartoonTextField: View {
     @Binding var text: String
 
     var body: some View {
-        TextField(placeholder, text: $text)
+        TextField(placeholder, text: $text, prompt: Text(placeholder).foregroundStyle(Palette.inkSoft.opacity(0.7)))
             .textFieldStyle(.plain)
             .font(Typeface.text(14))
             .padding(.horizontal, 10).padding(.vertical, 7)
@@ -153,7 +153,7 @@ public struct NewMatchView: View {
     }
 
     public var body: some View {
-        let columns = min(max(model.seats.count, 1), 3)
+        let columns = min(max(model.seats.count, 1), 2)
         VStack(alignment: .leading, spacing: 14) {
             Text("New match").font(Typeface.text(28, bold: true))
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14, alignment: .top), count: columns),
@@ -295,7 +295,7 @@ public struct LobbyView: View {
             HStack {
                 if let waiting = model.waitingFor {
                     Text(waiting).font(Typeface.text(12)).foregroundStyle(model.isHost ? Palette.brick : Palette.inkSoft)
-                } else if !model.isHost {
+                } else if !model.isHost && model.lobby.isReady {
                     Text("Ready. The host starts the match.").font(Typeface.text(12)).foregroundStyle(Palette.teal)
                 }
                 Spacer()

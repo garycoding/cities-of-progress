@@ -382,16 +382,19 @@ public struct MatchOverView: View {
 // MARK: The whole screen
 
 /// The bar at the top, the panel and the small map at the bottom, around a slot
-/// for the map view, which another module supplies.
-public struct GameHUD<MapSlot: View>: View {
+/// for the map view, which another module supplies. `overlay` is laid over the
+/// map above the paused sign and below the end of the match: the notices of a
+/// match across the LAN (`MatchNoticeLayer`).
+public struct GameHUD<MapSlot: View, Overlay: View>: View {
     let session: PlayerSession
     let map: MapSlot
+    let overlay: Overlay
     let sprites: any SpriteSource
     let onClose: (() -> Void)?
 
     public init(session: PlayerSession, sprites: any SpriteSource = EmptySpriteSource(),
-                onMatchOver: (() -> Void)? = nil, @ViewBuilder map: () -> MapSlot) {
-        self.session = session; self.sprites = sprites; self.onClose = onMatchOver; self.map = map()
+                onMatchOver: (() -> Void)? = nil, @ViewBuilder map: () -> MapSlot, @ViewBuilder overlay: () -> Overlay) {
+        self.session = session; self.sprites = sprites; self.onClose = onMatchOver; self.map = map(); self.overlay = overlay()
     }
 
     public var body: some View {
@@ -412,6 +415,7 @@ public struct GameHUD<MapSlot: View>: View {
                         .padding(.horizontal, 28).padding(.vertical, 10)
                         .cartoonBox(fill: Palette.paper.opacity(0.92), radius: 10, lineWidth: 1.8)
                 }
+                overlay
                 if session.view.outcome != nil {
                     Palette.ink.opacity(0.35)
                     MatchOverView(session: session, onClose: onClose)
@@ -437,5 +441,12 @@ public struct GameHUD<MapSlot: View>: View {
         .environment(\.spriteSource, sprites)
         .environment(\.teamColour, session.view.players.first { $0.id == session.view.player }
             .map { TeamColour.of($0.civilization) })
+    }
+}
+
+extension GameHUD where Overlay == EmptyView {
+    public init(session: PlayerSession, sprites: any SpriteSource = EmptySpriteSource(),
+                onMatchOver: (() -> Void)? = nil, @ViewBuilder map: () -> MapSlot) {
+        self.init(session: session, sprites: sprites, onMatchOver: onMatchOver, map: map, overlay: { EmptyView() })
     }
 }

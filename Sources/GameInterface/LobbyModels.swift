@@ -63,11 +63,12 @@ public struct LobbyModel: Hashable, Sendable {
     /// The host may start once every seat is held and has a civilization.
     public var canStart: Bool { isHost && lobby.isReady }
 
-    /// What the match waits for, or `nil` when it is ready.
+    /// What the match waits for from others, or `nil` when it waits for nobody
+    /// but, perhaps, the person at this Mac, whose picker says so.
     public var waitingFor: String? {
         let empty = lobby.seats.filter { $0.kind == .person && $0.holder == nil }.count
         if empty > 0 { return empty == 1 ? "Waiting for a person to join." : "Waiting for \(empty) people to join." }
-        let choosing = lobby.seats.filter { $0.isWaiting }.compactMap(\.holder)
+        let choosing = lobby.seats.filter { $0.isWaiting && $0.player != me }.compactMap(\.holder)
         if !choosing.isEmpty { return "Waiting for \(InterfaceText.list(choosing)) to choose a civilization." }
         return nil
     }
