@@ -24,7 +24,7 @@ let package = Package(
         // The SpriteKit scene that draws a state and turns clicks into orders.
         .target(name: "MapDrawing", dependencies: ["GameCore", "Artwork"]),
         // The SwiftUI views around the map.
-        .target(name: "GameInterface", dependencies: ["GameCore"]),
+        .target(name: "GameInterface", dependencies: ["GameCore", "Artwork"]),
         // Setting up, finding and joining a match on the LAN (a later milestone).
         .target(name: "GameNetwork", dependencies: ["GameCore"]),
         // The app.
@@ -42,8 +42,13 @@ let package = Package(
         .testTarget(name: "ComputerPlayerTests", dependencies: ["ComputerPlayer", "GameCore"]),
         .testTarget(name: "ArtworkTests", dependencies: ["Artwork", "GameCore"]),
         .testTarget(name: "MapDrawingTests", dependencies: ["MapDrawing", "GameCore"]),
-        .testTarget(name: "GameInterfaceTests", dependencies: ["GameInterface", "GameCore"]),
+        .testTarget(name: "GameInterfaceTests", dependencies: ["GameInterface", "GameCore", "Artwork"]),
         .testTarget(name: "GameNetworkTests", dependencies: ["GameNetwork", "GameCore"]),
+        // Whole matches between computer players, without a screen (step 5).
+        .testTarget(
+            name: "MatchTests",
+            dependencies: ["GameCore", "GameSimulation", "MapGeneration", "ComputerPlayer"]
+        ),
     ],
     swiftLanguageModes: [.v6]
 )
