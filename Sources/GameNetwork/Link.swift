@@ -122,10 +122,12 @@ final class Link: @unchecked Sendable {
         case .ready:
             let ready = handlers.ready
             Self.onMain { ready() }
-        case .waiting(let error):
-            // An outgoing connection that cannot be made now (refused, no route):
-            // the owner decides whether and when to try again.
-            finish(.failed(error.localizedDescription))
+        case .waiting:
+            // An outgoing connection that cannot be made yet: the host refuses
+            // it, the network is down, or the system awaits the person's leave
+            // to use the local network. The framework tries again by itself when
+            // things change; the owner's deadline decides how long to wait.
+            break
         case .failed(let error):
             finish(.failed(error.localizedDescription))
         case .cancelled:

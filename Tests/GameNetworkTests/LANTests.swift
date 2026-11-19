@@ -275,6 +275,7 @@ extension LANTests {
 
     @Test func aMatchThatCannotBeReachedIsReported() async throws {
         let client = MatchClient(name: "Hyun", build: testBuild)
+        client.connectLimit = .milliseconds(300)
         client.join(host: "127.0.0.1", port: 9)
         try await until("it gives up") { client.state.isFinal }
         #expect(client.state == .gaveUp(reason: "The host could not be reached."))

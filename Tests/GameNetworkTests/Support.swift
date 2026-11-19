@@ -192,10 +192,12 @@ final class Loopback {
         return server.port!
     }
 
-    /// A Mac that joins; it reconnects after a drop at once, then after a tenth of a second.
+    /// A Mac that joins. After a drop it reconnects at once, then twice after a
+    /// tenth of a second, and an attempt waits at most half a second.
     func join(_ name: String, build: String = testBuild) async throws -> MatchClient {
         let client = MatchClient(name: name, build: build)
         client.reconnectDelays = [.milliseconds(10), .milliseconds(100), .milliseconds(100)]
+        client.connectLimit = .milliseconds(500)
         client.join(host: "127.0.0.1", port: try await port())
         clients.append(client)
         return client

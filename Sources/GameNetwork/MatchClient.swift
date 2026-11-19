@@ -71,7 +71,9 @@ public final class MatchClient {
     /// The waits before each attempt to reconnect after a drop: six attempts
     /// over about a minute.
     @ObservationIgnored public var reconnectDelays: [Duration] = [1, 2, 4, 8, 15, 30].map { .seconds($0) }
-    /// How long one attempt to connect may take.
+    /// How long one attempt to connect may take, waiting meanwhile for a host
+    /// or a network that cannot be reached yet, or for the person's leave to
+    /// use the local network.
     @ObservationIgnored public var connectLimit: Duration = .seconds(5)
     /// A host from which nothing arrives for this long is taken to be lost. It
     /// sends views 20 times a second during a match and answers pings.
