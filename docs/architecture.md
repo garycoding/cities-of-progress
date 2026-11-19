@@ -62,12 +62,12 @@ A building's footprint (`BuildingStats.footprint`) covers tiles from its origin 
 ## Sprites
 
 - **Keys.** A sprite is named by a `SpriteKey`, whose subject for an entity is chosen by `SpriteSubject.of(_:ownerAge:)` in both the drawing and the artwork: a subject (a person of a kind at an age, a building in an age's style, a site, or a terrain tile), a pose, and a frame. `SpriteKey.required(through:)` lists every picture a milestone needs; it is the artwork's checklist.
-- **Poses.** `standing`, `walking`, `working` and `fighting` for people; `complete` and `under-construction` for buildings. Poses are open-ended strings, so that the art style guide can add more; the drawing falls back to `standing` or `complete` where a pose is missing. Limited animation alternates a few frames of a pose.
+- **Poses.** `standing`, `walking`, `working` and `fighting` for people; `complete` and `under-construction` for buildings. Poses are open-ended strings, so that the art style guide can add more; the drawing falls back to `standing` or `complete` where a pose is missing. A pose is a cycle of 12 frames, shown at 12 frames a second ([`art-style.md`](art-style.md#movement)).
 - **Facing.** Artwork is drawn facing right; the drawing mirrors it for an entity facing left.
 - **Size.** Pictures are drawn at twice their size in points, for Retina displays. A person stands about 48 points tall on a tile 64 points wide; a building covers its footprint's diamonds.
 - **Anchor.** `SpriteImage.anchor` is the point of the image placed on the entity's `EntityView.position`: for a person, between its feet; for a building, the centre of its footprint at ground level, which on screen is the centre of the footprint's diamond. It is a fraction of the image with (0, 0) at the bottom left.
 - **Team colour.** A sprite has a base image and, where it carries a civilization's colour, a mask: white where the colour goes. The drawing tints the mask with `TeamColour.of(civilization)` and lays it over the base, so that one picture serves every civilization.
-- **The look.** The artwork follows the Cartoon Modern style recorded in `design.md` and the art style guide (`art-style.md`, once ruled). It is written as SVG, drawn by macOS, with a grain added by Core Image ([`decisions.md`](decisions.md#verifications-2026-11-18)). The SVG is held in Swift source as string literals, not as package resources, so that the assembled app needs no resource bundle.
+- **The look.** The artwork follows the Cartoon Modern style recorded in `design.md` and [`art-style.md`](art-style.md). It is written as SVG, drawn by macOS, with a grain added by Core Image ([`decisions.md`](decisions.md#verifications-2026-11-18)). The SVG is held in Swift source as string literals, not as package resources, so that the assembled app needs no resource bundle.
 
 ## Checks
 
