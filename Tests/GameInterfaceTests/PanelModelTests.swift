@@ -21,7 +21,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     let view = Samples.stoneAgeOpening()
     let m = model(view, [view.id(of: .building(.townCentre))])
     #expect(m.train.map(\.id) == ["train-worker", "train-scholar", "train-engineer", "train-merchant", "train-clubman", "train-slinger"])
-    #expect(m.research.map(\.id) == ["research-betterTools", "research-ironTools"])
+    #expect(m.research.map(\.id) == ["research-betterTools", "research-ironTools", "research-guilds", "research-banking"])
     #expect(m.build.isEmpty && m.upgrade.isEmpty)
     #expect(offer(m, "train-worker").title == "Hunter")
     #expect(offer(m, "train-engineer").title == "Builder")
@@ -105,8 +105,8 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     let view = Samples.bronzeAgeSkirmish()   // 15 of 15
     let barracks = view.id(of: .building(.barracks))
     let m = model(view, [barracks])
-    #expect(m.train.map(\.id) == ["train-clubman", "train-slinger", "train-spearman", "train-archer", "train-chariot", "train-swordsman"])
-    for o in m.train where o.id != "train-swordsman" {
+    #expect(m.train.map(\.id) == ["train-clubman", "train-slinger", "train-spearman", "train-archer", "train-chariot", "train-swordsman", "train-musketeer"])
+    for o in m.train where o.id != "train-swordsman" && o.id != "train-musketeer" {
         #expect(o.unavailable?.refusal == .populationLimit, "\(o.id)")
         #expect(o.unavailable?.explanation == "Population full (15 of 15); build a house")
     }
@@ -137,7 +137,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
 @Test func bronzeTownCentreResearchOmitsWhatIsKnown() {
     let view = Samples.bronzeAgeSkirmish()   // better tools is known
     let m = model(view, [view.id(of: .building(.townCentre))])
-    #expect(m.research.map(\.id) == ["research-ironTools"])   // the Iron age's, not yet reached
+    #expect(m.research.map(\.id) == ["research-ironTools", "research-guilds", "research-banking"])   // later ages', not yet reached
     #expect(offer(m, "train-merchant").unavailable?.refusal == .populationLimit)   // the age is reached
 }
 
