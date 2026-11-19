@@ -109,6 +109,8 @@ enum StoneBuildingsInk {
     static let daubShade = "#d9c39d"
     /// The cut end of a log.
     static let woodEnd = "#b98a58"
+    /// Every other sapling of a roof of saplings, a little lighter than the wood.
+    static let saplingLight = "#9c6a3d"
     /// Stone in shade.
     static let stoneShade = "#978f81"
     /// The fire's flame, around a core in the light colour.

@@ -5,7 +5,7 @@ import Foundation
 import GameCore
 
 // The storage pit of the Stone age: a pit dug in the ground and ringed with
-// stones, half covered by a hide painted in the team's colour; behind it a
+// stones, partly covered by a hide painted in the team's colour; behind it a
 // shelter of saplings on four posts, open toward the viewer, its back a woven
 // screen, sheltering baskets of stone and a stack of wood; the team's pennant
 // on a pole at its corner. Under construction: the pit half dug with its earth
@@ -23,7 +23,7 @@ private enum Store {
     /// The roof's reach beyond the posts, in tiles.
     static let reach = 0.1
 
-    /// The height of the roof's underside at `y`.
+    /// The height of the roof at `y`.
     static func roof(_ y: Double) -> Double { back - fall * (y - (y0 - reach)) }
 
     /// The pit's rim as the projection draws it: its centre and its two radii.
@@ -76,19 +76,20 @@ extension StoneBuildingsSketch {
         let lip = 3.0
         shape([corners[3], corners[2], corners[2] + P(0, lip), corners[3] + P(0, lip)],
               .colour(StoneBuildingsInk.thatchDeep), line: 1.1)
-        shape(corners, .colour(Ink.wood))
-        let count = 13
-        for i in 1..<count {
-            let f = Double(i) / Double(count)
-            let a = corners[0] + (corners[1] - corners[0]) * f, b = corners[3] + (corners[2] - corners[3]) * f
-            stroke([a + (b - a) * 0.04, b - (b - a) * 0.02], width: 0.8, colour: Ink.line, opacity: 0.8)
+        // Each sapling a pole of its own, alternately lighter and darker, laid
+        // from the back of the roof to its front, where its butt shows.
+        colour(corners, .colour(Ink.handle))
+        let count = 14
+        for i in 0..<count {
+            let f0 = (Double(i) + 0.02) / Double(count), f1 = (Double(i) + 0.98) / Double(count)
+            let back0 = corners[0] + (corners[1] - corners[0]) * f0, back1 = corners[0] + (corners[1] - corners[0]) * f1
+            let front0 = corners[3] + (corners[2] - corners[3]) * f0, front1 = corners[3] + (corners[2] - corners[3]) * f1
+            shape([back0, back1, front1, front0], .colour(i % 2 == 0 ? Ink.wood : StoneBuildingsInk.saplingLight), line: 0.7,
+                  shift: P(0, 0))
+            svg.ellipse((front0 + front1) * 0.5 + P(0, lip * 0.5), 1.45, 1.4, fill: .colour(StoneBuildingsInk.woodEnd),
+                        stroke: .colour(Ink.line), width: 0.7)
         }
-        for i in 0...count {
-            let f = (Double(i) + 0.5) / Double(count + 1)
-            let b = corners[3] + (corners[2] - corners[3]) * f
-            svg.ellipse(b + P(0, lip * 0.5), 1.5, 1.4, fill: .colour(StoneBuildingsInk.woodEnd), stroke: .colour(Ink.line),
-                        width: 0.7)
-        }
+        stroke(StoneBuildingsOutline(corners), width: 1.2)
         // Lashings over the saplings, front and back.
         for f in [0.18, 0.82] {
             let a = corners[0] + (corners[3] - corners[0]) * f, b = corners[1] + (corners[2] - corners[1]) * f
@@ -98,7 +99,7 @@ extension StoneBuildingsSketch {
     }
 
     /// The pit: dark within, its far wall showing, a ring of stones on its
-    /// rim, and a hide in the team's colour stretched over its right half and
+    /// rim, and a hide in the team's colour laid over its near part and
     /// pegged down.
     private mutating func pit() {
         let rim = Store.rim, nudge = StoneBuildingsSketch.nudge
@@ -202,7 +203,7 @@ extension StoneBuildingsSketch {
     }
 
     /// The pit begun: a shallow hole, the earth dug from it heaped beside,
-    /// a digging stick standing in the heap, and a basket for carrying earth.
+    /// a digging stick standing in the heap, and a basket of the stones dug out.
     private mutating func pitBegun() {
         let rim = Store.rim, nudge = StoneBuildingsSketch.nudge
         let rx = rim.rx * 0.72, ry = rim.ry * 0.72

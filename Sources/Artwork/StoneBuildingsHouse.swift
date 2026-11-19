@@ -39,7 +39,7 @@ private enum Hut {
     /// from `-tangent` round the front to `180 + tangent`.
     static let tangent: Double = {
         let r = ring(eave, eaveHeight)
-        return asin(-(r.ry * r.ry) / (apex - eaveHeight) / r.ry) * 180 / .pi
+        return asin(-r.ry / (apex - eaveHeight)) * 180 / .pi
     }()
 }
 
@@ -92,7 +92,7 @@ extension StoneBuildingsSketch {
     }
 
     /// The cone of thatch: its shaded side, its courses, the ragged edge of its
-    /// eaves, moss, and the knot at its top with the pennant.
+    /// eaves, and the tuft at its top with the pennant.
     private mutating func cone() {
         let apex = P(0, -Hut.apex)
         let t = Hut.tangent
