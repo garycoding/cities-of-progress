@@ -62,7 +62,13 @@ final class TerrainLayer {
         guard visibility != .unexplored else { return black }
         let variants = groups[terrain.rawValue]
         let x = index % width, y = index / width
-        let variant = (((x &* 73_856_093) ^ (y &* 19_349_663)) & 0x7fff_ffff) % variants.count
+        // Mix the high bits down: the low bits of a product of x and y repeat on a
+        // small grid, which showed as a 4 by 4 pattern of tiles.
+        var h = UInt64(truncatingIfNeeded: x &* 73_856_093) ^ UInt64(truncatingIfNeeded: y &* 19_349_663)
+        h = (h ^ (h >> 16)) &* 0x45d9_f3b
+        h = (h ^ (h >> 16)) &* 0x45d9_f3b
+        h ^= h >> 16
+        let variant = Int(h % UInt64(variants.count))
         return variants[variant][visibility == .explored ? 1 : 0]
     }
 

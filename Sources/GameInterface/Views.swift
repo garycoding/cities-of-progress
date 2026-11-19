@@ -71,7 +71,7 @@ struct ActionButton: View {
                         Spacer(minLength: 0)
                         if let key = offer.shortcut { KeyBadge(key: key) }
                     }
-                    Text(InterfaceText.cost(offer.cost)).font(Typeface.text(9.5)).fixedSize(horizontal: false, vertical: true)
+                    Text(offer.costLine).font(Typeface.text(9.5)).fixedSize(horizontal: false, vertical: true)
                     if let why = offer.unavailable {
                         Text(why.explanation).font(Typeface.text(9)).foregroundStyle(Palette.brick)
                             .fixedSize(horizontal: false, vertical: true)
@@ -149,6 +149,8 @@ public struct SelectionPanel: View {
             }
             .frame(width: 230, alignment: .topLeading)
 
+            // Scrolls when a selection offers more than the panel holds.
+            ScrollView(.vertical) {
             VStack(alignment: .leading, spacing: 5) {
                 ForEach(model.sections, id: \.section) { group in
                     VStack(alignment: .leading, spacing: 3) {
@@ -160,6 +162,8 @@ public struct SelectionPanel: View {
                 }
                 Spacer(minLength: 0)
             }
+            }
+            .scrollIndicators(.automatic)
         }
         .foregroundStyle(Palette.ink)
         .padding(10)
@@ -559,5 +563,7 @@ public struct GameHUD<MapSlot: View>: View {
                 .frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
         }
         .environment(\.spriteSource, sprites)
+        .environment(\.teamColour, session.view.players.first { $0.id == session.view.player }
+            .map { TeamColour.of($0.civilization) })
     }
 }
