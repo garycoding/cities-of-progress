@@ -5,27 +5,27 @@ import Foundation
 
 // The Iron-age stone wall: one tile of a wall of dressed stone, taller and
 // heavier than the Bronze age's palisade, on a footing of darker stone, with a
-// band of the owner's colour under its coping and merlons along its top. The
+// band of the owner's colour under its coping and a merlon on its walkway. The
 // key names no neighbours, so the tile joins its neighbours whichever way a row
 // runs, as the palisade does: the wall fills the tile to its edges, its courses
 // and joints repeat every tile, its corners are left without an upright line,
-// and its merlons stand at the quarters of the tile, so that a row of tiles
-// shows a line of merlons along each face, evenly spaced across the joints. Its
+// and its one merlon stands square in the middle of the tile, so that a row of
+// tiles shows merlons and gaps of about equal width along its top, evenly
+// spaced across the joints, whichever way it runs. (Merlons at the tile's
+// quarters were tried, and a row of them read as a tray of blocks.) Its
 // footprint is one tile: x and y run from -0.5 to 0.5.
 
 extension IronNewBuildingsPainter {
     mutating func stoneWall(complete: Bool) {
         if complete {
             wallBody(height: 38, finished: true)
-            for (x, y) in Self.merlonPlaces { merlon(x, y, on: 38) }
+            merlon(0, 0, on: 38)
         } else {
             wallBody(height: 13, finished: false)
             wallRising()
         }
     }
 
-    /// The tile's merlons, the farthest first.
-    private static let merlonPlaces: [(Double, Double)] = [(0, 0)]
 
     /// The wall's body, filling the tile from the ground to `height`: dressed
     /// stone in courses on a darker footing, and, when `finished`, a coping and
@@ -63,7 +63,7 @@ extension IronNewBuildingsPainter {
         line([iso(-e, e, h), iso(-e, -e, h), iso(e, -e, h)], width: 0.6, opacity: 0.6)
     }
 
-    /// A merlon standing on the wall's top at (x, y): a block of dressed stone with a capping.
+    /// A merlon standing on the wall's top at (x, y): a block of dressed stone in courses, with a low pointed cap.
     private mutating func merlon(_ x: Double, _ y: Double, on h: Double) {
         typealias I = IronNewBuildingsInk
         let s = 0.27, rise = 12.0
