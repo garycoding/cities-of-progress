@@ -69,3 +69,51 @@ func reportHowEqualsPlay() {
         print("seed \(seed): tick \(host.tick / Tick.rate / 60) min, outcome \(String(describing: host.outcome)), bronze at s \(bronzeAt), p0 entities \(own.count), p0 resources \(v.resources)")
     }
 }
+
+@Test func aSeatHandedToTheComputerIsPlayedAndReturnsToThePerson() {
+    let civilizations: [Civilization] = [.sumer, .egypt]
+    let map = MapGenerator().generate(MapRequest(width: 64, height: 64, playerCount: 2, seed: 9))
+    let setup = MatchSetup(map: map, players: [
+        PlayerSetup(id: PlayerID(0), civilization: civilizations[0], team: TeamID(0), controller: .human),
+        PlayerSetup(id: PlayerID(1), civilization: civilizations[1], team: TeamID(1), controller: .computer(.standard)),
+    ], seed: 9)
+    var host = Host(setup: setup)
+    #expect(!host.isComputer(PlayerID(0)))
+    host.handToComputer(PlayerID(0), difficulty: .standard)
+    #expect(host.isComputer(PlayerID(0)))
+    for _ in 0..<Tick.seconds(90) { host.advance() }
+    // The computer played the person's seat: it trained or built something.
+    #expect(host.peek(for: PlayerID(0)).entities.filter { $0.owner == PlayerID(0) }.count > 4)
+    host.takeBack(PlayerID(0))
+    #expect(!host.isComputer(PlayerID(0)))
+    #expect(host.computerPlayers == [PlayerID(1)])
+}
+
+@Test func aDroppedPersonHoldsTheMatchUntilTheyRejoinOrTheSeatIsHandedOn() {
+    let map = MapGenerator().generate(MapRequest(width: 64, height: 64, playerCount: 2, seed: 4))
+    let setup = MatchSetup(map: map, players: [
+        PlayerSetup(id: PlayerID(0), civilization: .sumer, team: TeamID(0), controller: .human),
+        PlayerSetup(id: PlayerID(1), civilization: .egypt, team: TeamID(0), controller: .human),
+    ], seed: 4)
+    var host = Host(setup: setup)
+    host.advance()
+    host.drop(PlayerID(1))
+    let held = host.tick
+    for _ in 0..<40 { host.advance() }
+    #expect(host.tick == held)
+    #expect(host.view(for: PlayerID(0)).isPaused)
+    #expect(host.apply(.setPaused(false), from: PlayerID(0)) == .refused(.notNow))
+    host.rejoin(PlayerID(1))
+    host.advance()
+    #expect(host.tick == held + 1)
+    // A pause a person set before a drop survives the rejoin.
+    host.apply(.setPaused(true), from: PlayerID(0))
+    host.drop(PlayerID(1))
+    host.handToComputer(PlayerID(1), difficulty: .easy)
+    #expect(host.dropped.isEmpty)
+    #expect(host.isPaused)
+    // The hold is not saved.
+    host.drop(PlayerID(0))
+    let reopened = try! JSONDecoder().decode(Host.self, from: JSONEncoder().encode(host))
+    #expect(reopened.dropped.isEmpty)
+}
