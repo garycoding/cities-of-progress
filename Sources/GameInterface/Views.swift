@@ -1,0 +1,562 @@
+// SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import Artwork
+import GameCore
+import SwiftUI
+
+// MARK: Resource bar
+
+/// The age's name, each resource of the ages reached with its amount, the
+/// population of its limit, and the civilization.
+public struct ResourceBar: View {
+    let session: PlayerSession
+
+    public init(session: PlayerSession) { self.session = session }
+
+    public var body: some View {
+        let model = ResourceBarModel(view: session.view)
+        HStack(spacing: 18) {
+            HStack(spacing: 8) {
+                Circle().fill(model.civilization.map(Palette.colour(of:)) ?? Palette.paperDeep)
+                    .overlay(Circle().stroke(Palette.ink, lineWidth: 1.2)).frame(width: 16, height: 16)
+                Text(model.civilizationName).font(Typeface.text(15, bold: true))
+            }
+            Text("\(model.ageName) Age")
+                .font(Typeface.text(13, bold: true))
+                .padding(.horizontal, 10).padding(.vertical, 3)
+                .cartoonBox(fill: Palette.ochre.opacity(0.55), radius: 10, lineWidth: 1.2)
+            Spacer(minLength: 8)
+            ForEach(model.items) { item in
+                HStack(spacing: 5) {
+                    ResourceGlyph(resource: item.resource, size: 20)
+                    Text("\(item.amount)").font(Typeface.text(15)).monospacedDigit()
+                }
+                .help(item.name)
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(item.name) \(item.amount)")
+            }
+            HStack(spacing: 5) {
+                PersonGlyph(kind: .worker).frame(width: 20, height: 20)
+                Text(model.populationText).font(Typeface.text(15)).monospacedDigit()
+                    .foregroundStyle(model.isPopulationFull ? Palette.brick : Palette.ink)
+            }
+            .help("Population of its limit")
+        }
+        .foregroundStyle(Palette.ink)
+        .padding(.horizontal, 14)
+        .frame(height: 44)
+        .cartoonBox(fill: Palette.paper, radius: 0, lineWidth: 1.5)
+    }
+}
+
+// MARK: Buttons
+
+/// A button of the panels. It stays enabled when it cannot act: its tooltip and
+/// its refusal line say why, and pressing it shows the refusal.
+struct ActionButton: View {
+    let offer: ActionOffer
+    let session: PlayerSession
+    var wide = false
+
+    var body: some View {
+        Button { offer.perform(in: session) } label: {
+            HStack(alignment: .top, spacing: 6) {
+                if let icon = offer.icon {
+                    EntityIcon(kind: icon, subject: offer.iconSubject, size: 28)
+                }
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: 4) {
+                        Text(offer.title).font(Typeface.text(11.5, bold: true)).lineLimit(1).minimumScaleFactor(0.8)
+                        Spacer(minLength: 0)
+                        if let key = offer.shortcut { KeyBadge(key: key) }
+                    }
+                    Text(InterfaceText.cost(offer.cost)).font(Typeface.text(9.5)).lineLimit(1).minimumScaleFactor(0.8)
+                    if let why = offer.unavailable {
+                        Text(why.explanation).font(Typeface.text(9)).foregroundStyle(Palette.brick)
+                            .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .foregroundStyle(offer.isAvailable ? Palette.ink : Palette.inkSoft)
+            .padding(.horizontal, 7).padding(.vertical, 5)
+            .frame(maxWidth: .infinity, minHeight: 50, alignment: .topLeading)
+            .cartoonBox(fill: offer.isAvailable ? Palette.paper : Palette.paperDeep.opacity(0.6), radius: 5, lineWidth: 1.2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(offer.tooltip)
+        .keyboardShortcut(offer.shortcut.map { KeyboardShortcut(KeyEquivalent($0), modifiers: []) })
+        .accessibilityLabel(offer.title)
+        .accessibilityHint(offer.unavailable?.explanation ?? "Cost \(InterfaceText.cost(offer.cost))")
+    }
+}
+
+// MARK: Selection panel
+
+/// One selected entity in full; several as counts by kind. Own buildings and
+/// people offer their actions, each with its cost and, where it cannot act now,
+/// the reason.
+public struct SelectionPanel: View {
+    let session: PlayerSession
+
+    public init(session: PlayerSession) { self.session = session }
+
+    public var body: some View {
+        let model = PanelModel(session: session)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                switch model.content {
+                case .nothing:
+                    Text("Nothing selected").font(Typeface.text(14, bold: true))
+                    Text("Click a person or a building on the map, or drag a box around several.")
+                        .font(Typeface.text(11)).foregroundStyle(Palette.inkSoft)
+                case .single(let detail):
+                    HStack(spacing: 8) {
+                        EntityIcon(kind: detail.kind, subject: nil, size: 40)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(detail.name).font(Typeface.text(16, bold: true))
+                            Text(detail.ownerLine).font(Typeface.text(11)).foregroundStyle(Palette.inkSoft)
+                        }
+                    }
+                    HStack(spacing: 6) {
+                        Text("Health").font(Typeface.text(10.5))
+                        MeterBar(fraction: detail.healthFraction, fill: detail.healthFraction > 0.35 ? Palette.sage : Palette.brick)
+                        Text("\(detail.health)/\(detail.maxHealth)").font(Typeface.text(10.5)).monospacedDigit()
+                    }
+                    Text(detail.activity).font(Typeface.text(12))
+                    if let progress = detail.progress {
+                        HStack(spacing: 6) {
+                            MeterBar(fraction: progress, fill: Palette.teal)
+                            Text("\(Int((progress * 100).rounded(.down)))%").font(Typeface.text(10.5)).monospacedDigit()
+                        }
+                    }
+                case .several(let total, let counts):
+                    Text("\(total) selected").font(Typeface.text(16, bold: true))
+                    ForEach(counts, id: \.kind) { entry in
+                        HStack(spacing: 6) {
+                            EntityIcon(kind: entry.kind, subject: nil, size: 20)
+                            Text("\(entry.count) \u{00D7} \(entry.name)").font(Typeface.text(12))
+                        }
+                    }
+                }
+                if let placing = model.placing {
+                    Text("Placing a \(placing.name.lowercased()): click the map to build; Esc to cancel.")
+                        .font(Typeface.text(10.5, bold: true)).foregroundStyle(Palette.teal)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .frame(width: 230, alignment: .topLeading)
+
+            VStack(alignment: .leading, spacing: 5) {
+                ForEach(model.sections, id: \.section) { group in
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(group.section.heading.uppercased()).font(Typeface.text(9.5, bold: true)).foregroundStyle(Palette.inkSoft)
+                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 120), spacing: 5), count: 4), spacing: 5) {
+                            ForEach(group.offers) { offer in ActionButton(offer: offer, session: session) }
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+        }
+        .foregroundStyle(Palette.ink)
+        .padding(10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .cartoonBox()
+    }
+}
+
+// MARK: Small map
+
+/// The whole map as a diamond: explored terrain, the player's and allies'
+/// entities, opponents in sight in their colours, and the camera's view as an
+/// outline. A click or a drag sets the camera's centre.
+public struct MiniMap: View {
+    let session: PlayerSession
+    /// The size of the map view the camera looks through, in points, for the outline.
+    var viewport: CGSize
+
+    public init(session: PlayerSession, viewport: CGSize = CGSize(width: 1100, height: 640)) {
+        self.session = session; self.viewport = viewport
+    }
+
+    public var body: some View {
+        GeometryReader { proxy in
+            let view = session.view
+            let geometry = MiniMapGeometry(mapWidth: view.mapWidth, mapHeight: view.mapHeight, size: proxy.size)
+            let raster = MiniMapRaster.image(for: view)
+            let marked = MiniMapRaster.marked(view)
+            let camera = session.camera
+            Canvas { context, size in
+                context.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Palette.ink.opacity(0.9)))
+                if let raster {
+                    var layer = context
+                    layer.concatenate(geometry.transform)
+                    layer.draw(Image(decorative: raster, scale: 1).interpolation(.none),
+                               in: CGRect(x: 0, y: 0, width: view.mapWidth, height: view.mapHeight))
+                }
+                for e in marked {
+                    guard let civ = view.players.first(where: { $0.id == e.owner })?.civilization else { continue }
+                    let p = geometry.point(for: e.position)
+                    let isBuilding: Bool
+                    if case .building = e.kind { isBuilding = true } else { isBuilding = false }
+                    let d: CGFloat = isBuilding ? 6 : 3.5
+                    let dot = Path(CGRect(x: p.x - d / 2, y: p.y - d / 2, width: d, height: d))
+                    context.fill(dot, with: .color(Palette.colour(of: civ)))
+                    context.stroke(dot, with: .color(Palette.ink), lineWidth: 0.7)
+                }
+                let outline = Path(geometry.cameraRect(camera, viewport: viewport))
+                var clipped = context
+                clipped.clip(to: Path(CGRect(origin: .zero, size: size)))
+                clipped.stroke(outline, with: .color(Color.white), lineWidth: 2.4)
+                clipped.stroke(outline, with: .color(Palette.ink), lineWidth: 1)
+            }
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 0).onChanged { drag in
+                MiniMapControl.point(drag.location, geometry: geometry, session: session)
+            })
+        }
+        .aspectRatio(2, contentMode: .fit)
+        .cartoonBox(fill: Palette.paperDeep, radius: 4)
+        .accessibilityLabel("Small map")
+        .accessibilityHint("Click or drag to move the view")
+    }
+}
+
+// MARK: Age progress
+
+/// Study toward the next age and, once it is complete, the Advance button with its cost.
+public struct AgeProgress: View {
+    let session: PlayerSession
+
+    public init(session: PlayerSession) { self.session = session }
+
+    public var body: some View {
+        let model = AgeProgressModel(view: session.view, catalogue: session.catalogue)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(model.caption).font(Typeface.text(12, bold: true)).fixedSize(horizontal: false, vertical: true)
+            if model.nextAge != nil, model.advance != nil {
+                HStack(spacing: 6) {
+                    MeterBar(fraction: model.progress, fill: Palette.ochre, height: 11)
+                    Text(model.percentText).font(Typeface.text(11)).monospacedDigit()
+                }
+                if let offer = model.advanceOffer, model.showsAdvance {
+                    ActionButton(offer: offer, session: session, wide: true)
+                } else {
+                    Text("Scholars at a town centre carry the study forward.")
+                        .font(Typeface.text(10)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(Palette.ink)
+        .padding(10)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
+        .cartoonBox()
+    }
+}
+
+// MARK: Pause
+
+/// Pauses or resumes the match for everyone.
+public struct PauseButton: View {
+    let session: PlayerSession
+
+    public init(session: PlayerSession) { self.session = session }
+
+    public var body: some View {
+        let model = PauseModel(view: session.view)
+        Button { session.issue(model.order) } label: {
+            HStack(spacing: 6) {
+                PauseSymbol(paused: model.isPaused).frame(width: 14, height: 14)
+                Text(model.title).font(Typeface.text(13, bold: true))
+                KeyBadgeWide(text: "Space")
+            }
+            .foregroundStyle(Palette.ink)
+            .padding(.horizontal, 12).frame(height: 34)
+            .cartoonBox(fill: model.isPaused ? Palette.ochre.opacity(0.6) : Palette.paper, radius: 17, lineWidth: 1.3)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(.space, modifiers: [])
+        .help(model.isPaused ? "Resume the match for everyone (Space)" : "Pause the match for everyone (Space)")
+    }
+}
+
+struct PauseSymbol: View {
+    let paused: Bool
+
+    var body: some View {
+        Canvas { context, s in
+            var p = Path()
+            if paused {
+                p.move(to: CGPoint(x: s.width * 0.15, y: 0)); p.addLine(to: CGPoint(x: s.width, y: s.height / 2))
+                p.addLine(to: CGPoint(x: s.width * 0.15, y: s.height)); p.closeSubpath()
+            } else {
+                p.addRect(CGRect(x: s.width * 0.1, y: 0, width: s.width * 0.3, height: s.height))
+                p.addRect(CGRect(x: s.width * 0.6, y: 0, width: s.width * 0.3, height: s.height))
+            }
+            context.fill(p, with: .color(Palette.ink))
+        }
+    }
+}
+
+struct KeyBadgeWide: View {
+    let text: String
+
+    var body: some View {
+        Text(text).font(Typeface.text(9, bold: true)).foregroundStyle(Palette.ink)
+            .padding(.horizontal, 4).frame(height: 14)
+            .background(RoundedRectangle(cornerRadius: 3).fill(Palette.paperDeep))
+            .overlay(RoundedRectangle(cornerRadius: 3).stroke(Palette.ink, lineWidth: 0.8))
+    }
+}
+
+// MARK: Refusal banner
+
+/// Shows `session.lastRefusal` for a few seconds and then sets it to `nil`.
+public struct RefusalBanner: View {
+    let session: PlayerSession
+    var seconds: Double
+
+    public init(session: PlayerSession, seconds: Double = 4) { self.session = session; self.seconds = seconds }
+
+    public var body: some View {
+        if let refusal = session.lastRefusal {
+            Text(refusal.description)
+                .font(Typeface.text(14, bold: true))
+                .foregroundStyle(Palette.ink)
+                .padding(.horizontal, 16).padding(.vertical, 8)
+                .cartoonBox(fill: Palette.ochre.opacity(0.85), radius: 8, lineWidth: 1.4)
+                .task(id: refusal) { await Self.expire(session, after: seconds, matching: refusal) }
+                .accessibilityAddTraits(.isStaticText)
+        }
+    }
+
+    /// Wait, then clear the session's refusal if it is still the one shown.
+    @MainActor
+    public static func expire(_ session: PlayerSession, after seconds: Double, matching refusal: OrderRefusal) async {
+        try? await Task.sleep(for: .seconds(seconds))
+        if !Task.isCancelled, session.lastRefusal == refusal { session.lastRefusal = nil }
+    }
+}
+
+// MARK: Match over
+
+/// Victory or defeat, from the view's outcome and the player's team.
+public struct MatchOverView: View {
+    let session: PlayerSession
+    var onClose: (() -> Void)?
+
+    public init(session: PlayerSession, onClose: (() -> Void)? = nil) { self.session = session; self.onClose = onClose }
+
+    public var body: some View {
+        if let model = MatchOverModel(view: session.view) {
+            VStack(spacing: 12) {
+                Text(model.title).font(Typeface.text(40, bold: true))
+                    .foregroundStyle(model.isVictory ? Palette.teal : Palette.brick)
+                Text(model.message).font(Typeface.text(16)).multilineTextAlignment(.center)
+                if let onClose {
+                    Button(action: onClose) {
+                        Text("Back to the menu").font(Typeface.text(14, bold: true))
+                            .padding(.horizontal, 18).padding(.vertical, 8)
+                            .cartoonBox(fill: Palette.ochre.opacity(0.7), radius: 16, lineWidth: 1.3)
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .foregroundStyle(Palette.ink)
+            .padding(.horizontal, 48).padding(.vertical, 32)
+            .cartoonBox(fill: Palette.paper, radius: 10, lineWidth: 2)
+        }
+    }
+}
+
+// MARK: New match
+
+/// Choose your civilization, the computer opponent's and its difficulty. The
+/// choice goes to `onStart`; the map comes from elsewhere. One seat per player,
+/// so that more players and teams are more seats.
+public struct NewMatchView: View {
+    @State private var model: NewMatchModel
+    let onStart: (NewMatchChoice) -> Void
+    let onCancel: (() -> Void)?
+
+    public init(model: NewMatchModel = NewMatchModel(), onStart: @escaping (NewMatchChoice) -> Void,
+                onCancel: (() -> Void)? = nil) {
+        _model = State(initialValue: model)
+        self.onStart = onStart
+        self.onCancel = onCancel
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("New match").font(Typeface.text(28, bold: true))
+            HStack(alignment: .top, spacing: 14) {
+                ForEach(model.seats) { seat in SeatPanel(model: $model, seatID: seat.id) }
+            }
+            Text("Each player has a different civilization: choosing one that another player holds swaps the two.")
+                .font(Typeface.text(11)).foregroundStyle(Palette.inkSoft)
+            if model.canAddComputerPlayer {
+                Button { model.addComputerPlayer() } label: {
+                    Text("Add a computer player").font(Typeface.text(12, bold: true)).padding(.horizontal, 12).padding(.vertical, 6)
+                        .cartoonBox(radius: 12, lineWidth: 1.2)
+                }
+                .buttonStyle(.plain)
+            }
+            HStack {
+                if let problem = model.problem {
+                    Text(problem).font(Typeface.text(12)).foregroundStyle(Palette.brick)
+                }
+                Spacer()
+                if let onCancel {
+                    Button(action: onCancel) {
+                        Text("Cancel").font(Typeface.text(14, bold: true)).padding(.horizontal, 18).padding(.vertical, 8)
+                            .cartoonBox(radius: 16, lineWidth: 1.3)
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(.cancelAction)
+                }
+                Button { if model.canStart { onStart(model.choice) } } label: {
+                    Text("Start the match").font(Typeface.text(14, bold: true)).padding(.horizontal, 18).padding(.vertical, 8)
+                        .cartoonBox(fill: model.canStart ? Palette.ochre : Palette.paperDeep, radius: 16, lineWidth: 1.3)
+                }
+                .buttonStyle(.plain)
+                .keyboardShortcut(.defaultAction)
+            }
+        }
+        .foregroundStyle(Palette.ink)
+        .padding(24)
+        .frame(width: 760)
+        .cartoonBox(fill: Palette.paper, radius: 10, lineWidth: 2)
+    }
+}
+
+private struct SeatPanel: View {
+    @Binding var model: NewMatchModel
+    let seatID: Int
+
+    var body: some View {
+        if let seat = model.seats.first(where: { $0.id == seatID }) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(seat.isHuman ? "You" : "Computer player").font(Typeface.text(15, bold: true))
+                    Spacer()
+                    Text("Team \(seat.team + 1)").font(Typeface.text(11)).foregroundStyle(Palette.inkSoft)
+                    if !seat.isHuman && model.seats.count > 2 {
+                        Button { model.removeSeat(seatID) } label: { Text("Remove").font(Typeface.text(11, bold: true)) }
+                            .buttonStyle(.plain)
+                    }
+                }
+                Text("Civilization").font(Typeface.text(10, bold: true)).foregroundStyle(Palette.inkSoft)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: 3), spacing: 5) {
+                    ForEach(Civilization.allCases, id: \.self) { civ in
+                        let chosen = civ == seat.civilization
+                        Button { model.setCivilization(civ, forSeat: seatID) } label: {
+                            HStack(spacing: 5) {
+                                Circle().fill(Palette.colour(of: civ)).overlay(Circle().stroke(Palette.ink, lineWidth: 1))
+                                    .frame(width: 12, height: 12)
+                                Text(civ.name).font(Typeface.text(11.5, bold: chosen)).lineLimit(1)
+                                Spacer(minLength: 0)
+                            }
+                            .padding(.horizontal, 6).padding(.vertical, 5)
+                            .cartoonBox(fill: chosen ? Palette.ochre.opacity(0.6) : Palette.paper, radius: 5,
+                                        lineWidth: chosen ? 1.8 : 0.9)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(civ.name)
+                        .accessibilityAddTraits(chosen ? .isSelected : [])
+                    }
+                }
+                if let difficulty = seat.difficulty {
+                    Text("Difficulty").font(Typeface.text(10, bold: true)).foregroundStyle(Palette.inkSoft)
+                    HStack(spacing: 5) {
+                        ForEach(Difficulty.allCases, id: \.self) { d in
+                            let chosen = d == difficulty
+                            Button { model.setDifficulty(d, forSeat: seatID) } label: {
+                                Text(Self.title(d)).font(Typeface.text(12, bold: chosen)).frame(maxWidth: .infinity).padding(.vertical, 6)
+                                    .cartoonBox(fill: chosen ? Palette.teal.opacity(0.35) : Palette.paper, radius: 5,
+                                                lineWidth: chosen ? 1.8 : 0.9)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(chosen ? .isSelected : [])
+                        }
+                    }
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, minHeight: 250, alignment: .topLeading)
+            .cartoonBox(fill: Palette.paper, radius: 8, lineWidth: 1.4)
+        }
+    }
+
+    static func title(_ d: Difficulty) -> String {
+        switch d {
+        case .easy: "Easy"
+        case .standard: "Standard"
+        case .hard: "Hard"
+        }
+    }
+}
+
+// MARK: The whole screen
+
+/// The bar at the top, the panel and the small map at the bottom, around a slot
+/// for the map view, which another module supplies.
+public struct GameHUD<MapSlot: View>: View {
+    let session: PlayerSession
+    let map: MapSlot
+    let sprites: any SpriteSource
+    let onClose: (() -> Void)?
+
+    public init(session: PlayerSession, sprites: any SpriteSource = EmptySpriteSource(),
+                onMatchOver: (() -> Void)? = nil, @ViewBuilder map: () -> MapSlot) {
+        self.session = session; self.sprites = sprites; self.onClose = onMatchOver; self.map = map()
+    }
+
+    public var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                ResourceBar(session: session)
+                PauseButton(session: session).padding(.trailing, 8)
+            }
+            .background(Palette.paper)
+            ZStack {
+                map
+                VStack {
+                    RefusalBanner(session: session).padding(.top, 14)
+                    Spacer()
+                }
+                if session.view.isPaused && session.view.outcome == nil {
+                    Text("Paused").font(Typeface.text(34, bold: true)).foregroundStyle(Palette.ink)
+                        .padding(.horizontal, 28).padding(.vertical, 10)
+                        .cartoonBox(fill: Palette.paper.opacity(0.92), radius: 10, lineWidth: 1.8)
+                }
+                if session.view.outcome != nil {
+                    Palette.ink.opacity(0.35)
+                    MatchOverView(session: session, onClose: onClose)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+            HStack(alignment: .top, spacing: 8) {
+                SelectionPanel(session: session)
+                AgeProgress(session: session).frame(width: 220)
+                MiniMap(session: session).frame(width: 330, height: 165)
+            }
+            .padding(8)
+            .frame(height: 195)
+            .background(Palette.paperDeep)
+            .overlay(alignment: .top) { Rectangle().fill(Palette.ink).frame(height: 1.5) }
+            // Cancels placing a building; zero-sized, not hidden, so that its shortcut stays live.
+            Button("") { session.placing = nil }
+                .keyboardShortcut(.escape, modifiers: [])
+                .frame(width: 0, height: 0).opacity(0).accessibilityHidden(true)
+        }
+        .environment(\.spriteSource, sprites)
+    }
+}
