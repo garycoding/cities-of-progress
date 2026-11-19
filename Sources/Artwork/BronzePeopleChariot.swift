@@ -127,7 +127,8 @@ struct BronzePeopleChariot: PersonLook {
         let (nearPose, farPose) = Self.horses(pose, frame)
         let near = BronzePeopleSteed(at: Self.nearHorse, pose: nearPose, coat: "#a8643a", shade: "#7e4626")
         let far = BronzePeopleSteed(at: Self.farHorse, pose: farPose, coat: "#6f3d22", shade: "#4f2a17")
-        let spin = pose == .walking ? Double(frame) * Self.turn : (pose == .fighting ? 4 * BronzePeopleKit.wave(frame) : 0)
+        // Rolling forward (to the right), the wheels turn clockwise: their angle falls.
+        let spin = pose == .walking ? -Double(frame) * Self.turn : (pose == .fighting ? 4 * BronzePeopleKit.wave(frame) : 0)
         let bounce = pose == .walking ? 0.7 * abs(BronzePeopleKit.wave(frame, 0.1, times: 1)) : 0
         // The shadow on the ground, under the car and the team.
         d.svg.ellipse(P(42, 0.2), 62, 4.4, fill: .colour("#000000"), opacity: 0.13)

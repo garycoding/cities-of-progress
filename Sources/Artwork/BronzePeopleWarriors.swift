@@ -102,7 +102,7 @@ struct BronzePeopleSpearman: PersonLook {
             let degrees = Self.spearDegrees(pose, frame, sway: sway)
             switch pose {
             case .fighting:
-                Self.spear(&d.svg, at: hand, degrees: degrees, ahead: 40, behind: 32)
+                Self.spear(&d.svg, at: hand, degrees: degrees, ahead: 40, behind: 27)
                 let tip = hand + P.direction(degrees) * 40
                 if frame == 7 { d.svg.path("M\(num(tip.x - 26)),\(num(tip.y - 3.4)) l12,0.6 M\(num(tip.x - 24)),\(num(tip.y + 3.6)) l12,-0.4",
                                            stroke: .colour(Ink.line), width: 1.1, opacity: 0.6) }

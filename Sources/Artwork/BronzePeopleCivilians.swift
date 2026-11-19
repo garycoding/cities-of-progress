@@ -388,14 +388,20 @@ struct BronzePeopleMason: PersonLook {
                     }
                 }
                 d.svg.path(dashes, stroke: .colour(BronzePeopleInk.light), width: 1)
-                // The apron, in the team's colour, trimmed in the light.
-                let apron = [P(1.2, -33), P(13.8, -34), P(16.4, -11.4), P(3.4, -10.8)]
-                d.band(apron)
-                d.svg.polygon([P(2.6, -31.8), P(12.6, -32.6), P(14.8, -12.6), P(4.6, -12.2)].map(d.up), fill: .none,
-                              stroke: .colour(BronzePeopleInk.light), width: 1)
+                // The apron, in the team's colour, bordered in the light so that it
+                // stands apart from the tunic whatever the team's colour.
+                d.svg.polygon([P(0.2, -33.2), P(14.8, -34.2), P(17.6, -11.2), P(2.4, -10.6)].map(d.up), fill: .colour(BronzePeopleInk.light))
+                d.band([P(2.4, -31.8), P(12.8, -32.6), P(15.2, -12.6), P(4.4, -12.2)])
             }
-            d.svg.polygon([P(1.2, -33), P(13.8, -34), P(16.4, -11.4), P(3.4, -10.8)].map(d.up), fill: .none,
+            d.svg.polygon([P(0.8, -33), P(14.4, -34), P(17, -11.2), P(2.8, -10.6)].map(d.up), fill: .none,
                           stroke: .colour(Ink.line), width: 1.3)
+            // A fringe at the apron's foot.
+            var tassels = PathData()
+            for i in 0..<6 {
+                let x = 4 + Double(i) * 2.4
+                tassels.move(P(x, -10.8)); tassels.line(P(x + 0.2, -8.6))
+            }
+            d.svg.path(tassels, stroke: .colour(Ink.line), width: 1)
             // The belt, its bronze buckle, and a chisel tucked into it.
             BronzePeopleProps.chisel(&d.svg, from: d.up(P(-8.6, -38.4)), degrees: -14, length: 8.5)
             d.svg.line([d.up(P(-11.4, -33.4)), d.up(P(13.6, -34.4))], stroke: .colour(BronzePeopleInk.leather), width: 2.4)
