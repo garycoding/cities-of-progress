@@ -139,10 +139,14 @@ enum Grain {
     /// The grain for a picture of the given pixel size.
     static func image(width: Int, height: Int) -> CGImage? {
         let size = Size(width: width, height: height)
-        if let known = made.withLock({ $0[size] }) { return known.image }
-        guard let image = make(width: width, height: height) else { return nil }
-        made.withLock { $0[size] = Box(image: image) }
-        return image
+        // Made under the lock, so that two pictures of one size drawn at once
+        // share one grain rather than each making its own.
+        return made.withLock { made -> CGImage? in
+            if let known = made[size] { return known.image }
+            guard let image = make(width: width, height: height) else { return nil }
+            made[size] = Box(image: image)
+            return image
+        }
     }
 
     private static func make(width: Int, height: Int) -> CGImage? {
