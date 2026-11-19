@@ -32,9 +32,16 @@ final class Match {
     private var lastTime: TimeInterval?
     private var owed = 0.0
 
-    /// At most this many ticks are run in one frame, so that a stall (the Mac
-    /// asleep, a window being dragged) does not make the match race to catch up.
-    static let catchUpLimit = 5.0
+    /// At most this many frames' worth of ticks are run at once, so that a stall
+    /// (the Mac asleep, a window being dragged) does not make the match race.
+    static let catchUpFrames = 5.0
+
+    /// The speeds the person may choose: how many times the normal rate the match runs.
+    static let speeds: [Double] = [1, 1.5, 2, 3, 4]
+
+    /// How many times the normal rate the match runs. It changes only the clock,
+    /// so the rules and the computer players are the same at every speed.
+    var speed = 1.0
 
     init(host: Host, player: PlayerID, camera: Camera? = nil) {
         var host = host
@@ -82,7 +89,7 @@ final class Match {
         let now = ProcessInfo.processInfo.systemUptime
         let elapsed = lastTime.map { now - $0 } ?? 0
         lastTime = now
-        owed = min(owed + elapsed * Double(Tick.rate), Self.catchUpLimit)
+        owed = min(owed + elapsed * Double(Tick.rate) * speed, Self.catchUpFrames * speed)
         while owed >= 1 {
             host.advance()
             owed -= 1
@@ -95,9 +102,11 @@ final class Match {
         var host: Host
         var player: PlayerID
         var camera: Camera
+        /// Absent in saves made before speeds existed.
+        var speed: Double?
     }
 
-    var saved: Saved { Saved(host: host, player: player, camera: session.camera) }
+    var saved: Saved { Saved(host: host, player: player, camera: session.camera, speed: speed) }
 }
 
 /// The app's state: the match in play, if any, and the artwork every match shares.
@@ -108,12 +117,26 @@ final class GameController {
     let sprites = GameSprites()
     var problem: String?
 
+    /// The match's speed, shown in the Speed menu.
+    var speed = 1.0 {
+        didSet { match?.speed = speed }
+    }
+
+    /// One step faster or slower among `Match.speeds`, or back to normal.
+    func changeSpeed(by steps: Int) {
+        let speeds = Match.speeds
+        let current = speeds.firstIndex(of: speed) ?? 0
+        speed = speeds[min(max(current + steps, 0), speeds.count - 1)]
+    }
+
     func start(_ choice: NewMatchChoice) {
         let seed = UInt64.random(in: 1...UInt64.max)
         let map = MapGenerator().generate(MapRequest(playerCount: choice.players.count, seed: seed))
         let setup = choice.setup(map: map, seed: seed)
         guard let person = setup.players.first(where: { $0.controller == .human }) else { return }
-        begin(Match(host: Host(setup: setup), player: person.id))
+        let new = Match(host: Host(setup: setup), player: person.id)
+        new.speed = speed
+        begin(new)
     }
 
     private func begin(_ new: Match) {
@@ -170,7 +193,10 @@ final class GameController {
         guard panel.runModal() == .OK, let url = panel.url else { match?.start(); return }
         do {
             let saved = try JSONDecoder().decode(Match.Saved.self, from: Data(contentsOf: url))
-            begin(Match(host: saved.host, player: saved.player, camera: saved.camera))
+            let opened = Match(host: saved.host, player: saved.player, camera: saved.camera)
+            opened.speed = saved.speed ?? 1
+            speed = opened.speed
+            begin(opened)
         } catch {
             problem = "That file is not a saved match."
             match?.start()
