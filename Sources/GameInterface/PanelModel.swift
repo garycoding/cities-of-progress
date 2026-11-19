@@ -243,8 +243,8 @@ public struct PanelModel: Sendable {
                 why = Unavailability(.invalidTarget, "Needs a \(names) to train the \(target)")
             }
             upgrade.append(ActionOffer(
-                id: "upgrade-\(from)", section: .upgrade, title: "\(ids.count) \(from.stageName(at: view.age)) to \(target)",
-                detail: "Turns \(ids.count) into \(target).", cost: total,
+                id: "upgrade-\(from)", section: .upgrade, title: "\(from.stageName(at: view.age)) to \(target)",
+                detail: "Turns \(ids.count) \(from.stageName(at: view.age)) into \(target).", cost: total,
                 action: .upgrade(units: ids, to: up.to, at: host?.id), unavailable: why,
                 shortcut: keyGiven ? nil : "u", icon: .unit(up.to), iconSubject: planner.subject(.unit(up.to))))
             keyGiven = true
@@ -325,7 +325,7 @@ public struct PanelModel: Sendable {
             }
             if let places, view.population + places > view.populationLimit {
                 let advice = view.populationLimit >= catalogue.populationMaximum ? "" : "; build a house"
-                return Unavailability(.populationLimit, "Population limit reached (\(view.population) of \(view.populationLimit))\(advice)")
+                return Unavailability(.populationLimit, "Population full (\(view.population) of \(view.populationLimit))\(advice)")
             }
             return nil
         }

@@ -63,18 +63,18 @@ struct ActionButton: View {
         Button { offer.perform(in: session) } label: {
             HStack(alignment: .top, spacing: 6) {
                 if let icon = offer.icon {
-                    EntityIcon(kind: icon, subject: offer.iconSubject, size: 28)
+                    EntityIcon(kind: icon, subject: offer.iconSubject, size: 24)
                 }
                 VStack(alignment: .leading, spacing: 1) {
                     HStack(spacing: 4) {
-                        Text(offer.title).font(Typeface.text(11.5, bold: true)).lineLimit(1).minimumScaleFactor(0.8)
+                        Text(offer.title).font(Typeface.text(11.5, bold: true)).lineLimit(2).fixedSize(horizontal: false, vertical: true)
                         Spacer(minLength: 0)
                         if let key = offer.shortcut { KeyBadge(key: key) }
                     }
-                    Text(InterfaceText.cost(offer.cost)).font(Typeface.text(9.5)).lineLimit(1).minimumScaleFactor(0.8)
+                    Text(InterfaceText.cost(offer.cost)).font(Typeface.text(9.5)).fixedSize(horizontal: false, vertical: true)
                     if let why = offer.unavailable {
                         Text(why.explanation).font(Typeface.text(9)).foregroundStyle(Palette.brick)
-                            .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
             }
@@ -153,7 +153,7 @@ public struct SelectionPanel: View {
                 ForEach(model.sections, id: \.section) { group in
                     VStack(alignment: .leading, spacing: 3) {
                         Text(group.section.heading.uppercased()).font(Typeface.text(9.5, bold: true)).foregroundStyle(Palette.inkSoft)
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(minimum: 120), spacing: 5), count: 4), spacing: 5) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 5, alignment: .top)], alignment: .leading, spacing: 5) {
                             ForEach(group.offers) { offer in ActionButton(offer: offer, session: session) }
                         }
                     }
@@ -546,10 +546,11 @@ public struct GameHUD<MapSlot: View>: View {
             HStack(alignment: .top, spacing: 8) {
                 SelectionPanel(session: session)
                 AgeProgress(session: session).frame(width: 220)
-                MiniMap(session: session).frame(width: 330, height: 165)
+                MiniMap(session: session).frame(width: 340, height: 170).frame(maxHeight: .infinity)
             }
             .padding(8)
-            .frame(height: 195)
+            .frame(height: 262)
+            .clipped()
             .background(Palette.paperDeep)
             .overlay(alignment: .top) { Rectangle().fill(Palette.ink).frame(height: 1.5) }
             // Cancels placing a building; zero-sized, not hidden, so that its shortcut stays live.

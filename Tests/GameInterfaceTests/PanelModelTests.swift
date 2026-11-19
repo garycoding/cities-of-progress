@@ -34,7 +34,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     for id in ["train-worker", "train-scholar", "train-engineer", "train-clubman", "train-slinger"] {
         let why = offer(m, id).unavailable
         #expect(why?.refusal == .populationLimit, "\(id)")
-        #expect(why?.explanation == "Population limit reached (5 of 5); build a house", "\(id)")
+        #expect(why?.explanation == "Population full (5 of 5); build a house", "\(id)")
     }
     // The age comes first: a Bronze-age merchant is refused for its age, not the limit.
     #expect(offer(m, "train-merchant").unavailable?.refusal == .ageNotReached(.bronze))
@@ -107,7 +107,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     #expect(m.train.map(\.id) == ["train-clubman", "train-slinger", "train-spearman", "train-archer", "train-chariot"])
     for o in m.train {
         #expect(o.unavailable?.refusal == .populationLimit, "\(o.id)")
-        #expect(o.unavailable?.explanation == "Population limit reached (15 of 15); build a house")
+        #expect(o.unavailable?.explanation == "Population full (15 of 15); build a house")
     }
     // Resources are not the cause: 420 food, 310 wood, 85 bronze, 60 gold.
     #expect(view.resources.covers(catalogue.stats(.chariot).cost))
@@ -121,7 +121,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     var view = Samples.bronzeAgeSkirmish()
     view.population = 200; view.populationLimit = 200
     let m = model(view, [view.id(of: .building(.barracks))])
-    #expect(offer(m, "train-spearman").unavailable?.explanation == "Population limit reached (200 of 200)")
+    #expect(offer(m, "train-spearman").unavailable?.explanation == "Population full (200 of 200)")
 }
 
 @Test func aChariotTakesTwoPlaces() {
@@ -168,7 +168,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     #expect(m.upgrade[0].action == .upgrade(units: [view.id(of: .unit(.clubman))], to: .spearman, at: barracks))
     #expect(m.upgrade[0].isAvailable)
     #expect(m.upgrade[0].cost == ResourceAmounts([.food: 20, .bronze: 15]))
-    #expect(m.upgrade[0].title == "1 Clubman to Spearman")
+    #expect(m.upgrade[0].title == "Clubman to Spearman")
     #expect(m.upgrade[0].shortcut == "u" && m.upgrade[1].shortcut == nil)
     #expect(m.build.isEmpty)
 }
@@ -313,7 +313,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     button.perform(in: session)
     #expect(recorder.orders.isEmpty)
     #expect(session.lastRefusal == .populationLimit)
-    #expect(button.tooltip.contains("Not now: Population limit reached (5 of 5); build a house."))
+    #expect(button.tooltip.contains("Not now: Population full (5 of 5); build a house."))
 }
 
 @MainActor
