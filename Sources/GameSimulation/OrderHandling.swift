@@ -32,6 +32,7 @@ extension Simulation {
         case .move(let units, let to): return move(units, to: to, player: player)
         case .gather(let units, let site): return gather(units, at: site, player: player)
         case .work(let units, let at): return work(units, at: at, player: player)
+        case .demolish(let engineers, let building): return demolish(engineers, building, player: player)
         case .construct(let engineers, let building, let at): return construct(engineers, building, at: at, player: player)
         case .attack(let units, let target): return attack(units, target: target, player: player)
         case .train(let at, let unit): return train(unit, at: at, player: player)
@@ -127,6 +128,15 @@ extension Simulation {
             entities[i].fraction = 0
             assign(i, .work(building))
         }
+        return .accepted
+    }
+
+    mutating func demolish(_ ids: [EntityID], _ building: EntityID, player: PlayerID) -> OrderResult {
+        guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
+        let engineers = people.filter { entities[$0].unitKind == .engineer }
+        guard !engineers.isEmpty else { return .refused(.notYours) }
+        guard ownBuilding(building, player) != nil else { return .refused(.invalidTarget) }
+        for i in engineers { assign(i, .demolish(building)) }
         return .accepted
     }
 

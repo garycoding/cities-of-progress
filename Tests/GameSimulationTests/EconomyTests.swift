@@ -225,6 +225,54 @@ private let load = Catalogue.standard.gathering.load
     }
 }
 
+@Suite struct Demolition {
+    @Test func engineersPullDownAHouseOverHalfItsTimeForHalfItsCost() {
+        var sim = duel()
+        let house = sim.add(.house, me, 8, 2)
+        let limit = sim.view(for: me).populationLimit
+        let engineer = sim.add(.engineer, me, 6.5, 6.5)
+        let before = sim.resources(me)
+        #expect(sim.apply(.demolish(engineers: [engineer], building: house), from: me) == .accepted)
+        do { let reached = sim.run(until: { $0.living(engineer).doing == .constructing }, limit: 200); #expect(reached) }
+        let stats = Catalogue.standard.stats(.house)
+        var ticks = 1
+        while sim.entity(house) != nil, ticks < stats.buildTime { sim.step(); ticks += 1 }
+        #expect(sim.entity(house) == nil)
+        #expect(ticks == max(1, stats.buildTime / 2))
+        #expect(sim.resources(me) == before + stats.cost.halved)
+        let view = sim.view(for: me)
+        #expect(view.populationLimit == limit - stats.housing)
+        #expect(view.events.contains(.destroyed(house)))
+        sim.step()
+        #expect(sim.living(engineer).task == .idle)
+    }
+
+    @Test func trainingUnderWayIsRefundedInFull() {
+        var sim = duel()
+        let centre = sim.townCentre(me)
+        sim.give(me, [.food: 500])
+        #expect(sim.apply(.train(at: centre, unit: .worker), from: me) == .accepted)
+        let afterPaying = sim.resources(me)
+        // Nearly pulled down already, so that it comes down before the worker is trained.
+        let c = sim.index(of: centre)!
+        sim.entities[c].demolished = Simulation.demolitionTime(Catalogue.standard.stats(.townCentre).buildTime) - 1
+        let engineer = sim.add(.engineer, me, 6.5, 6.5)
+        #expect(sim.apply(.demolish(engineers: [engineer], building: centre), from: me) == .accepted)
+        do { let reached = sim.run(until: { $0.entity(centre) == nil }, limit: 200); #expect(reached) }
+        #expect(sim.people(me, .worker).count == sim.view(for: me).entities.filter { $0.kind == .unit(.worker) }.count)
+        let back = Catalogue.standard.stats(.townCentre).cost.halved + Catalogue.standard.stats(.worker).cost
+        #expect(sim.resources(me) == afterPaying + back)
+    }
+
+    @Test func onlyEngineersDemolishAndOnlyTheirOwnBuildings() {
+        var sim = duel()
+        let worker = sim.add(.worker, me, 6.5, 6.5)
+        let engineer = sim.add(.engineer, me, 7.5, 6.5)
+        #expect(sim.apply(.demolish(engineers: [worker], building: sim.townCentre(me)), from: me) == .refused(.notYours))
+        #expect(sim.apply(.demolish(engineers: [engineer], building: sim.townCentre(them)), from: me) == .refused(.invalidTarget))
+    }
+}
+
 @Suite struct Training {
     @Test func aQueuedPersonIsPaidForWhenQueuedAndAppearsBesideTheBuilding() {
         var sim = duel()

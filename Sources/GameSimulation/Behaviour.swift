@@ -16,6 +16,7 @@ extension Simulation {
         case .move(let point): moveTask(i, to: point)
         case .gather(let site, let kind, let tile): gatherTask(i, site: site, kind: kind, tile: tile)
         case .work(let building): workTask(i, at: building)
+        case .demolish(let building): demolishTask(i, building)
         case .attack(let target): attackTask(i, target: target)
         }
     }
@@ -220,6 +221,40 @@ extension Simulation {
         default:
             setIdle(i)
         }
+    }
+
+    /// Engineers pull a building down over half its construction time
+    /// (requirement 28).
+    mutating func demolishTask(_ i: Int, _ building: EntityID) {
+        guard let b = index(of: building), entities[b].owner == entities[i].owner,
+              let kind = entities[b].buildingKind else { setIdle(i); return }
+        switch approach(i, .tiles(entities[b].origin, entities[b].size, reach: Rule.besideReach)) {
+        case .moving: entities[i].doing = .moving; return
+        case .unreachable: setIdle(i); return
+        case .arrived: break
+        }
+        face(i, dx: entities[b].position.x - entities[i].position.x, dy: entities[b].position.y - entities[i].position.y)
+        entities[i].doing = .constructing
+        entities[b].demolished += 1
+        if entities[b].demolished >= Self.demolitionTime(tables.building(kind).buildTime) { demolish(b) }
+    }
+
+    /// Engineer-ticks to pull down a building: half its construction time.
+    static func demolitionTime(_ buildTime: Int) -> Int { max(1, buildTime / 2) }
+
+    /// A building comes down: half its cost back, and whatever was under way
+    /// there cancelled and refunded.
+    mutating func demolish(_ b: Int) {
+        guard let kind = entities[b].buildingKind else { return }
+        let p = entities[b].owner.rawValue
+        var back = tables.building(kind).cost.halved
+        for unit in entities[b].queue { back = back + tables.unit(unit).cost }
+        if let research = entities[b].research { back = back + catalogue.stats(research).cost }
+        entities[b].queue = []
+        entities[b].research = nil
+        players[p].resources = players[p].resources + back
+        record(.destroyed(entities[b].id), for: p)
+        kill(b)
     }
 
     /// Whether a person of this kind has anything to do at a building.

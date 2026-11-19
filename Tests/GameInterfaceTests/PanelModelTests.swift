@@ -148,11 +148,11 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     #expect(offer(m, "research-bronzeWeapons").unavailable?.explanation == "Research is already under way here")
 }
 
-@Test func aBuildingUnderConstructionOffersNothing() {
+@Test func aBuildingUnderConstructionOffersOnlyDemolition() {
     let view = Samples.bronzeAgeSkirmish()
     let tower = view.id(of: .building(.watchTower))
     let m = model(view, [tower])
-    #expect(m.actions.isEmpty)
+    #expect(m.actions.map(\.id) == ["demolish"])
     guard case .single(let detail) = m.content else { Issue.record("expected a single entity"); return }
     #expect(detail.name == "Watch tower")
     #expect(detail.progress == 0.6)
@@ -352,4 +352,37 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     #expect(m.offer(forKey: "W")?.id == "train-worker")
     #expect(m.offer(forKey: "t")?.id == "research-betterTools")
     #expect(m.offer(forKey: "z") == nil)
+}
+
+// MARK: Demolition
+
+@Test func aSingleOwnBuildingOffersDemolitionByTheNearestEngineerWhereNoneIsIdle() {
+    let view = Samples.stoneAgeOpening()   // its one engineer is moving
+    let centre = view.id(of: .building(.townCentre))
+    let m = model(view, [centre])
+    let d = offer(m, "demolish")
+    #expect(d.order == .demolish(engineers: [view.id(of: .unit(.engineer))], building: centre))
+    #expect(d.isAvailable && d.shortcut == "x")
+    #expect(d.detail.contains(InterfaceText.cost(catalogue.stats(.townCentre).cost.halved)))
+}
+
+@Test func idleEngineersDemolishTogetherAndWithoutOneDemolitionIsRefused() {
+    var view = Samples.stoneAgeOpening()
+    let centre = view.id(of: .building(.townCentre))
+    let engineer = view.id(of: .unit(.engineer))
+    let i = view.entities.firstIndex { $0.id == engineer }!
+    view.entities[i].activity = .idle
+    #expect(offer(model(view, [centre]), "demolish").order == .demolish(engineers: [engineer], building: centre))
+    view.entities.remove(at: i)
+    let why = offer(model(view, [centre]), "demolish").unavailable
+    #expect(why?.explanation == "Needs an engineer")
+}
+
+@Test func nothingOffersDemolitionOfAnotherPlayersBuildingOrOfSeveral() {
+    let view = Samples.stoneAgeOpening()
+    let theirs = view.entities.first(where: { e in
+        if case .building = e.kind { return e.owner != view.player } else { return false }
+    })
+    if let theirs { #expect(model(view, [theirs.id]).demolish.isEmpty) }
+    #expect(model(view, view.ids(ofUnits: [.worker])).demolish.isEmpty)
 }

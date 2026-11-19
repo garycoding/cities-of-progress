@@ -71,6 +71,7 @@ extension Simulation {
         case .gather(let site, let kind, let tile): d.add(2); d.add(site.rawValue); d.add(kind.rawValue); d.add(tile)
         case .work(let b): d.add(3); d.add(b.rawValue)
         case .attack(let t): d.add(4); d.add(t.rawValue)
+        case .demolish(let b): d.add(5); d.add(b.rawValue)
         }
         d.add(Int(e.doing.rawValue))
         let r = e.route
@@ -82,7 +83,7 @@ extension Simulation {
         d.add(e.dropOff?.rawValue ?? -1)
         d.add(e.fraction)
         if let u = e.upgrade { d.add(u.to.rawValue); d.add(u.remaining) } else { d.add(-1) }
-        d.add(e.built); d.add(e.complete); d.add(e.healthCredit)
+        d.add(e.built); d.add(e.complete); d.add(e.healthCredit); d.add(e.demolished)
         d.add(e.queue.count)
         for k in e.queue { d.add(k.rawValue) }
         d.add(e.trainProgress); d.add(e.research?.rawValue ?? -1); d.add(e.researchProgress); d.add(e.spawned)

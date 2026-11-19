@@ -22,6 +22,10 @@ public enum Order: Hashable, Codable, Sendable {
     case work(units: [EntityID], at: EntityID)
     /// Engineers construct a new building with its footprint's origin at `at`.
     case construct(engineers: [EntityID], building: BuildingKind, at: GridPoint)
+    /// Engineers pull down one of the player's own buildings, taking half its
+    /// construction time; the player receives half its cost, and training or
+    /// research under way there is cancelled and refunded (requirement 28).
+    case demolish(engineers: [EntityID], building: EntityID)
     /// Attack a person or building that is not an ally's. A warfighter whose
     /// target is gone takes the nearest opponent in sight. Towers and town
     /// centres shoot people only.
