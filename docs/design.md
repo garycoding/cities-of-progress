@@ -20,7 +20,7 @@ These concern how the code works and not what the player sees or does. They were
 - **Finding a match:** Bonjour, through the Network framework.
 - **Saved matches and network messages:** the state of the simulation, encoded with Codable.
 - **Code organisation:** one Swift package of separate modules (shared types, simulation, map generator, computer player, network, drawing, interface, artwork, and the app). The app bundle is assembled from the package by `scripts/make-app.sh`, with no Xcode project, so that agents working in parallel never edit a shared project file and the same commands run locally and on GitHub. If that proves unworkable, a thin Xcode project around the package is the fallback.
-- **Frameworks by concern:** SpriteKit for the map and units; SwiftUI for menus, the team-grouping screen and dialogs; Core Graphics for generating artwork; GameplayKit for terrain noise in map generation; AVFoundation for sound.
+- **Frameworks by concern:** SpriteKit for the map and units; SwiftUI for menus, the team-grouping screen and dialogs; SVG files drawn by macOS (`NSImage`) with a grain added by Core Image for the artwork; GameplayKit for terrain noise in map generation; AVFoundation for sound.
 
 ## Still to settle in the art
 
@@ -29,12 +29,9 @@ These concern how the code works and not what the player sees or does. They were
 - How a figure moves within limited animation (which poses it holds, and what shifts between them).
 - The noses. The large triangular noses of the two examples are disliked (2026-11-18) and are not to be used; the style guide is to show smaller noses, varied from one character to the next, for a ruling.
 
-## To verify in the first hours of implementation
+## Verified
 
-- How macOS's permission for local network access treats an unsigned build, and whether it asks again after each new build.
-- How much friction Swift 6's concurrency checking causes with a single-threaded simulation built of value types.
-- That SpriteKit draws about 1,200 moving units smoothly on the Macs in use.
-- That artwork written as SVG, with its grain and out-of-register colour, can be turned into sprites on the Mac without a web browser.
+The results of the verifications made before building are in [`decisions.md`](decisions.md#verifications-2026-11-18). One remains: an unsigned app on a second Mac.
 
 ## Facts
 

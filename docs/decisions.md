@@ -19,3 +19,15 @@ A dated record of the rulings that shape Cities of Progress, and of each place w
 - **Artwork (2026-11-18).** A style guide comes first and is ruled on by the user; the artwork is then drawn in batches, and the user rules on every batch before it is merged. The large triangular noses of the first examples are not to be used.
 - **Northstar (2026-11-18).** Neither a northstar nor an HTML twin for now; the material for one is in [`in-flight_ideas.md`](in-flight_ideas.md).
 - The design rulings (Swift and macOS only, two-dimensional sprites with SpriteKit, one Mac running each match, the Cartoon Modern art style) are recorded in [`design.md`](design.md).
+
+## Verifications (2026-11-18)
+
+Step 2 of the plan tested the design's riskiest assumptions with a throwaway app, before anything was built on them.
+
+- **An app without an Xcode project: passed.** `scripts/make-app.sh` assembles a bundle from the Swift package and signs it ad hoc. It opens through Launch Services on the Mac that built it.
+- **Bonjour on the LAN: passed on one Mac.** Two copies advertising and browsing `_citiesprogress._tcp` through the Network framework found each other within a second. The bundle declares `NSLocalNetworkUsageDescription` and `NSBonjourServices`.
+- **SpriteKit with 1,200 moving sprites: passed.** Frames arrived every 16.7 ms (95th percentile 17.7 ms) on a 60 Hz display. That is the display's limit, so it shows the drawing fits within a frame, not how much room is left; later checks count dropped frames at 60 Hz.
+- **Swift 6 language mode: passed.** A simulation of value types on an actor, with SpriteKit and SwiftUI on the main actor, compiled with no errors or warnings.
+- **The art without a browser: passed, with one change of method.** macOS draws the Cartoon Modern SVGs itself (`NSImage`), colour out of register with the line included, but drops the SVG's `feTurbulence` grain. Core Image adds the grain afterwards. Sprites are therefore written as SVG files, drawn by macOS, and grained by Core Image.
+- **An unsigned app on a second Mac: pending.** It tests Gatekeeper's treatment of an app that arrives from elsewhere and the local network question across machines. It does not block the first milestone, which runs on one Mac.
+- **The GitHub runner** (`macos-26`) has Xcode 26.6 and Swift 6.3.3; the package needs Swift 6.0 or later.
