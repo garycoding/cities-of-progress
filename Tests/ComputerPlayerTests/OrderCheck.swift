@@ -148,7 +148,17 @@ enum OrderCheck {
                 if !Placement.canPlace(.townCentre, at: at, in: view, catalogue: catalogue) {
                     problems.append("found: a town centre cannot stand at \(at)")
                 }
-            case .cancelTraining, .research, .setPaused, .stop:
+            case .research(let at, let improvement):
+                guard let place = building(at), isComplete(place.entity),
+                      catalogue.stats(place.kind).researches.contains(improvement) else {
+                    problems.append("research: \(improvement) cannot be researched at \(at)")
+                    break
+                }
+                if catalogue.stats(improvement).age > view.age { problems.append("research: \(improvement) is of a later age") }
+                if view.improvements.contains(improvement) { problems.append("research: \(improvement) is known") }
+                if case .researching = place.entity.activity { problems.append("research: \(at) is already researching") }
+                spent = spent + catalogue.stats(improvement).cost
+            case .cancelTraining, .setPaused, .stop:
                 problems.append("unexpected order \(order)")
             }
         }

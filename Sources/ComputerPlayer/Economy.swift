@@ -123,6 +123,7 @@ extension Turn {
             (.worker, w, tuning.workers(at: view.age)),
             (.scholar, s, w < tuning.workersBeforeScholars ? 0 : studying ? tuning.scholars : researchable.isEmpty ? 0 : 2),
             (.engineer, e, tuning.engineers(at: view.age)),
+            (.merchant, merchants.count + training[UnitKind.merchant.rawValue], view.age >= .bronze && w >= 12 ? 1 : 0),
         ]
         var best: UnitKind?
         var bestGap = 0.0
@@ -360,6 +361,20 @@ extension Turn {
         }
         let idle = free.filter { $0.activity == .idle }.map(\.id)
         if !idle.isEmpty { give(.work(units: idle, at: centre.id), to: idle) }
+    }
+
+    /// An idle merchant trades the largest surplus for the resource the player
+    /// most lacks of those it is saving for, or else of bronze, gold and iron.
+    func employMerchants() {
+        let idle = merchants.filter { isFree($0) && $0.activity == .idle }.map(\.id)
+        guard !idle.isEmpty else { return }
+        let shown = view.shownResources.filter { $0 != .food || view.age >= .bronze }
+        guard let surplus = shown.max(by: { view.resources[$0] < view.resources[$1] }), view.resources[surplus] >= 600 else { return }
+        let wanted = shown.filter { $0 != surplus && view.resources[$0] < 150 }
+        let short = wanted.max { (reserve[$0] - view.resources[$0]) < (reserve[$1] - view.resources[$1]) }
+            ?? [Resource.iron, .gold, .bronze].first { shown.contains($0) && $0 != surplus && view.resources[$0] < 300 }
+        guard let take = short else { return }
+        give(.exchange(merchants: idle, give: surplus, take: take), to: idle)
     }
 
     /// The improvements the player's age offers that it lacks, at its complete

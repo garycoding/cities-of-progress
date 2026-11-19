@@ -70,6 +70,7 @@ extension Turn {
             }
         }
         if count(.storagePit) < 4, let cluster = distantCluster() { out.append((.storagePit, cluster, 0...5)) }
+        out += wall()
         return out
     }
 
@@ -121,6 +122,27 @@ extension Turn {
 
     /// The side of the base away from its resources, so that houses and pens do
     /// not stand between workers and their work.
+    /// Once the barracks stands, a short wall across the side facing the
+    /// opponents, nine tiles out: a palisade in the Bronze age, stone in the
+    /// Iron age. One tile is wanted at a time, the nearest gap first.
+    private func wall() -> [(BuildingKind, MapPosition, ClosedRange<Int>)] {
+        guard view.age >= .bronze, !completeBuildings(.barracks).isEmpty, !threatened else { return [] }
+        let kind: BuildingKind = view.age >= .iron ? .stoneWall : .palisade
+        let middle = Turn.toward(base, front, by: 9)
+        let dx = middle.x - base.x, dy = middle.y - base.y
+        let length = max(0.001, (dx * dx + dy * dy).squareRoot())
+        // Across the line to the front, a tile apart.
+        let across = MapPosition(x: -dy / length, y: dx / length)
+        let walls = buildings.filter { $0.kind == .building(.palisade) || $0.kind == .building(.stoneWall) }
+        for k in [0, 1, -1, 2, -2, 3, -3] {
+            let spot = MapPosition(x: middle.x + across.x * Double(k), y: middle.y + across.y * Double(k))
+            let taken = walls.contains { $0.position.distance(to: spot) < 1 }
+                || memory.plans.contains { $0.origin.centre.distance(to: spot) < 1 }
+            if !taken { return [(kind, spot, 0...0)] }
+        }
+        return []
+    }
+
     private func homeSide(by distance: Double) -> MapPosition {
         let resources = surroundings().resources ?? front
         return Turn.toward(base, MapPosition(x: 2 * base.x - resources.x, y: 2 * base.y - resources.y), by: distance)
