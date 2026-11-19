@@ -93,6 +93,8 @@ public final class MatchClient {
     /// Numbers each connection made, so that what an old one still says is ignored.
     @ObservationIgnored private var linkNumber = 0
     @ObservationIgnored private var connected = false
+    /// The link `breakConnection` broke, whose messages still on their way are ignored (for tests).
+    @ObservationIgnored private var brokenLink: Int?
     /// Whether the host has ever given this Mac a seat; a drop is retried only then.
     @ObservationIgnored private var welcomed = false
     /// The host's opening of the match, from its `welcome`.
@@ -162,7 +164,13 @@ public final class MatchClient {
 
     /// Breaks the connection as a failing network would; the client reconnects
     /// as after any drop (for tests).
-    func breakConnection() { link?.breakOff() }
+    /// What is still on its way over the broken link is ignored: the link is
+    /// cancelled on its own queue, and a view arriving meanwhile would
+    /// otherwise be counted after views the test treated as lost.
+    func breakConnection() {
+        brokenLink = linkNumber
+        link?.breakOff()
+    }
 
     // MARK: The lobby and the match
 
@@ -283,7 +291,7 @@ public final class MatchClient {
     }
 
     private func received(_ message: NetMessage, on number: Int) {
-        guard number == linkNumber else { return }
+        guard number == linkNumber, number != brokenLink else { return }
         heard = .now
         switch message {
         case .welcome(let seat, let run):
