@@ -116,6 +116,6 @@ extension Simulation {
                 blocked[k] = !terrain[k].isPassable || siteAt[k] >= 0
             }
         }
-        deathsThisTick = true
+        deathsPending = true
     }
 }

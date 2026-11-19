@@ -67,7 +67,7 @@ public struct Simulation: GameSimulating {
     var buckets = Buckets()
     var search = PathSearch()
     var searchesLeft = 0
-    var deathsThisTick = false
+    var deathsPending = false
 
     // MARK: Starting a match
 
@@ -171,13 +171,12 @@ public struct Simulation: GameSimulating {
         guard !isPaused, outcome == nil else { return }
         tick += 1
         searchesLeft = Rule.searchesPerTick
-        deathsThisTick = false
         buckets.rebuild(entities: entities, width: width, height: height)
         let count = entities.count
         for i in 0..<count where entities[i].alive {
             if entities[i].isPerson { updatePerson(i) } else { updateBuilding(i) }
         }
-        if deathsThisTick {
+        if deathsPending {
             removeDead()
             settleTeams()
         }
@@ -193,7 +192,7 @@ public struct Simulation: GameSimulating {
         for i in kept..<entities.count { indexOfEntity[entities[i].id.rawValue] = -1 }
         entities.removeLast(entities.count - kept)
         for i in entities.indices { indexOfEntity[entities[i].id.rawValue] = Int32(i) }
-        deathsThisTick = false
+        deathsPending = false
         // The spatial index holds indices into `entities`, which have just moved.
         buckets.rebuild(entities: entities, width: width, height: height)
     }

@@ -158,13 +158,13 @@ extension Simulation {
 
     mutating func attack(_ ids: [EntityID], target: EntityID, player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        let team = players[player.rawValue].teamIndex
-        guard let t = index(of: target), isVisible(entities[t], to: team) else { return .refused(.invalidTarget) }
-        guard teamOf(entities[t].owner) != team, !entities[t].isFounder else { return .refused(.cannotAttack) }
         let able = people.filter { i in entities[i].unitKind.map { tables.unit($0).attack != nil } ?? false }
         guard !able.isEmpty else {
             return .refused(people.contains { entities[$0].isFounder } ? .cannotAttack : .notYours)
         }
+        let team = players[player.rawValue].teamIndex
+        guard let t = index(of: target), isVisible(entities[t], to: team) else { return .refused(.invalidTarget) }
+        guard teamOf(entities[t].owner) != team, !entities[t].isFounder else { return .refused(.cannotAttack) }
         for i in able { assign(i, .attack(target)) }
         return .accepted
     }

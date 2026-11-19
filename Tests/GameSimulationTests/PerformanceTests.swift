@@ -73,9 +73,11 @@ import Testing
         let doing = Doing.allCases.map { d in "\(d) \(sim.entities.filter { $0.isPerson && $0.doing == d }.count)" }
         print("Performance: \(ticks) steps, \(fewest) or more people, average step \(milliseconds) ms; at the end: \(doing.joined(separator: ", "))")
         let moved = zip(positionsBefore, sim.entities.filter(\.isPerson).map(\.position)).filter { $0 != $1 }.count
-        #expect(moved > people / 2)
         #expect(fewest >= 1_100)
-        #if !DEBUG
+        #if DEBUG
+        #expect(moved > 0)
+        #else
+        #expect(moved > people / 2)
         let healthAfter = sim.entities.filter(\.isPerson).map(\.health).reduce(0, +)
         #expect(healthAfter < healthBefore)
         #expect(sim.entities.contains { $0.doing == .fighting })

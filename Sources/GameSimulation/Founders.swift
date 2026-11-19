@@ -25,7 +25,7 @@ extension Simulation {
             }
             for i in entities.indices where entities[i].alive && teamOf(entities[i].owner) == t { kill(i) }
         }
-        if deathsThisTick { removeDead() }
+        if deathsPending { removeDead() }
         for p in players.indices where !players[p].isDefeated && !owned.others[p] && !owned.founders[p] {
             guard let spot = founderSpot(for: p) else { continue }
             spawnPerson(.founder, owner: players[p].id, at: spot.centre)
