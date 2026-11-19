@@ -52,7 +52,7 @@ import Testing
             let mask = try #require(sprite.teamMask, "no mask for \(key)")
             #expect(mask.width == sprite.base.width && mask.height == sprite.base.height)
             // Enough of the mask is coloured to be seen at game size.
-            let pixels = Pixels(mask)
+            let pixels = BronzeBuildingsPixels(mask)
             var coloured = 0
             for y in 0..<pixels.height { for x in 0..<pixels.width where pixels.alpha(x, y) > 200 { coloured += 1 } }
             #expect(coloured >= 60, "only \(coloured) pixels of team colour in \(key)")
@@ -67,7 +67,7 @@ import Testing
             guard case .building(let kind, _) = key.subject else { continue }
             let sprite = try #require(Self.source.sprite(key))
             let footprint = Catalogue.standard.stats(kind).footprint
-            let pixels = Pixels(sprite.base)
+            let pixels = BronzeBuildingsPixels(sprite.base)
             let centreX = sprite.anchor.x * Double(pixels.width)
             let centreY = (1 - sprite.anchor.y) * Double(pixels.height)
             // Two pixels a point: a tile's diamond is 128 by 64 pixels.
@@ -87,9 +87,9 @@ import Testing
         let first = BronzeBuildingSprites(), second = BronzeBuildingSprites()
         for key in Self.batch {
             let a = try #require(first.sprite(key)), b = try #require(second.sprite(key))
-            #expect(Pixels(a.base).bytes == Pixels(b.base).bytes, "\(key)")
+            #expect(BronzeBuildingsPixels(a.base).bytes == BronzeBuildingsPixels(b.base).bytes, "\(key)")
             let maskA = try #require(a.teamMask), maskB = try #require(b.teamMask)
-            #expect(Pixels(maskA).bytes == Pixels(maskB).bytes, "\(key)")
+            #expect(BronzeBuildingsPixels(maskA).bytes == BronzeBuildingsPixels(maskB).bytes, "\(key)")
             #expect(a.anchor == b.anchor)
         }
     }
@@ -104,7 +104,7 @@ import Testing
 }
 
 /// An image's pixels, premultiplied RGBA, the top row first.
-private struct Pixels {
+private struct BronzeBuildingsPixels {
     let width: Int, height: Int
     let bytes: [UInt8]
 
