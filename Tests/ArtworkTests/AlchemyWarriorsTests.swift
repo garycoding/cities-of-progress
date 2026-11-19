@@ -7,22 +7,22 @@ import GameCore
 import Testing
 @testable import Artwork
 
-/// The warfighters of the Alchemy age (`AlchemyWarriorSprites`): every key of
-/// the batch has a sprite that stands on its anchor and carries a mask, every
+/// The warfighters of the Alchemy age (`AlchemyWarriorSprites`): the knight,
+/// the musketeer and the cannon. Every key of the batch has a sprite that stands on its anchor and carries a mask, every
 /// other key has none, a key always gives the same pixels, and the batch is
 /// drawn quickly.
 @Suite(.serialized) struct AlchemyWarriorsTests {
     private let source = AlchemyWarriorSprites()
 
-    @Test func theBatchIsTheKnightAndTheMusketeerStandingWalkingAndFighting() {
+    @Test func theBatchIsTheKnightTheMusketeerAndTheCannonStandingWalkingAndFighting() {
         let expected = SpriteKey.required(through: .alchemy).filter { key in
             guard case .unit(let kind, .alchemy) = key.subject else { return false }
-            return [.knight, .musketeer].contains(kind) && key.pose != .working
+            return [.knight, .musketeer, .cannon].contains(kind) && key.pose != .working
         }
         #expect(source.poses == expected)
-        #expect(source.poses.count == 6)
+        #expect(source.poses.count == 9)
         #expect(Set(source.poses.map(\.pose)) == [.standing, .walking, .fighting])
-        #expect(source.keys.count == 6 * SpriteKey.framesPerPose)
+        #expect(source.keys.count == 9 * SpriteKey.framesPerPose)
     }
 
     @Test func everyKeyHasASpriteWithAMaskStandingOnItsAnchor() throws {
@@ -38,12 +38,12 @@ import Testing
                         "\(key): the anchor is not on the ground between the feet")
             } else {
                 #expect(pixels.centresContact(at: sprite.anchor),
-                        "\(key): the anchor is not at the centre of the horse's ground contact")
+                        "\(key): the anchor is not at the centre of the ground contact")
             }
         }
     }
 
-    @Test func theWorkingPoseTheCannonAndEveryOtherKeyHaveNone() {
+    @Test func theWorkingPoseAndEveryOtherKeyHaveNone() {
         let batch = Set(source.keys)
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting, .complete, .underConstruction, "carrying"]
         var others: [SpriteKey] = []
@@ -63,11 +63,8 @@ import Testing
         let outside = others.filter { !batch.contains($0) }
         #expect(outside.count > 1000)
         for key in outside { #expect(source.sprite(key) == nil, "\(key)") }
-        for kind in [UnitKind.knight, .musketeer] {
+        for kind in [UnitKind.knight, .musketeer, .cannon] {
             #expect(source.sprite(SpriteKey(.unit(kind, .alchemy), .working, frame: 0)) == nil, "\(kind) working")
-        }
-        for pose in [SpritePose.standing, .walking, .fighting] {
-            #expect(source.sprite(SpriteKey(.unit(.cannon, .alchemy), pose, frame: 0)) == nil, "cannon \(pose.rawValue)")
         }
     }
 
@@ -141,7 +138,7 @@ import Testing
             return bothSides ? left < x - 2 && right > x + 2 : left <= x + 3 && right >= x - 3
         }
 
-        /// A horse's hooves meet the ground on the anchor's row, on both sides
+        /// A horse's hooves, or a gun's wheel, trail and crew, meet the ground on the anchor's row, on both sides
         /// of its column, and the anchor is near the middle of what touches the ground.
         func centresContact(at anchor: SpriteAnchor) -> Bool {
             let (x, ground) = place(anchor)
@@ -159,10 +156,7 @@ import Testing
 struct AlchemyWarriorsRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["ALCHEMY_WARRIORS_RENDERS"] ?? "/", isDirectory: true)
 
-    private static let kinds: [UnitKind] = [.knight, .musketeer]
-
-    /// The Iron-age warfighter that each kind follows on from.
-    private static func iron(_ kind: UnitKind) -> UnitKind { kind == .knight ? .horseman : .swordsman }
+    private static let kinds: [UnitKind] = [.knight, .musketeer, .cannon]
 
     private static func caption(_ kind: UnitKind, _ pose: SpritePose) -> String {
         switch (kind, pose) {
@@ -172,6 +166,9 @@ struct AlchemyWarriorsRenders {
         case (.musketeer, .standing): "standing: a breath, and a blink"
         case (.musketeer, .walking): "walking: the musket at the trail, the rest in hand"
         case (.musketeer, .fighting): "fighting: aim, fire, and the slow reload"
+        case (.cannon, .standing): "standing: the crew wait by the gun"
+        case (.cannon, .walking): "walking: pushed and hauled, the wheels turning with the stride"
+        case (.cannon, .fighting): "fighting: fire, recoil, sponge, ram, and run it up"
         default: pose.rawValue
         }
     }
@@ -209,12 +206,12 @@ struct AlchemyWarriorsRenders {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let sprites = AlchemyWarriorSprites()
         let colour = TeamColour.of(.sumer)
-        let width = 1280, height = 640, groundLine = 96.0
+        let width = 1440, height = 640, groundLine = 96.0
         let ground = Preview.ground(width: width, height: height, tile: 256, grained: false)
         for kind in Self.kinds {
             let look = try #require(AlchemyWarriorsLooks.look(kind))
             let canvas = AlchemyWarriorsLooks.canvas(kind)
-            let scale = kind == .knight ? 3.0 : 4.0
+            let scale = kind == .knight ? 3.0 : kind == .cannon ? 3.1 : 4.0
             let large = canvas.scaled(to: scale)
             var frames: [CGImage] = []
             for pose in [SpritePose.standing, .walking, .fighting] {
@@ -226,17 +223,19 @@ struct AlchemyWarriorsRenders {
                     context.draw(ground, in: CGRect(x: 0, y: 0, width: width, height: height))
                     let drawn = try #require(look.render(pose, frame: frame, canvas: large))
                     let big = Preview.tinted(base: drawn.base, mask: drawn.mask, colour: colour)
-                    // Walking, the figure covers 4 units of ground a frame, as the approved worker does.
-                    let x = walking ? 230 + Double(i) * 4 * scale : 230 + (kind == .knight ? 100 : 140)
+                    // Walking, a figure covers 4 units of ground a frame, as the approved worker
+                    // does; the gun covers what its wheels roll.
+                    let step = kind == .cannon ? AlchemyWarriorsCannon.groundPerFrame : 4
+                    let x = walking ? 290 + Double(i) * step * scale : 230 + (kind == .knight ? 100 : kind == .cannon ? 220 : 140)
                     Preview.place(big, anchor: large.anchor, at: CGPoint(x: x, y: groundLine), in: context)
                     let sprite = try #require(sprites.sprite(SpriteKey(.unit(kind, .alchemy), pose, frame: frame)))
                     let small = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
-                    let sx = walking ? 1050 + Double(i) * 1.6 : 1090
+                    let sx = walking ? 1200 + Double(i) * 1.6 : 1250
                     Preview.place(small, anchor: sprite.anchor, at: CGPoint(x: sx, y: groundLine), in: context)
                     Preview.label("\(kind.stageName(at: .alchemy)), Alchemy age, in Sumer's colour", in: context,
                                   at: CGPoint(x: 28, y: Double(height) - 52), size: 26)
                     Preview.label(Self.caption(kind, pose) + ", 12 frames a second", in: context, at: CGPoint(x: 28, y: 28), size: 22)
-                    Preview.label("at game size", in: context, at: CGPoint(x: 1060, y: 60), size: 18)
+                    Preview.label("at game size", in: context, at: CGPoint(x: 1210, y: 60), size: 18)
                     frames.append(context.makeImage()!)
                 }
             }
@@ -252,21 +251,22 @@ struct AlchemyWarriorsRenders {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let alchemy = AlchemyWarriorSprites(), iron = IronWarriorSprites()
         let civilizations: [Civilization] = [.rome, .angkor]
-        let column = 520, width = column * 4
+        let column = 560, width = column * 6
         let largeRow = 470, smallRow = 230
         let height = 100 + (largeRow + smallRow) * civilizations.count
         let context = Raster.bitmap(width: width, height: height)!
         context.draw(Preview.ground(width: width, height: height, tile: 256, grained: false), in: CGRect(x: 0, y: 0, width: width, height: height))
-        Preview.label("The Alchemy age's knight and musketeer beside the Iron age's horseman and swordsman, in the colours of Rome and Angkor",
+        Preview.label("The Alchemy age's knight, musketeer and cannon beside the Iron age's horseman, swordsman and catapult, in the colours of Rome and Angkor",
                       in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 26)
-        let columns: [(UnitKind, Age)] = [(.horseman, .iron), (.knight, .alchemy), (.swordsman, .iron), (.musketeer, .alchemy)]
+        let columns: [(UnitKind, Age)] = [(.horseman, .iron), (.knight, .alchemy), (.swordsman, .iron), (.musketeer, .alchemy), (.catapult, .iron),
+                                          (.cannon, .alchemy)]
         for (i, (kind, age)) in columns.enumerated() {
             let left = Double(i * column)
             Preview.label("\(kind.stageName(at: age)), \(age == .iron ? "Iron" : "Alchemy") age", in: context,
                           at: CGPoint(x: left + 20, y: Double(height) - 92), size: 22)
             let look: any PersonLook = try #require(age == .iron ? IronWarriorsLooks.look(kind) : AlchemyWarriorsLooks.look(kind))
             let canvas = age == .iron ? IronWarriorsLooks.canvas(kind) : AlchemyWarriorsLooks.canvas(kind)
-            let scale = canvas.width > 140 ? 2.6 : 3.4
+            let scale = canvas.width > 180 ? 2.4 : canvas.width > 140 ? 2.6 : 3.4
             let large = canvas.scaled(to: scale)
             let source: any SpriteSource = age == .iron ? iron : alchemy
             for (row, civilization) in civilizations.enumerated() {
@@ -280,7 +280,7 @@ struct AlchemyWarriorsRenders {
                 for (n, pose) in [SpritePose.standing, .fighting].enumerated() {
                     let sprite = try #require(source.sprite(SpriteKey(.unit(kind, age), pose, frame: pose == .fighting ? 8 : 0)))
                     let small = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: tint)
-                    Preview.place(small, anchor: sprite.anchor, at: CGPoint(x: left + 110 + Double(n) * 230, y: groundY - Double(smallRow) + 40), in: context)
+                    Preview.place(small, anchor: sprite.anchor, at: CGPoint(x: left + 140 + Double(n) * 260, y: groundY - Double(smallRow) + 40), in: context)
                 }
             }
         }
