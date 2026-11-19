@@ -15,6 +15,16 @@ import Testing
         NewMatchView(model: hostedModel(), onStart: { _ in }, onHost: { _ in }, onCancel: {})
     })
 
+    // Six seats on one Mac, in a window of 1440 by 900 as the app lays it out.
+    var six = NewMatchModel(maxPlayers: 6)
+    for _ in 0..<4 { six.addComputerPlayer() }
+    #expect(renderHosted("lan-new-match-six-seats-window", width: 1440, height: 900) {
+        NewMatchView(model: six, onStart: { _ in }).padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
+    })
+    #expect(renderHosted("lan-new-match-two-seats-window", width: 1440, height: 900) {
+        NewMatchView(model: NewMatchModel(maxPlayers: 6), onStart: { _ in }).padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
+    })
+
     // The lobby as the host, waiting and ready; as a joiner before and after choosing; a resumed match.
     #expect(render("lan-lobby-host-waiting", width: 820, height: 420) {
         LobbyView(model: LobbyModel(lobby: sampleLobby(), me: PlayerID(0)), onLeave: {})

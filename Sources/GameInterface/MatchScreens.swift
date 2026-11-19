@@ -153,7 +153,8 @@ public struct NewMatchView: View {
     }
 
     public var body: some View {
-        let columns = min(max(model.seats.count, 1), 2)
+        // Two seats to a row, three once there are more than four, so that six fit in two rows.
+        let columns = model.seats.count > 4 ? 3 : 2
         VStack(alignment: .leading, spacing: 14) {
             Text("New match").font(Typeface.text(28, bold: true))
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14, alignment: .top), count: columns),
@@ -199,7 +200,7 @@ public struct NewMatchView: View {
         }
         .foregroundStyle(Palette.ink)
         .padding(24)
-        .frame(width: 760)
+        .frame(width: columns == 3 ? 1120 : 760)
         .cartoonBox(fill: Palette.paper, radius: 10, lineWidth: 2)
     }
 }
