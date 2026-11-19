@@ -34,14 +34,8 @@ extension BronzeBuildingsPainter {
             p.jar(at: p.iso(-0.4, 0.34, floor), size: 1.2)
         }
         // The rim's band in the owner's colour, on its two outer faces.
-        wall(.left, from: -e, e, at: h0) { p in
-            p.colour(p.panel(0, 0.7, 2 * e * 32, 2.4), .team)
-            p.line([p.uv(0, 0.7), p.uv(2 * e * 32, 0.7)], width: 0.6)
-        }
-        wall(.right, from: e, e, at: h0) { p in
-            p.colour(p.panel(0, 0.7, 2 * e * 32, 2.4), .team)
-            p.line([p.uv(0, 0.7), p.uv(2 * e * 32, 0.7)], width: 0.6)
-        }
+        wall(.left, from: -e, e, at: h0) { p in p.paintedBand(0, 2 * e * 32, 0.95, 2.05) }
+        wall(.right, from: e, e, at: h0) { p in p.paintedBand(0, 2 * e * 32, 0.95, 2.05) }
         // The hoist: a beam across the top of the post, weighted with a stone
         // at its short end, a basket hanging from its long end over the pit.
         let tip = pivot + P(-40, -10), tail = pivot + P(9, 4)

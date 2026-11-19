@@ -71,6 +71,7 @@ extension BronzeBuildingsPainter {
         for p in [-0.7, 0.7] { pier(p, e, height: 13) }
         for x in [gate.0, gate.1] { pier(x, e, height: 18) }
         pennant(at: iso(gate.0, e, 21.5), height: 13, length: 15)
+        pennant(at: iso(gate.1, e, 21.5), height: 13, length: 15)
         // The front right side.
         for (a, b) in zip(piers, piers.dropFirst()) { rails(e, a, e, b) }
         for p in piers.dropFirst() { pier(e, p, height: 13) }

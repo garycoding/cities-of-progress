@@ -110,9 +110,10 @@ extension BronzeBuildingsPainter {
               right: .colour(I.rawBrickShade), width: 0.9)
         block(-s, -0.08, -0.1, s, top, top + 2.6, top: .colour(I.rawBrickTop), left: .colour(I.rawBrick),
               right: .colour(I.rawBrickShade), width: 0.9)
-        scaffold([(-0.44, 0.44), (0.44, 0.44), (0.44, -0.44)], from: 3, height: 46, levels: [14, 28, 40], boards: 28)
+        scaffold([(-0.44, 0.44), (0.44, 0.44), (0.44, -0.44)], from: 3, height: 46, levels: [14, 28, 40], boards: 14)
         pennant(at: iso(0.44, 0.44, 49), height: 11, length: 14)
-        bricks(-0.46, 0.05, -0.32, 0.4, from: 3, courses: 2)
-        basket(at: iso(0.36, 0.1, 3), size: 0.8)
+        bricks(0.33, -0.3, 0.46, -0.02, from: 3, courses: 2)
+        basket(at: iso(0.38, 0.14, 3), size: 0.8)
+        log(-0.42, -0.02, 0.4, on: 3, radius: 1.4)
     }
 }

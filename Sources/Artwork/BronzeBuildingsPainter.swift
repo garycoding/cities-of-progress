@@ -350,6 +350,16 @@ struct BronzeBuildingsPainter {
 
     // MARK: Team colour
 
+    /// A band of the owner's colour along a wall drawn with `wall`, from `u0`
+    /// to `u1`, between `v0` and `v1`, edged with plaster so that every team's
+    /// colour stands clear of the brick around it.
+    mutating func paintedBand(_ u0: Double, _ u1: Double, _ v0: Double, _ v1: Double) {
+        typealias I = BronzeBuildingsInk
+        colour(panel(u0, v0 - 0.9, u1, v1 + 0.9), .colour(I.light))
+        colour(panel(u0, v0, u1, v1), .team)
+        for v in [v0 - 0.9, v0, v1, v1 + 0.9] { line([uv(u0, v), uv(u1, v)], width: v == v0 || v == v1 ? 0.55 : 0.6) }
+    }
+
     /// A cloth in the team's colour hanging on a wall from `top`, `width` wide
     /// and `length` long, its foot cut in a swallowtail, with a sun on it.
     mutating func hanging(_ u: Double, top v: Double, width: Double, length: Double) {

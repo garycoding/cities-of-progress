@@ -7,9 +7,9 @@ import Foundation
 // bronze, set in a bank of mud brick that carries a band of the owner's colour.
 // The key names no neighbours, so the tile joins its neighbours whichever way a
 // row runs: the bank fills the tile to its edges and is outlined only along the
-// ground, where a row's outline runs on unbroken, and the stakes stand a third
-// of a tile apart, so that across a joint they keep the same spacing. Its
-// footprint is one tile: x and y run from -0.5 to 0.5.
+// ground, where a row's outline runs on unbroken, and the stakes repeat every
+// tile, so that across a joint they keep the same spacing. Its footprint is
+// one tile: x and y run from -0.5 to 0.5.
 
 extension BronzeBuildingsPainter {
     mutating func palisade(complete: Bool) {
@@ -20,18 +20,25 @@ extension BronzeBuildingsPainter {
             bank(height: 3.5)
             // Three stakes set, the rest lying ready, and the owner's pennant on the first.
             for (x, y) in Self.stakeLattice.prefix(3) { stake(x, y, on: 3.5, height: 25, radius: 3.2, bound: true) }
-            pennant(at: iso(-1.0 / 3, -1.0 / 3, 28.5), height: 8, length: 13)
+            let first = Self.stakeLattice[0]
+            pennant(at: iso(first.0, first.1, 28.5), height: 8, length: 13)
             log(-0.36, 0.3, 0.12, on: 3.5, radius: 2.4)
             log(-0.3, 0.36, 0.3, on: 3.5, radius: 2.4)
             basket(at: iso(0.3, -0.12, 3.5), size: 0.8)
         }
     }
 
-    /// Where the stakes stand, the farthest first: a third of a tile apart, so
-    /// that the spacing holds across the joint with the next tile.
+    /// Where the stakes stand, the farthest first: three rows a third of a tile
+    /// apart, each row's stakes a third of a tile apart, so that the spacing
+    /// holds across the joint with the next tile. Each row is set along by a
+    /// ninth of a tile from the last, so that no stake stands straight behind
+    /// another on the screen, where its point would fall on the nearer stake.
     private static let stakeLattice: [(Double, Double)] = {
-        let places = [-1.0 / 3, 0, 1.0 / 3]
-        return places.flatMap { y in places.map { x in (x, y) } }.sorted { ($0.0 + $0.1, $0.0) < ($1.0 + $1.1, $1.0) }
+        var places: [(Double, Double)] = []
+        for j in 0..<3 {
+            for i in 0..<3 { places.append((Double(i - 1) / 3 + Double(j - 1) / 9, Double(j - 1) / 3)) }
+        }
+        return places.sorted { ($0.0 + $0.1, $0.0) < ($1.0 + $1.1, $1.0) }
     }()
 
     /// The bank of mud brick, filling the tile: plastered faces with brick
@@ -46,11 +53,7 @@ extension BronzeBuildingsPainter {
         for side in [BronzeBuildingsSide.left, .right] {
             wall(side, from: side == .left ? -e : e, e, at: 0) { p in
                 p.courses(0, 32, 0, h, course: 2.4, brick: 8, opacity: 0.45)
-                if h >= 6 {
-                    p.colour(p.panel(0, 2.6, 32, 4.8), .team)
-                    p.line([p.uv(0, 2.6), p.uv(32, 2.6)], width: 0.6)
-                    p.line([p.uv(0, 4.8), p.uv(32, 4.8)], width: 0.6)
-                }
+                if h >= 6 { p.paintedBand(0, 32, 2.6, 4.6) }
             }
         }
         line([iso(-e, e, 0), iso(e, e, 0), iso(e, -e, 0)], width: 1.1)
