@@ -70,10 +70,13 @@ struct OpenSites {
     }
 }
 
-/// A complete stock pen and the herders it has.
+/// A complete stock pen or farm and the workers it has: a pen takes six, a
+/// farm one (Iron age; farms never run out).
 struct Pen {
     var building: EntityView
     var herders: Int
+    var isFarm: Bool { building.kind == .building(.farm) }
+    var room: Int { isFarm ? 1 : 6 }
 }
 
 extension Turn {
@@ -81,6 +84,8 @@ extension Turn {
     /// 0.6 of the study holds the cost back from other spending.
     func advance() {
         guard let advance = catalogue.advance(from: view.age) else { return }
+        // Beyond the Bronze age, an army comes first: the advance waits for the first attack's worth.
+        if view.age >= .bronze && warfighters.count < tuning.attackSize { return }
         if view.ageProgress >= 1, canPay(advance.cost, urgent: true) {
             give(.advanceAge, to: [])
             pay(advance.cost)
@@ -116,7 +121,7 @@ extension Turn {
         let studying = catalogue.advance(from: view.age) != nil && view.ageProgress < 1
         let wanted: [(UnitKind, Int, Int)] = [
             (.worker, w, tuning.workers(at: view.age)),
-            (.scholar, s, studying && w >= tuning.workersBeforeScholars ? tuning.scholars : 0),
+            (.scholar, s, w < tuning.workersBeforeScholars ? 0 : studying ? tuning.scholars : researchable.isEmpty ? 0 : 2),
             (.engineer, e, tuning.engineers(at: view.age)),
         ]
         var best: UnitKind?
@@ -153,7 +158,7 @@ extension Turn {
             open.close(site)
         }
         let shares = workShares(open)
-        var pens = completeBuildings(.stockPen).map { Pen(building: $0, herders: 0) }
+        var pens = (completeBuildings(.farm) + completeBuildings(.stockPen)).map { Pen(building: $0, herders: 0) }
         if !pens.isEmpty {
             for assignment in memory.assignments {
                 guard let pen = assignment.building, let i = pens.firstIndex(where: { $0.building.id == pen }),
@@ -232,7 +237,7 @@ extension Turn {
             let short = max(0, reserve[resource] - view.resources[resource])
             share[resource.rawValue] *= 1 + min(1, Double(short) / 200)
         }
-        if !open.has(.prey) && completeBuildings(.stockPen).isEmpty { set(.food, 0) }
+        if !open.has(.prey) && completeBuildings(.stockPen).isEmpty && completeBuildings(.farm).isEmpty { set(.food, 0) }
         if !open.has(.tree) { set(.wood, 0) }
         if !open.has(.stone) { set(.stone, 0) }
         if !(open.has(.copper) && open.has(.tin)) { set(.bronze, 0) }
@@ -270,8 +275,10 @@ extension Turn {
         case .food:
             let prey = nearestSite(.prey, to: worker.position, open: &open)
             if let prey, prey.tile.centre.distance(to: worker.position) <= 12 { return (.hunting, .site(prey.id)) }
-            // Herding, at the nearest pen with fewer than six herders.
-            let roomy = pens.filter { $0.herders < 6 }.map(\.building)
+            // A farm without a farmer, then the nearest pen with room.
+            let farms = pens.filter { $0.isFarm && $0.herders < $0.room }.map(\.building)
+            if let farm = Turn.nearest(farms, to: worker.position) { return (.herding, .pen(farm.id)) }
+            let roomy = pens.filter { !$0.isFarm && $0.herders < $0.room }.map(\.building)
             if let pen = Turn.nearest(roomy, to: worker.position) { return (.herding, .pen(pen.id)) }
             if let prey { return (.hunting, .site(prey.id)) }
             return nil
@@ -340,8 +347,46 @@ extension Turn {
     /// Idle scholars study at the town centre.
     func employScholars() {
         guard let centre = Turn.nearest(completeBuildings(.townCentre), to: base) else { return }
-        let idle = scholars.filter { isFree($0) && $0.activity == .idle }.map(\.id)
+        // Two scholars work where research is under way; the rest study at the town centre.
+        var free = scholars.filter { isFree($0) && ($0.activity == .idle || $0.activity == .working) }
+        for building in buildings where building.id != centre.id {
+            guard case .researching = building.activity else { continue }
+            let there = scholars.filter { $0.activity == .working && $0.position.distance(to: building.position) <= 3 }.count
+            for _ in 0..<max(0, 2 - there) {
+                guard let scholar = Turn.nearest(free, to: building.position) else { break }
+                free.removeAll { $0.id == scholar.id }
+                give(.work(units: [scholar.id], at: building.id), to: [scholar.id])
+            }
+        }
+        let idle = free.filter { $0.activity == .idle }.map(\.id)
         if !idle.isEmpty { give(.work(units: idle, at: centre.id), to: idle) }
+    }
+
+    /// The improvements the player's age offers that it lacks, at its complete
+    /// buildings, cheapest first.
+    var researchable: [(Improvement, EntityView)] {
+        var out: [(Improvement, EntityView)] = []
+        for building in buildings where Turn.isComplete(building) {
+            guard case .building(let kind) = building.kind else { continue }
+            for improvement in catalogue.stats(kind).researches where catalogue.stats(improvement).age <= view.age
+                && !view.improvements.contains(improvement) && !out.contains(where: { $0.0 == improvement }) {
+                out.append((improvement, building))
+            }
+        }
+        func total(_ i: Improvement) -> Int { Resource.allCases.reduce(0) { $0 + catalogue.stats(i).cost[$1] } }
+        return out.sorted { total($0.0) < total($1.0) || (total($0.0) == total($1.0) && $0.0.rawValue < $1.0.rawValue) }
+    }
+
+    /// Scholars research one improvement at a time, the cheapest first, whilst
+    /// no attack is under way at home and it can be paid without holding back
+    /// anything more urgent.
+    func research() {
+        guard !threatened, !scholars.isEmpty else { return }
+        for building in buildings { if case .researching = building.activity { return } }
+        guard let (improvement, building) = researchable.first, isFree(building),
+              canPay(catalogue.stats(improvement).cost) else { return }
+        give(.research(at: building.id, improvement: improvement), to: [building.id])
+        pay(catalogue.stats(improvement).cost)
     }
 
     /// Idle engineers finish what is begun, and otherwise repair what is

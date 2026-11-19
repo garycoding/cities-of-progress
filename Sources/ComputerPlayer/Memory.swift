@@ -139,6 +139,9 @@ struct Memory: Codable, Sendable, Hashable {
     var scouted: [MapPosition] = []
     /// A fading count of the opponents' warfighters seen, by `UnitKind.rawValue`.
     var seen: [Double] = Array(repeating: 0, count: UnitKind.allCases.count)
+    /// Where opponents' people were last seen, newest last, for an army hunting
+    /// the last of them; optional so that older saves open.
+    var lastSeenPeople: [MapPosition]?
 
     /// Takes in a view: its events, the opponents' buildings in sight, and what
     /// has become of the player's plans, assignments and scout.

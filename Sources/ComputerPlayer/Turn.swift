@@ -189,6 +189,7 @@ final class Turn {
         build()
         trainAtTownCentre()
         upgrade()
+        research()
         trainArmy()
         campaign()
         scout()
