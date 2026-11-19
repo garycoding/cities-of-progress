@@ -1,0 +1,92 @@
+// SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import Foundation
+
+// The Iron-age stone wall: one tile of a wall of dressed stone, taller and
+// heavier than the Bronze age's palisade, on a footing of darker stone, with a
+// band of the owner's colour under its coping and merlons along its top. The
+// key names no neighbours, so the tile joins its neighbours whichever way a row
+// runs, as the palisade does: the wall fills the tile to its edges, its courses
+// and joints repeat every tile, its corners are left without an upright line,
+// and its merlons stand at the quarters of the tile, so that a row of tiles
+// shows a line of merlons along each face, evenly spaced across the joints. Its
+// footprint is one tile: x and y run from -0.5 to 0.5.
+
+extension IronNewBuildingsPainter {
+    mutating func stoneWall(complete: Bool) {
+        if complete {
+            wallBody(height: 34, finished: true)
+            for (x, y) in Self.merlonPlaces { merlon(x, y, on: 34) }
+        } else {
+            wallBody(height: 13, finished: false)
+            wallRising()
+        }
+    }
+
+    /// The tile's merlons, the farthest first.
+    private static let merlonPlaces: [(Double, Double)] = [(-0.25, -0.25), (0.25, -0.25), (-0.25, 0.25), (0.25, 0.25)]
+
+    /// The wall's body, filling the tile from the ground to `height`: dressed
+    /// stone in courses on a darker footing, and, when `finished`, a coping and
+    /// a band of the owner's colour beneath it.
+    private mutating func wallBody(height h: Double, finished: Bool) {
+        typealias I = IronNewBuildingsInk
+        let e = 0.5
+        colour([iso(-e, e, 0), iso(e, e, 0), iso(e, e, h), iso(-e, e, h)], .colour(I.stone))
+        colour([iso(e, e, 0), iso(e, -e, 0), iso(e, -e, h), iso(e, e, h)], .colour(I.stoneShade))
+        colour(level(-e, -e, e, e, h), .colour(I.stoneTop))
+        let brick = 32.0 / 3
+        for side in [IronNewBuildingsSide.left, .right] {
+            wall(side, from: side == .left ? -e : e, e, at: 0) { p in
+                // The footing: a course of darker, larger stones.
+                p.colour(p.panel(0, 0, 32, 5), .colour(side == .left ? I.stoneShade : I.stoneDark))
+                p.line([p.uv(0, 5), p.uv(32, 5)], width: 0.6, opacity: 0.8)
+                for u in [8.0, 24.0] { p.line([p.uv(u, 0.4), p.uv(u, 4.6)], width: 0.5, opacity: 0.6) }
+                p.courses(0, 32, 5, finished ? h - 4 : h, course: 4.6, brick: brick, phase: -brick / 4)
+                // Chisel marks on a few faces, the same on every tile.
+                for (u, v) in [(4.0, 8.0), (19.0, 12.6), (12.0, 21.8), (27.0, 17.2)] where v < h - 5 {
+                    p.line([p.uv(u, v), p.uv(u + 1.6, v + 1.2)], width: 0.4, opacity: 0.5)
+                    p.line([p.uv(u + 1.4, v - 0.2), p.uv(u + 3, v + 1)], width: 0.4, opacity: 0.5)
+                }
+                if finished {
+                    // The coping, standing a little proud, and the owner's band beneath it.
+                    p.colour(p.panel(0, h - 4, 32, h), .colour(side == .left ? I.stoneTop : I.stone))
+                    p.line([p.uv(0, h - 4), p.uv(32, h - 4)], width: 0.7)
+                    p.paintedBand(0, 32, h - 9.6, h - 6.4)
+                }
+            }
+        }
+        line([iso(-e, e, 0), iso(e, e, 0), iso(e, -e, 0)], width: 1.2)
+        line([iso(-e, e, h), iso(e, e, h), iso(e, -e, h)], width: 1)
+        line([iso(-e, e, h), iso(-e, -e, h), iso(e, -e, h)], width: 0.6, opacity: 0.6)
+    }
+
+    /// A merlon standing on the wall's top at (x, y): a block of dressed stone with a capping.
+    private mutating func merlon(_ x: Double, _ y: Double, on h: Double) {
+        typealias I = IronNewBuildingsInk
+        let s = 0.13
+        block(x - s, y - s, x + s, y + s, h, h + 7, top: .colour(I.stoneTop), left: .colour(I.stone), right: .colour(I.stoneShade),
+              width: 0.9)
+        line([iso(x - s, y + s, h + 3.5), iso(x + s, y + s, h + 3.5), iso(x + s, y - s, h + 3.5)], width: 0.45, opacity: 0.6)
+        block(x - s - 0.02, y - s - 0.02, x + s + 0.02, y + s + 0.02, h + 7, h + 8.6, top: .colour(I.plasterTop),
+              left: .colour(I.stoneTop), right: .colour(I.stone), width: 0.8)
+    }
+
+    /// The wall being built: the next course begun along its back, a stone
+    /// waiting on its top, a trough of mortar, and the owner's pennant on a
+    /// pole set in the work.
+    private mutating func wallRising() {
+        typealias I = IronNewBuildingsInk
+        let h = 13.0
+        ashlar(-0.5, -0.5, 0.1, -0.05, h, h + 4.6, course: 4.6, stone: 32.0 / 3, width: 0.9)
+        pennant(at: iso(-0.28, -0.3, h + 4.6), height: 26, length: 14)
+        // A trough of mortar.
+        block(0.05, 0.1, 0.4, 0.35, h, h + 2.6, top: .colour(I.timberLight), left: .colour(I.timber), right: .colour(I.timberDark),
+              width: 0.8)
+        colour(level(0.09, 0.14, 0.36, 0.31, h + 2.6), .colour(I.plasterShade))
+        line([iso(0.12, 0.24, h + 3), iso(0.3, 0.16, h + 6.6)], width: 1)
+        stones(0.18, -0.38, 0.42, -0.12, from: h, courses: 1)
+        stones(-0.42, 0.12, -0.16, 0.38, from: h, courses: 1)
+    }
+}
