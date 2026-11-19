@@ -1,0 +1,222 @@
+// SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import GameCore
+
+/// The effects of the three improvements. The catalogue holds what each costs
+/// and how much work it takes, but not yet what it does, so the figures of the
+/// first milestone are kept here, in one place.
+enum ImprovementEffect {
+    /// betterTools: workers take this much more from a site in the same time.
+    static let betterToolsGathering = 1.2
+    /// bronzeWeapons: a warfighter's blow does this much more harm.
+    static let bronzeWeaponsDamage = 1
+    /// shields: a warfighter takes this much less harm from each blow.
+    static let shieldsArmour = 1
+}
+
+/// Constants of the rules that the catalogue does not hold: distances that mean
+/// "beside", and limits that keep a tick's work bounded.
+enum Rule {
+    /// A person within this distance of a footprint, or of a site's tile, is beside it.
+    static let besideReach = 0.75
+    /// A person sent to a point stops within this distance of it.
+    static let pointReach = 0.02
+    /// The most path searches one tick carries out; the people beyond it wait a tick.
+    static let searchesPerTick = 32
+    /// The most tiles one path search examines.
+    static let searchLimit = 16_384
+    /// How often, at most, a person re-plans a route to a target that has moved tile.
+    static let replanInterval = 10
+    /// A person whose way stays blocked for this many ticks gives up.
+    static let stuckLimit = 40
+    /// A thing under attack is reported again only after this many ticks without harm.
+    static let underAttackInterval = Tick.rate * 3
+    /// The events kept for a player who has not asked for a view; older ones are dropped.
+    static let eventLimit = 1_000
+    /// The spacing of people sent together to one point.
+    static let formationSpacing = 0.6
+    /// How far from an exhausted site a worker looks for another of its kind.
+    static let resiteRadius = 8.0
+    /// The side of a cell of the spatial index, in tiles.
+    static let bucketSize = 8
+}
+
+/// A grid of flags, packed into words, for what each team has explored.
+struct BitGrid: Codable, Sendable, Hashable {
+    private(set) var words: [UInt64]
+
+    init(count: Int) { words = Array(repeating: 0, count: (count + 63) / 64) }
+
+    subscript(index: Int) -> Bool {
+        get { words[index >> 6] & (1 << UInt64(index & 63)) != 0 }
+        set {
+            if newValue { words[index >> 6] |= 1 << UInt64(index & 63) } else { words[index >> 6] &= ~(1 << UInt64(index & 63)) }
+        }
+    }
+}
+
+struct PlayerState: Codable, Sendable, Hashable {
+    var id: PlayerID
+    var civilization: Civilization
+    var team: TeamID
+    /// Index into `Simulation.teams`.
+    var teamIndex: Int
+    var isHuman: Bool
+    var age: Age = .stone
+    var resources: ResourceAmounts
+    /// Scholar-ticks of study toward the next age.
+    var study = 0
+    /// In the order researched.
+    var improvements: [Improvement] = []
+    /// Copper and tin ore delivered but not yet paired into bronze; at most one load of each.
+    var copperOre = 0
+    var tinOre = 0
+    var isDefeated = false
+    /// Events since the player's last view. Not part of the checksum: they depend
+    /// on when views are taken, not on the match.
+    var events: [GameEvent] = []
+
+    func has(_ improvement: Improvement) -> Bool { improvements.contains(improvement) }
+}
+
+struct TeamState: Codable, Sendable, Hashable {
+    var id: TeamID
+    /// Indices into `Simulation.players`, in player order.
+    var members: [Int]
+    /// Tiles any member has ever seen. Sight is shared, so exploration is too.
+    var explored: BitGrid
+    var isDefeated = false
+}
+
+/// What a worker carries home.
+struct Cargo: Codable, Sendable, Hashable {
+    var kind: SiteKind
+    var amount: Int
+}
+
+/// A warfighter paid for and changing into a later age's kind (requirement 17).
+struct PendingUpgrade: Codable, Sendable, Hashable {
+    var to: UnitKind
+    var remaining: Int
+}
+
+/// What a person is doing this tick, for the view's `Activity`.
+enum Doing: UInt8, CaseIterable, Codable, Sendable, Hashable {
+    case idle, moving, gathering, carrying, working, constructing, fighting
+}
+
+/// What a person has been told to do.
+enum Task: Codable, Sendable, Hashable {
+    case idle
+    case move(MapPosition)
+    /// `kind` and `tile` are kept so that the worker can find another site of the
+    /// same kind nearby once this one is exhausted.
+    case gather(site: SiteID, kind: SiteKind, tile: GridPoint)
+    case work(EntityID)
+    case attack(EntityID)
+}
+
+/// The way a person is following toward its goal.
+struct Route: Codable, Sendable, Hashable {
+    /// Tiles whose centres are to be passed, the next one last.
+    var waypoints: [GridPoint] = []
+    /// Steering straight at the goal, the way being clear.
+    var direct = false
+    var planned = false
+    /// The search ended short of the goal, which cannot be reached.
+    var partial = false
+    /// The straight way was blocked: the next plan searches.
+    var forceSearch = false
+    /// The goal's anchor tile when planned, to notice a target that has moved.
+    var plannedFor = GridPoint(-1, -1)
+    var plannedAt = 0
+    /// Ticks in a row in which the way was blocked.
+    var stuck = 0
+}
+
+/// A person or a building.
+struct Entity: Codable, Sendable, Hashable {
+    var id: EntityID
+    var owner: PlayerID
+    var kind: EntityKind
+    /// A person's position; a building's footprint centre.
+    var position: MapPosition
+    /// A building's footprint origin; for a person, unused.
+    var origin: GridPoint
+    /// A building's footprint; 1 × 1 for a person.
+    var size: GridPoint
+    var facing: Facing = .right
+    var health: Int
+    var maxHealth: Int
+    var alive = true
+    /// Ticks until the next blow.
+    var cooldown = 0
+    /// The tick of the last harm taken.
+    var lastHurt = -1_000_000
+    var sight: Double
+    /// Where its sight was last stamped from: a person's tile, a building's origin.
+    var stamp: GridPoint
+
+    // People
+    var task: Task = .idle
+    var doing: Doing = .idle
+    var route = Route()
+    var cargo: Cargo?
+    /// The building a worker is carrying its load to.
+    var dropOff: EntityID?
+    /// Part of a unit gathered or herded, carried over between ticks.
+    var fraction = 0.0
+    var upgrade: PendingUpgrade?
+
+    // Buildings
+    /// Engineer-ticks of construction done.
+    var built = 0
+    var complete = true
+    /// Health owed by construction or repair, in units of 1 / buildTime.
+    var healthCredit = 0
+    var queue: [UnitKind] = []
+    var trainProgress = 0
+    var research: Improvement?
+    var researchProgress = 0
+    /// People trained here so far, to spread them around the building.
+    var spawned = 0
+
+    var unitKind: UnitKind? { if case .unit(let k) = kind { k } else { nil } }
+    var buildingKind: BuildingKind? { if case .building(let k) = kind { k } else { nil } }
+    var isPerson: Bool { if case .unit = kind { true } else { false } }
+    var isFounder: Bool { unitKind == .founder }
+}
+
+/// The catalogue's figures by kind, in arrays indexed by raw value, for the tick's hot loops.
+struct Tables: Sendable {
+    var units: [UnitStats?]
+    var buildings: [BuildingStats?]
+    /// Tiles per tick, by unit kind.
+    var speedPerTick: [Double]
+    /// `Catalogue.bonus`, by attacker and defender raw value.
+    var bonus: [Double]
+
+    init(_ catalogue: Catalogue) {
+        units = UnitKind.allCases.map { kind in catalogue.units.first { $0.kind == kind } }
+        buildings = BuildingKind.allCases.map { kind in catalogue.buildings.first { $0.kind == kind } }
+        speedPerTick = units.map { ($0?.speed ?? 0) / Double(Tick.rate) }
+        let n = UnitKind.allCases.count
+        bonus = Array(repeating: 1, count: n * n)
+        for a in UnitKind.allCases { for d in UnitKind.allCases { bonus[a.rawValue * n + d.rawValue] = catalogue.bonus(a, against: d) } }
+    }
+
+    func unit(_ kind: UnitKind) -> UnitStats {
+        guard let stats = units[kind.rawValue] else { preconditionFailure("the catalogue has no \(kind)") }
+        return stats
+    }
+
+    func building(_ kind: BuildingKind) -> BuildingStats {
+        guard let stats = buildings[kind.rawValue] else { preconditionFailure("the catalogue has no \(kind)") }
+        return stats
+    }
+
+    func bonus(_ attacker: UnitKind, against defender: UnitKind) -> Double {
+        bonus[attacker.rawValue * UnitKind.allCases.count + defender.rawValue]
+    }
+}
