@@ -66,6 +66,8 @@ public struct Simulation: GameSimulating {
     var housing: [Int] = []
     var buckets = Buckets()
     var search = PathSearch()
+    /// Path searches allowed in one tick (`Rule.searchesPerTick`).
+    var searchBudget = Rule.searchesPerTick
     var searchesLeft = 0
     var deathsPending = false
 
@@ -170,7 +172,7 @@ public struct Simulation: GameSimulating {
     public mutating func step() {
         guard !isPaused, outcome == nil else { return }
         tick += 1
-        searchesLeft = Rule.searchesPerTick
+        searchesLeft = searchBudget
         buckets.rebuild(entities: entities, width: width, height: height)
         let count = entities.count
         for i in 0..<count where entities[i].alive {

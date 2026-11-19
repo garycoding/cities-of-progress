@@ -184,14 +184,19 @@ extension Simulation {
             return .arrived
         }
         if entities[i].route.planned && goal.anchor != entities[i].route.plannedFor {
-            // A fixed goal that changed is planned afresh; a moving one is followed
-            // straight, or re-planned now and then as it changes tile.
-            if !goal.moving || (!entities[i].route.direct && tick - entities[i].route.plannedAt >= Rule.replanInterval) {
+            // A fixed goal that changed is planned afresh. A moving one is followed
+            // straight, or re-planned now and then as it changes tile; a re-plan
+            // takes only the first half of the tick's searches, so that people who
+            // have no route at all are served first, and without one the old
+            // route is kept.
+            if !goal.moving {
                 entities[i].route.planned = false
+            } else if !entities[i].route.direct && tick - entities[i].route.plannedAt >= Rule.replanInterval {
+                _ = plan(i, goal, keepingRoute: true)
             }
         }
         if !entities[i].route.planned {
-            guard plan(i, goal) else { return .moving }
+            guard plan(i, goal, keepingRoute: false) else { return .moving }
         }
         let target: MapPosition
         if let next = entities[i].route.waypoints.last {
@@ -207,9 +212,10 @@ extension Simulation {
         return advance(i, toward: target)
     }
 
-    /// Plan a route: straight if the way is clear, else by search. Returns false
-    /// when this tick's searches are used up.
-    mutating func plan(_ i: Int, _ goal: Goal) -> Bool {
+    /// Plan a route: straight if the way is clear, else by search. When the
+    /// searches this tick allows are used up, a person with a route keeps it and
+    /// one without waits; returns whether the person has a route.
+    mutating func plan(_ i: Int, _ goal: Goal, keepingRoute: Bool) -> Bool {
         let from = entities[i].position
         var route = Route()
         route.planned = true
@@ -221,7 +227,7 @@ extension Simulation {
             entities[i].route = route
             return true
         }
-        guard searchesLeft > 0 else { return false }
+        guard searchesLeft > (keepingRoute ? searchBudget / 2 : 0) else { return keepingRoute }
         searchesLeft -= 1
         let (tiles, complete) = findPath(from: from.tile, to: goal)
         route.waypoints = smoothed(from: from, tiles).reversed()

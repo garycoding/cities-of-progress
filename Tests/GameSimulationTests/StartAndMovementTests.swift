@@ -114,6 +114,25 @@ import Testing
         #expect(spots.allSatisfy { $0.distance(to: point) <= 1.5 })
     }
 
+    @Test func aChaserKeepsToItsRouteWhenNoSearchIsLeftToReplanIt() {
+        var sim = Self.walled()
+        let chaser = sim.add(.clubman, me, 10.5, 5.5)
+        let target = sim.add(.worker, them, 20.5, 5.5)
+        sim.add(.worker, me, 21.5, 6.5)                      // to see the target by
+        #expect(sim.apply(.attack(units: [chaser], target: target), from: me) == .accepted)
+        sim.step()
+        #expect(!sim.living(chaser).route.waypoints.isEmpty)  // the wall forced a search
+        _ = sim.apply(.move(units: [target], to: MapPosition(x: 22.5, y: 3.5)), from: them)
+        sim.searchBudget = 0
+        sim.run(25)
+        // The target has changed tile and a re-plan is due, but none can be had.
+        #expect(sim.living(target).position.tile != GridPoint(20, 5))
+        let before = sim.living(chaser).position
+        sim.run(20)
+        #expect(sim.living(chaser).position != before)
+        #expect(sim.living(chaser).task == .attack(target))
+    }
+
     @Test func aMoveOffTheMapIsRefusedAndOntoWaterStopsAtTheShore() {
         var sim = Self.walled()
         let worker = sim.add(.worker, me, 10.5, 5.5)
