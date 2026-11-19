@@ -31,13 +31,16 @@ public struct Seat: Hashable, Codable, Sendable, Identifiable {
     /// The civilization cannot be changed: the seat belongs to a saved match
     /// being resumed, in which its civilization was chosen long ago.
     public var civilizationFixed: Bool
+    /// In a saved match being resumed, the name of the person who held the
+    /// seat; that person is given it back on joining.
+    public var formerHolder: String?
 
     public var id: PlayerID { player }
 
     public init(player: PlayerID, team: TeamID, kind: SeatKind, civilization: Civilization? = nil, holder: String? = nil,
-                civilizationFixed: Bool = false) {
+                civilizationFixed: Bool = false, formerHolder: String? = nil) {
         self.player = player; self.team = team; self.kind = kind; self.civilization = civilization; self.holder = holder
-        self.civilizationFixed = civilizationFixed
+        self.civilizationFixed = civilizationFixed; self.formerHolder = formerHolder
     }
 
     /// A person's seat that nobody holds yet, or whose holder has not chosen a civilization.
@@ -110,7 +113,7 @@ public enum Notice: Hashable, Codable, Sendable {
 public enum NetMessage: Hashable, Codable, Sendable {
     /// Raised whenever the shape of any message changes, so that two Macs that
     /// would not understand each other say so instead.
-    public static let protocolVersion = 2
+    public static let protocolVersion = 3
 
     // From a joining Mac.
     /// The first message. The host turns a Mac away unless both `protocolVersion`
@@ -128,7 +131,9 @@ public enum NetMessage: Hashable, Codable, Sendable {
 
     // From the host.
     /// The seat the joining Mac now holds.
-    case welcome(seat: PlayerID)
+    /// `run` identifies this opening of the match by the host: a Mac that comes back
+    /// to a host that has since closed and opened the match again starts afresh.
+    case welcome(seat: PlayerID, run: UInt64)
     /// Why the host turned the joining Mac away, in words for the person.
     case turnedAway(reason: String)
     case lobby(Lobby)

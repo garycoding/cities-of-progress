@@ -96,7 +96,9 @@ final class Match: HostedMatch {
 
     /// The person's order: through the server when hosting, so that a pause is told to everyone.
     fileprivate func issue(_ order: Order) {
-        if let server { server.issue(order) } else { host.apply(order, from: player) }
+        let result = server.map { $0.issue(order) } ?? host.apply(order, from: player)
+        // A refusal the simulation does not report (the match held for a dropped person) is shown all the same.
+        if case .refused(let refusal) = result, server != nil { session.lastRefusal = refusal }
     }
 
     /// One frame: run the ticks owed since the last frame, give the session
@@ -186,12 +188,11 @@ final class GameController {
         personName = UserDefaults.standard.string(forKey: "personName")
             ?? NSFullUserName().split(separator: " ").first.map(String.init) ?? ""
         recentAutosaves = autosaves.entries()
-        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil,
-                                               queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.autosaveNow()
-                self?.closeNetwork()
-            }
+        AppDelegate.beforeQuitting = { [weak self] in
+            self?.autosaveNow()
+            let wasOnNetwork = self?.isOnNetwork ?? false
+            self?.closeNetwork()
+            return wasOnNetwork
         }
     }
 
@@ -225,12 +226,12 @@ final class GameController {
     /// host's, and a change is sent so that everyone is told of it.
     var speed: Double {
         get {
-            if let server, server.phase == .playing { return server.speed }
+            if let server { return server.speed }
             if let client, client.session != nil { return client.speed }
             return localSpeed
         }
         set {
-            if let server, server.phase == .playing { server.setSpeed(newValue); return }
+            if let server { server.setSpeed(newValue); return }
             if let client, client.session != nil { client.setSpeed(newValue); return }
             localSpeed = newValue
             match?.speed = newValue
@@ -296,7 +297,7 @@ final class GameController {
     /// Whether the person agrees to leave a match still in play; the match is
     /// stopped while the question is open.
     private func mayLeaveMatch(to what: String) -> Bool {
-        if match == nil, client?.session != nil, !(client?.state.isFinal ?? true) {
+        if match == nil, let session = client?.session, session.view.outcome == nil, !(client?.state.isFinal ?? true) {
             let alert = NSAlert()
             alert.messageText = "Leave this match?"
             alert.informativeText = "To \(what), you will leave this match. The others wait for you until the host hands your seat to a computer player."
@@ -452,7 +453,10 @@ final class GameController {
             }
         case .left:
             self.client = nil
-        case .idle, .connecting, .inLobby, .playing, .reconnecting:
+        case .playing:
+            browser?.stop()
+            browser = nil
+        case .idle, .connecting, .inLobby, .reconnecting:
             break
         }
     }
@@ -492,7 +496,8 @@ final class GameController {
 
     func open() {
         guard mayLeaveMatch(to: "open a saved match") else { return }
-        match?.stop()
+        // A hosted match runs on whilst the person chooses, as the others are playing it.
+        if server == nil { match?.stop() }
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
@@ -503,7 +508,6 @@ final class GameController {
     /// Opens one of the automatic saves listed in the File menu.
     func openAutosave(_ entry: Autosaves.Entry) {
         guard mayLeaveMatch(to: "open a saved match") else { return }
-        match?.stop()
         open(entry.url)
     }
 
@@ -526,7 +530,10 @@ final class GameController {
             var seats = lobby.seats
             for i in seats.indices {
                 seats[i].civilizationFixed = true
-                if seats[i].kind == .person { seats[i].holder = nil }
+                if seats[i].kind == .person {
+                    seats[i].formerHolder = seats[i].holder
+                    seats[i].holder = nil
+                }
                 if seats[i].kind == .host { seats[i].holder = personName }
             }
             var resumed = saved

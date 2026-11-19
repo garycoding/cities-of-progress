@@ -58,6 +58,18 @@ struct CitiesOfProgressApp: App {
 /// Makes the app a regular one, with a Dock icon and a menu bar, when it is run
 /// straight from the package (`swift run`) as well as from its bundle.
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Saves the match and tells any others in it that this Mac is leaving;
+    /// returns whether there were others to tell.
+    @MainActor static var beforeQuitting: (() -> Bool)?
+
+    /// The app quits half a second after telling the others in a match across
+    /// the LAN, so that the notice leaves this Mac first.
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard Self.beforeQuitting?() == true else { return .terminateNow }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { sender.reply(toApplicationShouldTerminate: true) }
+        return .terminateLater
+    }
+
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate()

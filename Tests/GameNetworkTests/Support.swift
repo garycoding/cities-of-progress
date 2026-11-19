@@ -198,6 +198,7 @@ final class Loopback {
         let client = MatchClient(name: name, build: build)
         client.reconnectDelays = [.milliseconds(10), .milliseconds(100), .milliseconds(100)]
         client.connectLimit = .milliseconds(500)
+        client.firstConnectLimit = .seconds(5)
         client.join(host: "127.0.0.1", port: try await port())
         clients.append(client)
         return client

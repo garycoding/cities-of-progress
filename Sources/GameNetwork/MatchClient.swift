@@ -80,6 +80,9 @@ public final class MatchClient {
     /// or a network that cannot be reached yet, or for the person's leave to
     /// use the local network.
     @ObservationIgnored public var connectLimit: Duration = .seconds(5)
+    /// How long the first attempt may take: longer, as macOS may first ask the
+    /// person whether the app may use the local network.
+    @ObservationIgnored public var firstConnectLimit: Duration = .seconds(60)
     /// A host from which nothing arrives for this long is taken to be lost. It
     /// sends views 20 times a second during a match and answers pings.
     @ObservationIgnored public var silenceLimit: Duration = .seconds(6)
@@ -92,6 +95,8 @@ public final class MatchClient {
     @ObservationIgnored private var connected = false
     /// Whether the host has ever given this Mac a seat; a drop is retried only then.
     @ObservationIgnored private var welcomed = false
+    /// The host's opening of the match, from its `welcome`.
+    @ObservationIgnored private var run: UInt64?
     @ObservationIgnored private var attempt = 0
     @ObservationIgnored private var connectDeadline: ContinuousClock.Instant?
     @ObservationIgnored private var reconnectAt: ContinuousClock.Instant?
@@ -130,6 +135,7 @@ public final class MatchClient {
         viewsReceived = 0
         notices = []
         welcomed = false
+        run = nil
         attempt = 0
         state = .connecting
         connect()
@@ -210,7 +216,7 @@ public final class MatchClient {
             ended: { [weak self] _ in self?.linkEnded(number) }))
         self.link = link
         connected = false
-        connectDeadline = .now + connectLimit
+        connectDeadline = .now + (welcomed ? connectLimit : firstConnectLimit)
         link.start()
     }
 
@@ -280,7 +286,14 @@ public final class MatchClient {
         guard number == linkNumber else { return }
         heard = .now
         switch message {
-        case .welcome(let seat):
+        case .welcome(let seat, let run):
+            if let previous = self.run, previous != run {
+                // The host has opened the match again since this Mac last saw it: start afresh.
+                start = nil
+                session = nil
+                viewsReceived = 0
+            }
+            self.run = run
             self.seat = seat
             welcomed = true
             attempt = 0
