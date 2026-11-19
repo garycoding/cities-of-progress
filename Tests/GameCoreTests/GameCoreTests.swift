@@ -83,7 +83,7 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
 @Test func spriteChecklistCoversTheFirstMilestone() {
     let keys = SpriteKey.required(through: .bronze)
     #expect(Set(keys).count == keys.count)
-    for kind in BuildingKind.allCases { #expect(keys.contains(SpriteKey(.building(kind, .bronze), .complete))) }
+    for kind in BuildingKind.allCases where Catalogue.standard.stats(kind).age <= .bronze { #expect(keys.contains(SpriteKey(.building(kind, .bronze), .complete))) }
     #expect(keys.contains(SpriteKey(.unit(.worker, .stone), .working)))
     #expect(keys.contains(SpriteKey(.unit(.worker, .bronze), .working)))
     #expect(!keys.contains(SpriteKey(.unit(.scholar, .stone), .fighting)))
@@ -142,7 +142,7 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     #expect(sum.value == EncodingFixture.expected, "update EncodingFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
 }
 
-enum EncodingFixture { static let expected: UInt64 = 0x9620_5747_3F88_97C3 }
+enum EncodingFixture { static let expected: UInt64 = 0x0167_BDD5_16A1_B303 }
 
 @Test func samplesAreConsistent() {
     for view in [Samples.stoneAgeOpening(), Samples.bronzeAgeSkirmish()] {

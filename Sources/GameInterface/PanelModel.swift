@@ -209,7 +209,7 @@ public struct PanelModel: Sendable {
         // Train and research at a single own building that stands complete.
         if selected.count == 1, let b = own.first, case .building(let kind) = b.kind, !Self.isUnderConstruction(b) {
             let stats = catalogue.stats(kind)
-            train = stats.trains.filter { $0 != .founder }.map { unit in
+            train = stats.trains.filter { $0 != .founder && catalogue.stats($0).age <= catalogue.lastAge }.map { unit in
                 let u = catalogue.stats(unit)
                 let name = unit.stageName(at: view.age)
                 return ActionOffer(
@@ -322,6 +322,9 @@ public struct PanelModel: Sendable {
         case .spearman: "p"
         case .archer: "a"
         case .chariot: "h"
+        case .swordsman: "q"
+        case .horseman: "r"
+        case .catapult: "u"
         case .founder: nil
         }
     }
@@ -335,6 +338,10 @@ public struct PanelModel: Sendable {
         case .barracks: "b"
         case .watchTower: "w"
         case .palisade: "p"
+        case .farm: "f"
+        case .stable: "l"
+        case .siegeWorkshop: "g"
+        case .stoneWall: "o"
         }
     }
 
