@@ -22,7 +22,11 @@ These concern how the code works and not what the player sees or does. They were
 - **Code organisation:** one Swift package of separate modules (shared types, simulation, map generator, computer player, network, drawing, interface, artwork, and the app). The app bundle is assembled from the package by `scripts/make-app.sh`, with no Xcode project, so that agents working in parallel never edit a shared project file and the same commands run locally and on GitHub. If that proves unworkable, a thin Xcode project around the package is the fallback.
 - **Frameworks by concern:** SpriteKit for the map and units; SwiftUI for menus, the team-grouping screen and dialogs; SVG files drawn by macOS (`NSImage`) with a grain added by Core Image for the artwork; GameplayKit for terrain noise in map generation; AVFoundation for sound.
 
-## Still to settle in the art
+## The art
+
+The art style, its palettes, noses and movement were ruled on 2026-11-18 and are recorded in [`art-style.md`](art-style.md).
+
+## Previously open in the art
 
 - The figures in the two examples are stiffer and more uniform than those of the reference pictures, and the line is even where theirs swells and thins. Further rounds are expected before the look is settled.
 - A palette for each of the seven ages.
