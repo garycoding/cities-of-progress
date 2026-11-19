@@ -19,7 +19,7 @@ public struct Unavailability: Hashable, Sendable {
 /// (`perform(in:)`), and its tooltip and refusal line say why.
 public struct ActionOffer: Identifiable, Hashable, Sendable {
     public enum Section: Int, Hashable, Sendable {
-        case train, research, build, upgrade, age, demolish
+        case train, research, build, upgrade, age, demolish, dismiss
 
         public var heading: String {
             switch self {
@@ -29,6 +29,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
             case .upgrade: "Upgrade"
             case .age: "Advance"
             case .demolish: "Demolish"
+            case .dismiss: "Dismiss"
             }
         }
     }
@@ -41,6 +42,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case upgrade(units: [EntityID], to: UnitKind, at: EntityID?)
         case advanceAge
         case demolish(engineers: [EntityID], building: EntityID)
+        case dismiss(units: [EntityID])
     }
 
     public var id: String
@@ -69,12 +71,14 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case .upgrade(let units, let kind, let building): building.map { .upgrade(units: units, to: kind, at: $0) }
         case .advanceAge: .advanceAge
         case .demolish(let engineers, let building): .demolish(engineers: engineers, building: building)
+        case .dismiss(let units): .dismiss(units: units)
         }
     }
 
     /// The button's second line: what it costs, or for demolition what it returns.
     public var costLine: String {
         if case .demolish = action, let back = refund { return "Returns \(InterfaceText.cost(back))" }
+        if case .dismiss(let units) = action { return units.count == 1 ? "Frees 1 place" : "Frees \(units.count) places" }
         return InterfaceText.cost(cost)
     }
 
@@ -142,12 +146,13 @@ public struct PanelModel: Sendable {
     public var build: [ActionOffer] = []
     public var upgrade: [ActionOffer] = []
     public var demolish: [ActionOffer] = []
+    public var dismiss: [ActionOffer] = []
     /// A building the player is placing, for the panel's hint.
     public var placing: BuildingKind?
 
-    public var actions: [ActionOffer] { train + research + build + upgrade + demolish }
+    public var actions: [ActionOffer] { train + research + build + upgrade + demolish + dismiss }
     public var sections: [(section: ActionOffer.Section, offers: [ActionOffer])] {
-        [(.train, train), (.research, research), (.build, build), (.upgrade, upgrade), (.demolish, demolish)].filter { !$0.1.isEmpty }
+        [(.train, train), (.research, research), (.build, build), (.upgrade, upgrade), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
     }
 
     /// The offer that a key press does, if any.
@@ -259,6 +264,19 @@ public struct PanelModel: Sendable {
             }
         }
 
+        // Dismiss the player's own people, founders excepted (requirement 30).
+        let leaving = own.filter { if case .unit(let kind) = $0.kind { return kind != .founder } else { return false } }
+            .map(\.id).sorted()
+        if !leaving.isEmpty {
+            let what = leaving.count == 1 ? (selected.first.map { InterfaceText.name(of: $0.kind, at: view.age) } ?? "Person")
+                                          : "\(leaving.count) people"
+            dismiss = [ActionOffer(
+                id: "dismiss", section: .dismiss, title: what,
+                detail: "They leave at once and free their places; nothing is returned.",
+                cost: ResourceAmounts(), action: .dismiss(units: leaving), unavailable: gate,
+                shortcut: Self.deleteKey, icon: nil, iconSubject: nil)]
+        }
+
         // Upgrades for warfighters where the catalogue has one.
         var keyGiven = false
         let warfighters = Dictionary(grouping: own.filter { $0.kind.isWarfighterKind }, by: { $0.kind })
@@ -290,6 +308,8 @@ public struct PanelModel: Sendable {
     /// Keys for the actions that are not tied to the selection.
     public static let pauseKey: Character = " "
     public static let advanceKey: Character = "n"
+    /// The Delete key (backspace), which dismisses the selected people.
+    public static let deleteKey: Character = "\u{8}"
 
     static func trainKey(_ unit: UnitKind) -> Character? {
         switch unit {
