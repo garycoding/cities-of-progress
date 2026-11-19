@@ -27,7 +27,8 @@ extension Simulation {
             entities[i].fraction -= 1
             players[p].resources[give] -= 1
             // Rounded down, so that the exchange never makes more than its rate gives.
-            entities[i].healthCredit += Int((rates.exchangeRate * 1000).rounded(.down))
+            let banking = players[p].improvements.reduce(1.0) { $0 * (catalogue.stats($1).exchangeMultiplier ?? 1) }
+            entities[i].healthCredit += Int((rates.exchangeRate * banking * 1000).rounded(.down))
             while entities[i].healthCredit >= 1000 {
                 entities[i].healthCredit -= 1000
                 players[p].resources[take] += 1

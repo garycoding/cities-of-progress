@@ -102,6 +102,14 @@ public enum Improvement: Int, CaseIterable, Codable, Sendable, Hashable {
     case mail
     /// Farms yield more.
     case plough
+    /// Warfighters strike harder (Alchemy age).
+    case betterPowder
+    /// Warfighters take less harm.
+    case plateArmour
+    /// Workers gather faster and workshops make more gunpowder.
+    case guilds
+    /// Merchants' exchanges give more.
+    case banking
 }
 
 /// Which way a person faces on the screen. Artwork is drawn facing right; the

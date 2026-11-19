@@ -96,13 +96,18 @@ public struct ImprovementStats: Hashable, Codable, Sendable {
     public var warfighterArmour: Int
     /// A farm yields this many times as much; optional so that older saves open.
     public var farmingMultiplier: Double?
+    /// A workshop makes this many times as much gunpowder; optional so that older saves open.
+    public var productionMultiplier: Double?
+    /// Merchants' exchanges give this many times as much; optional so that older saves open.
+    public var exchangeMultiplier: Double?
 
     public init(improvement: Improvement, age: Age, cost: ResourceAmounts, work: Int,
                 gatheringMultiplier: Double = 1, warfighterDamage: Int = 0, warfighterArmour: Int = 0,
-                farmingMultiplier: Double? = nil) {
+                farmingMultiplier: Double? = nil, productionMultiplier: Double? = nil, exchangeMultiplier: Double? = nil) {
         self.improvement = improvement; self.age = age; self.cost = cost; self.work = work
         self.gatheringMultiplier = gatheringMultiplier; self.warfighterDamage = warfighterDamage
         self.warfighterArmour = warfighterArmour; self.farmingMultiplier = farmingMultiplier
+        self.productionMultiplier = productionMultiplier; self.exchangeMultiplier = exchangeMultiplier
     }
 }
 
@@ -144,6 +149,19 @@ public struct GatheringStats: Hashable, Codable, Sendable {
 
     public func perSecond(_ kind: SiteKind) -> Double { perSecondBySite[kind.rawValue] }
     public func amount(_ kind: SiteKind) -> Int { amountBySite[kind.rawValue] }
+}
+
+/// How the alchemist's workshop makes gunpowder (ruled 2026-11-19): up to
+/// `workers` craftsmen work there, each turning `woodPerUnit` wood into one
+/// gunpowder at `perSecond` a second while the stock holds the wood.
+public struct WorkshopStats: Hashable, Codable, Sendable {
+    public var perSecond: Double
+    public var woodPerUnit: Int
+    public var workers: Int
+
+    public init(perSecond: Double, woodPerUnit: Int, workers: Int) {
+        self.perSecond = perSecond; self.woodPerUnit = woodPerUnit; self.workers = workers
+    }
 }
 
 /// How merchants trade: at a town centre a merchant takes `exchangePerSecond`
@@ -205,10 +223,13 @@ public struct Catalogue: Hashable, Codable, Sendable {
     /// What merchants do (requirement 15, "Sectors"); optional so that saves
     /// made before merchants traded still open, and then they cannot.
     public var merchants: MerchantStats?
+    /// How the alchemist's workshop makes gunpowder; optional so that older saves open.
+    public var workshop: WorkshopStats?
 
     public init(units: [UnitStats], buildings: [BuildingStats], improvements: [ImprovementStats],
                 advances: [AdvanceStats], gathering: GatheringStats, bonuses: [Bonus], upgrades: [UpgradeStats],
-                startingResources: ResourceAmounts, startingPeople: Int, populationMaximum: Int, founderPeople: Int, merchants: MerchantStats? = nil) {
+                startingResources: ResourceAmounts, startingPeople: Int, populationMaximum: Int, founderPeople: Int, merchants: MerchantStats? = nil, workshop: WorkshopStats? = nil) {
+        self.workshop = workshop
         self.merchants = merchants
         self.units = units; self.buildings = buildings; self.improvements = improvements; self.advances = advances
         self.gathering = gathering; self.bonuses = bonuses; self.upgrades = upgrades
@@ -289,7 +310,7 @@ public struct Catalogue: Hashable, Codable, Sendable {
             BuildingStats(kind: .townCentre, age: .stone, cost: cost([.wood: 200, .stone: 100]), buildTime: s(120), health: 1200,
                           armour: 2, footprint: GridPoint(3, 3), sight: 8, attack: Attack(damage: 3, range: 6, interval: s(2)),
                           housing: 5, accepts: allStone, trains: [.worker, .scholar, .engineer, .merchant, .clubman, .slinger],
-                          researches: [.betterTools, .ironTools]),
+                          researches: [.betterTools, .ironTools, .guilds, .banking]),
             BuildingStats(kind: .house, age: .stone, cost: cost([.wood: 30]), buildTime: s(20), health: 200, armour: 0,
                           footprint: GridPoint(2, 2), sight: 3, housing: 5),
             BuildingStats(kind: .storagePit, age: .stone, cost: cost([.wood: 50]), buildTime: s(25), health: 300, armour: 0,
@@ -315,7 +336,7 @@ public struct Catalogue: Hashable, Codable, Sendable {
             // The Alchemy age's buildings. Their figures are provisional until the Alchemy age's rules are built.
             BuildingStats(kind: .castle, age: .alchemy, cost: cost([.stone: 600, .wood: 200]), buildTime: s(150), health: 3000,
                           armour: 4, footprint: GridPoint(4, 4), sight: 10, attack: Attack(damage: 8, range: 8, interval: s(2)),
-                          trains: [.knight, .musketeer, .cannon]),
+                          housing: 10, trains: [.knight, .musketeer, .cannon], researches: [.betterPowder, .plateArmour]),
             BuildingStats(kind: .alchemistsWorkshop, age: .alchemy, cost: cost([.wood: 150, .stone: 100, .gold: 50]),
                           buildTime: s(50), health: 600, armour: 1, footprint: GridPoint(3, 3), sight: 4),
         ]
@@ -334,10 +355,19 @@ public struct Catalogue: Hashable, Codable, Sendable {
                              warfighterArmour: 1),
             ImprovementStats(improvement: .plough, age: .iron, cost: cost([.wood: 120, .iron: 60]), work: s(60),
                              farmingMultiplier: 1.25),
+            ImprovementStats(improvement: .betterPowder, age: .alchemy, cost: cost([.gold: 150, .gunpowder: 100]), work: s(90),
+                             warfighterDamage: 2),
+            ImprovementStats(improvement: .plateArmour, age: .alchemy, cost: cost([.iron: 200, .gold: 100]), work: s(90),
+                             warfighterArmour: 2),
+            ImprovementStats(improvement: .guilds, age: .alchemy, cost: cost([.food: 250, .gold: 150]), work: s(80),
+                             gatheringMultiplier: 1.15, productionMultiplier: 1.25),
+            ImprovementStats(improvement: .banking, age: .alchemy, cost: cost([.gold: 200]), work: s(70),
+                             exchangeMultiplier: 1.25),
         ]
         let advances: [AdvanceStats] = [
             AdvanceStats(from: .stone, cost: cost([.food: 300, .wood: 100]), study: s(4 * 90)),
             AdvanceStats(from: .bronze, cost: cost([.food: 500, .bronze: 150, .gold: 100]), study: s(4 * 150)),
+            AdvanceStats(from: .iron, cost: cost([.food: 800, .iron: 200, .gold: 200]), study: s(4 * 200)),
         ]
         let gathering = GatheringStats(
             perSecond: [.tree: 0.6, .prey: 0.8, .stone: 0.5, .copper: 0.4, .tin: 0.4, .gold: 0.4, .iron: 0.4, .oilField: 0],
@@ -355,17 +385,24 @@ public struct Catalogue: Hashable, Codable, Sendable {
             Bonus(.horseman, against: .archer, 2), Bonus(.horseman, against: .slinger, 2), Bonus(.horseman, against: .catapult, 3),
             Bonus(.spearman, against: .horseman, 3),
             Bonus(.archer, against: .swordsman, 1.5),
+            Bonus(.knight, against: .swordsman, 1.5), Bonus(.knight, against: .archer, 1.5), Bonus(.knight, against: .musketeer, 1.5),
+            Bonus(.spearman, against: .knight, 2.5),
+            Bonus(.musketeer, against: .knight, 2), Bonus(.musketeer, against: .swordsman, 1.5),
         ]
         let upgrades: [UpgradeStats] = [
             UpgradeStats(from: .clubman, to: .spearman, cost: cost([.food: 20, .bronze: 15]), time: s(6)),
             UpgradeStats(from: .slinger, to: .archer, cost: cost([.wood: 20, .gold: 15]), time: s(6)),
             UpgradeStats(from: .spearman, to: .swordsman, cost: cost([.food: 20, .iron: 20]), time: s(6)),
             UpgradeStats(from: .chariot, to: .horseman, cost: cost([.food: 30, .iron: 15]), time: s(8)),
+            UpgradeStats(from: .swordsman, to: .musketeer, cost: cost([.food: 20, .gunpowder: 20]), time: s(8)),
+            UpgradeStats(from: .horseman, to: .knight, cost: cost([.food: 40, .gold: 30]), time: s(10)),
+            UpgradeStats(from: .catapult, to: .cannon, cost: cost([.iron: 40, .gunpowder: 40]), time: s(12)),
         ]
         return Catalogue(units: units, buildings: buildings, improvements: improvements, advances: advances,
                          gathering: gathering, bonuses: bonuses, upgrades: upgrades,
                          startingResources: cost([.food: 200, .wood: 200, .stone: 50]),
                          startingPeople: 3, populationMaximum: 200, founderPeople: 6,
-                         merchants: MerchantStats(exchangePerSecond: 1, exchangeRate: 2.0 / 3.0, load: 20))
+                         merchants: MerchantStats(exchangePerSecond: 1, exchangeRate: 2.0 / 3.0, load: 20),
+                         workshop: WorkshopStats(perSecond: 0.5, woodPerUnit: 2, workers: 3))
     }()
 }

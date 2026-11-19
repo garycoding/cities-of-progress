@@ -130,6 +130,16 @@ extension Simulation {
             // One worker tends a farm; the others selected are left as they were.
             busy.removeAll { entities[$0].unitKind == .worker && $0 != first }
         }
+        if entities[b].buildingKind == .alchemistsWorkshop, let workshop = catalogue.workshop {
+            // A workshop takes as many craftsmen as it has room for; the rest are left as they were.
+            var room = workshop.workers - crafters(at: b, besides: nil)
+            busy.removeAll { i in
+                guard entities[i].unitKind == .worker else { return false }
+                if entities[i].task == .work(building) { return false }
+                if room > 0 { room -= 1; return false }
+                return true
+            }
+        }
         guard !busy.isEmpty else { return .refused(.invalidTarget) }
         for i in busy {
             entities[i].fraction = 0
