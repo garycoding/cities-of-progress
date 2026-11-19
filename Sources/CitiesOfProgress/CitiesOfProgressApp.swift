@@ -23,6 +23,21 @@ struct CitiesOfProgressApp: App {
                 Button("Open Match…") { game.open() }
                     .keyboardShortcut("o")
             }
+            CommandMenu("Speed") {
+                Picker("Speed", selection: $game.speed) {
+                    ForEach(Match.speeds, id: \.self) { speed in
+                        Text(speed == 1 ? "Normal (1×)" : "\(speed.formatted())×").tag(speed)
+                    }
+                }
+                .pickerStyle(.inline)
+                Divider()
+                Button("Faster") { game.changeSpeed(by: 1) }
+                    .keyboardShortcut("=")
+                Button("Slower") { game.changeSpeed(by: -1) }
+                    .keyboardShortcut("-")
+                Button("Normal Speed") { game.speed = 1 }
+                    .keyboardShortcut("0")
+            }
             CommandGroup(replacing: .saveItem) {
                 Button("Save Match…") { game.save() }
                     .keyboardShortcut("s")
