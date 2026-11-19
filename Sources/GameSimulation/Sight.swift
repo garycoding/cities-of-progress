@@ -82,6 +82,11 @@ extension Simulation {
             shown.append(entityView(e))
         }
         let shownSites = sites.filter { $0.remaining > 0 && $0.kind.firstAge <= me.age && isExplored($0.tile, by: team) }
+        // A deposit not yet revealed still blocks its tile, so the view shows it as plain rock.
+        let outcrops = sites
+            .filter { $0.remaining > 0 && $0.kind.blocksTile && $0.kind.firstAge > me.age && isExplored($0.tile, by: team) }
+            .map(\.tile)
+            .sorted { ($0.y, $0.x) < ($1.y, $1.x) }
         var progress = 0.0
         if me.age.next != nil, let advance = catalogue.advance(from: me.age) {
             progress = advance.study > 0 ? min(1, Double(me.study) / Double(advance.study)) : 1
@@ -91,7 +96,7 @@ extension Simulation {
         return PlayerView(tick: tick, player: player, age: me.age, resources: me.resources, population: population[p],
                           populationLimit: populationLimit(p), ageProgress: progress, improvements: me.improvements,
                           players: summaries(), mapWidth: width, mapHeight: height, terrain: terrain,
-                          visibility: visibility, entities: shown, sites: shownSites, events: events, outcome: outcome,
+                          visibility: visibility, entities: shown, sites: shownSites, outcrops: outcrops, events: events, outcome: outcome,
                           isPaused: isPaused)
     }
 

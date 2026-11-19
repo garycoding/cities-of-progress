@@ -226,4 +226,17 @@ import Testing
         view = sim.view(for: me)
         #expect(view.sites.map(\.id) == [SiteID(0), SiteID(1)])
     }
+
+    @Test func aDepositNotYetRevealedShowsAsAnOutcropThatBlocksPlacement() {
+        var sim = Simulation(setup: setup(openMap(width: 48, height: 48, starts: [GridPoint(2, 2), GridPoint(42, 42)],
+                                                  sites: [(.copper, 6, 7), (.tree, 5, 8), (.tin, 30, 31)]),
+                                          teams: [0, 1]))
+        var view = sim.view(for: me)
+        #expect(view.outcrops == [GridPoint(6, 7)])
+        #expect(!Placement.canPlace(.house, at: GridPoint(5, 6), in: view))
+        sim.players[0].age = .bronze
+        view = sim.view(for: me)
+        #expect(view.outcrops.isEmpty)
+        #expect(view.sites.contains { $0.tile == GridPoint(6, 7) && $0.kind == .copper })
+    }
 }

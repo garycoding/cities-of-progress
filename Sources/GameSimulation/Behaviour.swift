@@ -46,7 +46,7 @@ extension Simulation {
 
     /// Units of a site's yield a worker takes per tick.
     func gatheringRate(_ kind: SiteKind, player: Int) -> Double {
-        let tools = players[player].has(.betterTools) ? ImprovementEffect.betterToolsGathering : 1
+        let tools = players[player].improvements.reduce(1.0) { $0 * catalogue.stats($1).gatheringMultiplier }
         return catalogue.gathering.perSecond(kind) * tools / Double(Tick.rate)
     }
 

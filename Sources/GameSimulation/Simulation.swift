@@ -7,8 +7,7 @@ import GameCore
 /// any grouping of teams: the module's conformance to `GameSimulating`
 /// (docs/architecture.md, "The seams").
 ///
-/// Every figure comes from the setup's `Catalogue`, except the effects of the
-/// improvements (`ImprovementEffect`), which the catalogue does not yet hold.
+/// Every figure comes from the setup's `Catalogue`.
 ///
 /// Determinism: entities are kept in an array ordered by `EntityID` and sites in
 /// one ordered by `SiteID`; each tick processes them in that order, and the

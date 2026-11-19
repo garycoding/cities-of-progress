@@ -135,7 +135,7 @@ private let load = Catalogue.standard.gathering.load
         let improved = Self.ticksToFillALoad(betterTools: true)
         let expected = Double(load) / (Catalogue.standard.gathering.perSecond(.tree) / Double(Tick.rate))
         #expect(abs(Double(plain) - expected) <= 1)
-        #expect(abs(Double(plain) / Double(improved) - ImprovementEffect.betterToolsGathering) < 0.01)
+        #expect(abs(Double(plain) / Double(improved) - Catalogue.standard.stats(.betterTools).gatheringMultiplier) < 0.01)
     }
 
     @Test func depositsCannotBeMinedBeforeTheirAge() {

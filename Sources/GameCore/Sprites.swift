@@ -12,6 +12,8 @@ public enum SpriteSubject: Hashable, Codable, Sendable {
     /// A building, in the style of the owner's age.
     case building(BuildingKind, Age)
     case site(SiteKind)
+    /// Plain rock on a deposit's tile, before the player reaches its age.
+    case outcrop
     /// A ground tile; `variant` gives variety between neighbouring tiles.
     case terrain(Terrain, variant: Int)
 
@@ -99,6 +101,7 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
         for kind in SiteKind.allCases where kind.firstAge <= age {
             keys.append(SpriteKey(.site(kind), .complete))
         }
+        keys.append(SpriteKey(.outcrop, .complete))
         for terrain in Terrain.allCases { keys.append(SpriteKey(.terrain(terrain, variant: 0), .complete)) }
         return keys
     }

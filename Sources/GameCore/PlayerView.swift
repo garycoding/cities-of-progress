@@ -118,6 +118,10 @@ public struct PlayerView: Hashable, Codable, Sendable {
     public var entities: [EntityView]
     /// The sites on explored tiles whose age this player has reached; ordered by id.
     public var sites: [ResourceSite]
+    /// Explored tiles of deposits whose age this player has not reached: shown
+    /// as plain rock, which blocks the tile without naming what lies there
+    /// (requirement 19); ordered by y, then x.
+    public var outcrops: [GridPoint]
     public var events: [GameEvent]
     public var outcome: MatchOutcome?
     public var isPaused: Bool
@@ -125,8 +129,9 @@ public struct PlayerView: Hashable, Codable, Sendable {
     public init(tick: Int, player: PlayerID, age: Age, resources: ResourceAmounts, population: Int,
                 populationLimit: Int, ageProgress: Double, improvements: [Improvement], players: [PlayerSummary],
                 mapWidth: Int, mapHeight: Int, terrain: [Terrain], visibility: [TileVisibility],
-                entities: [EntityView], sites: [ResourceSite], events: [GameEvent], outcome: MatchOutcome?,
-                isPaused: Bool) {
+                entities: [EntityView], sites: [ResourceSite], outcrops: [GridPoint] = [], events: [GameEvent],
+                outcome: MatchOutcome?, isPaused: Bool) {
+        self.outcrops = outcrops
         self.tick = tick; self.player = player; self.age = age; self.resources = resources
         self.population = population; self.populationLimit = populationLimit; self.ageProgress = ageProgress
         self.improvements = improvements; self.players = players; self.mapWidth = mapWidth
