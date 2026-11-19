@@ -86,6 +86,14 @@ public enum Improvement: Int, CaseIterable, Codable, Sendable, Hashable {
     case bronzeWeapons
     /// Warfighters take less harm.
     case shields
+    /// Workers gather faster again (Iron age).
+    case ironTools
+    /// Warfighters strike harder again.
+    case ironWeapons
+    /// Warfighters take less harm again.
+    case mail
+    /// Farms yield more.
+    case plough
 }
 
 /// Which way a person faces on the screen. Artwork is drawn facing right; the

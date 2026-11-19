@@ -350,6 +350,10 @@ public struct PanelModel: Sendable {
         case .betterTools: "t"
         case .bronzeWeapons: "b"
         case .shields: "d"
+        case .ironTools: "i"
+        case .ironWeapons: "y"
+        case .mail: "v"
+        case .plough: "o"
         }
     }
 

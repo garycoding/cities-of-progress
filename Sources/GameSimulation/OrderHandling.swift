@@ -123,7 +123,11 @@ extension Simulation {
         let able = people.filter { [.worker, .engineer, .scholar].contains(entities[$0].unitKind) }
         guard !able.isEmpty else { return .refused(.notYours) }
         guard let b = ownBuilding(building, player) else { return .refused(.invalidTarget) }
-        let busy = able.filter { hasWork(entities[$0].unitKind ?? .worker, at: b) }
+        var busy = able.filter { hasWork(entities[$0].unitKind ?? .worker, at: b, person: $0) }
+        if entities[b].buildingKind == .farm, let first = busy.first(where: { entities[$0].unitKind == .worker }) {
+            // One worker tends a farm; the others selected are left as they were.
+            busy.removeAll { entities[$0].unitKind == .worker && $0 != first }
+        }
         guard !busy.isEmpty else { return .refused(.invalidTarget) }
         for i in busy {
             entities[i].fraction = 0
