@@ -47,7 +47,7 @@ let package = Package(
         // Whole matches between computer players, without a screen (step 5).
         .testTarget(
             name: "MatchTests",
-            dependencies: ["GameCore", "GameSimulation", "MapGeneration", "ComputerPlayer"]
+            dependencies: ["GameCore", "GameSimulation", "MapGeneration", "ComputerPlayer", "GameNetwork"]
         ),
     ],
     swiftLanguageModes: [.v6]
