@@ -281,9 +281,9 @@ private let load = Catalogue.standard.gathering.load
         #expect(sim.apply(.train(at: centre, unit: .worker), from: me) == .accepted)
         #expect(sim.resources(me)[.food] == food - Catalogue.standard.stats(.worker).cost[.food])
         _ = sim.view(for: me)
-        do { let reached = sim.run(until: { $0.people(me, .worker).count == 4 }, limit: 400); #expect(reached) }
+        do { let reached = sim.run(until: { $0.people(me, .worker).count == 3 }, limit: 400); #expect(reached) }
         #expect(sim.tick == Catalogue.standard.stats(.worker).trainTime)
-        let trained = sim.people(me, .worker)[3]
+        let trained = sim.people(me, .worker).last!
         #expect(sim.view(for: me).events.contains(.trained(trained, .worker)))
         let footprint = Goal.tiles(GridPoint(2, 2), GridPoint(3, 3), reach: 0)
         #expect(footprint.distance(to: sim.living(trained).position) <= 1.5)

@@ -164,7 +164,7 @@ extension Simulation {
         _ = sim.apply(.train(at: sim.townCentre(me), unit: .worker), from: me)
         _ = sim.apply(.advanceAge, from: me)
         sim.run(Catalogue.standard.stats(.worker).trainTime)
-        let trained = sim.people(me, .worker)[3]
+        let trained = sim.people(me, .worker).last!
         #expect(sim.view(for: me).events == [.refused(.studyIncomplete), .trained(trained, .worker)])
         #expect(sim.view(for: me).events.isEmpty)
         // The opponent's events wait for its own view.

@@ -78,7 +78,7 @@ Each item below is a suggestion, not a ruling. Any of them can be struck, change
 ### The match
 
 - Each match is played on a newly generated map with open ground, forest, prey, lakes, rivers and coast, deposits of stone, copper, tin, gold and iron, and oil fields.
-- Every player, human or computer, begins with a separate base.
+- Every player, human or computer, begins with a separate base: a town centre, two workers and an engineer (ruled 2026-11-18), so that a house can always be built.
 - Ground a player has not explored is hidden; explored ground out of sight of the player's units and buildings shows the terrain but not what opponents are doing there.
 - The founder appears beside an ally's town centre. The town centre it builds costs no resources.
 - A player who rebuilds keeps the age reached and the resources held.

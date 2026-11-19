@@ -97,8 +97,8 @@ public struct Simulation: GameSimulating {
         rebuildCaches()
         for (i, p) in setup.players.enumerated() {
             let centre = placeBuilding(.townCentre, owner: p.id, origin: map.starts[i], complete: true)
-            for k in 0..<catalogue.startingWorkers {
-                spawnPerson(.worker, owner: p.id, at: freeTile(besideBuilding: centre, index: k).centre)
+            for k in 0..<catalogue.startingPeople {
+                spawnPerson(k == 0 ? .engineer : .worker, owner: p.id, at: freeTile(besideBuilding: centre, index: k).centre)
             }
         }
     }

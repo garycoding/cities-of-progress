@@ -170,8 +170,9 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public var upgrades: [UpgradeStats]
     /// What every player holds at the start of a match.
     public var startingResources: ResourceAmounts
-    /// Workers each player begins with, beside the town centre.
-    public var startingWorkers: Int
+    /// People each player begins with, beside the town centre: one engineer,
+    /// so that a house can always be built, and the rest workers.
+    public var startingPeople: Int
     /// The population limit can never exceed this, however many houses stand.
     public var populationMaximum: Int
     /// People that come with a town centre built by a founder: one engineer,
@@ -180,10 +181,10 @@ public struct Catalogue: Hashable, Codable, Sendable {
 
     public init(units: [UnitStats], buildings: [BuildingStats], improvements: [ImprovementStats],
                 advances: [AdvanceStats], gathering: GatheringStats, bonuses: [Bonus], upgrades: [UpgradeStats],
-                startingResources: ResourceAmounts, startingWorkers: Int, populationMaximum: Int, founderPeople: Int) {
+                startingResources: ResourceAmounts, startingPeople: Int, populationMaximum: Int, founderPeople: Int) {
         self.units = units; self.buildings = buildings; self.improvements = improvements; self.advances = advances
         self.gathering = gathering; self.bonuses = bonuses; self.upgrades = upgrades
-        self.startingResources = startingResources; self.startingWorkers = startingWorkers
+        self.startingResources = startingResources; self.startingPeople = startingPeople
         self.populationMaximum = populationMaximum; self.founderPeople = founderPeople
     }
 
@@ -277,6 +278,6 @@ public struct Catalogue: Hashable, Codable, Sendable {
         return Catalogue(units: units, buildings: buildings, improvements: improvements, advances: advances,
                          gathering: gathering, bonuses: bonuses, upgrades: upgrades,
                          startingResources: cost([.food: 200, .wood: 200, .stone: 50]),
-                         startingWorkers: 3, populationMaximum: 200, founderPeople: 6)
+                         startingPeople: 3, populationMaximum: 200, founderPeople: 6)
     }()
 }
