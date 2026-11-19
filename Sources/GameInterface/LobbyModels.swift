@@ -107,10 +107,12 @@ public struct FoundMatch: Identifiable, Hashable, Sendable {
     /// Whatever identifies the match to the connection (its service name, say).
     public var id: String
     public var name: String
+    /// The host's name, or empty when the connection does not say.
     public var host: String
-    public var openSeats: Int
+    /// How many seats are open, or `nil` when the connection does not say.
+    public var openSeats: Int?
 
-    public init(id: String, name: String, host: String, openSeats: Int) {
+    public init(id: String, name: String, host: String = "", openSeats: Int? = nil) {
         self.id = id; self.name = name; self.host = host; self.openSeats = openSeats
     }
 }
@@ -122,12 +124,15 @@ public struct JoinModel: Hashable, Sendable {
         public var match: FoundMatch
         public var id: String { match.id }
         public var name: String { match.name }
-        public var hostLine: String { "Hosted by \(match.host)" }
+        /// Empty when the host's name is not known.
+        public var hostLine: String { match.host.isEmpty ? "" : "Hosted by \(match.host)" }
+        /// Empty when the number of open seats is not known.
         public var seatsLine: String {
             switch match.openSeats {
-            case 0: "No seat open"
-            case 1: "1 seat open"
-            case let n: "\(n) seats open"
+            case nil: ""
+            case 0?: "No seat open"
+            case 1?: "1 seat open"
+            case let n?: "\(n) seats open"
             }
         }
         /// A seat is open and the person has given a name.
@@ -145,7 +150,7 @@ public struct JoinModel: Hashable, Sendable {
     public var hasName: Bool { !trimmedName.isEmpty }
 
     public var rows: [Row] {
-        matches.map { Row(match: $0, canJoin: hasName && $0.openSeats > 0) }
+        matches.map { Row(match: $0, canJoin: hasName && ($0.openSeats ?? 1) > 0) }
     }
 
     /// Why no match may be joined, or `nil`.

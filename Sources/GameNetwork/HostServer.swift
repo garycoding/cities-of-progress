@@ -168,6 +168,25 @@ public final class HostServer {
         return true
     }
 
+    /// Gives every person's seat that nobody holds to a computer player at
+    /// `difficulty`, so that the host can start without a person who has not
+    /// come (a saved match resumed without everyone). A seat without a
+    /// civilization is given the first one nobody holds. Returns the seats given.
+    @discardableResult
+    public func giveOpenSeatsToComputers(difficulty: Difficulty) -> [PlayerID] {
+        guard phase == .lobby else { return [] }
+        var given: [PlayerID] = []
+        for i in lobby.seats.indices where lobby.seats[i].kind == .person && lobby.seats[i].holder == nil {
+            lobby.seats[i].kind = .computer(difficulty)
+            if lobby.seats[i].civilization == nil {
+                lobby.seats[i].civilization = Civilization.allCases.first { !lobby.taken.contains($0) }
+            }
+            given.append(lobby.seats[i].player)
+        }
+        if !given.isEmpty { sendLobby() }
+        return given
+    }
+
     /// Starts the match, once every seat is held and has a civilization.
     /// `match` is the app's match, made from `lobby.setup(map:seed:)` or opened
     /// from a save; each person is sent the match's start, then views.
