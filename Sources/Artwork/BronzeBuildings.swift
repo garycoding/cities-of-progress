@@ -59,12 +59,12 @@ enum BronzeBuildingsArt {
     static func height(_ kind: BuildingKind) -> Double {
         switch kind {
         case .townCentre: 118
-        case .house: 70
-        case .storagePit: 60
-        case .stockPen: 66
+        case .house: 78
+        case .storagePit: 62
+        case .stockPen: 76
         case .barracks: 96
         case .watchTower: 120
-        case .palisade: 46
+        case .palisade: 58
         }
     }
 
@@ -83,12 +83,14 @@ enum BronzeBuildingsArt {
 extension BronzeBuildingsPainter {
     /// The drawing of a building, complete or under construction.
     mutating func building(_ kind: BuildingKind, complete: Bool) {
-        let n = Double(Catalogue.standard.stats(kind).footprint.x)
-        let e = n / 2
-        shape(level(-e, -e, e, e), .colour(BronzeBuildingsInk.paving))
-        let k = e * 0.7, h = (complete ? 1 : 0.5) * (BronzeBuildingsArt.height(kind) - 30 - e * 16)
-        block(-k, -k, k, k, 0, h, top: .colour(BronzeBuildingsInk.plasterTop), left: .colour(BronzeBuildingsInk.light),
-              right: .colour(BronzeBuildingsInk.plasterShade))
-        pennant(at: iso(0, 0, h), height: 20)
+        switch kind {
+        case .townCentre: townCentre(complete: complete)
+        case .house: house(complete: complete)
+        case .storagePit: storagePit(complete: complete)
+        case .stockPen: stockPen(complete: complete)
+        case .barracks: barracks(complete: complete)
+        case .watchTower: watchTower(complete: complete)
+        case .palisade: palisade(complete: complete)
+        }
     }
 }

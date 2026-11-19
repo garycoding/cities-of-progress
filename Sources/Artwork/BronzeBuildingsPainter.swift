@@ -33,6 +33,13 @@ enum BronzeBuildingsInk {
     /// A paved court or a beaten floor.
     static let paving = "#e6cf9c"
     static let pavingShade = "#cdb27a"
+    /// Beaten earth: a yard, a bank, the floor of a pen.
+    static let earth = "#c9a663"
+    static let earthShade = "#a5834a"
+    /// Fresh mud brick, not yet plastered: walls being raised.
+    static let rawBrick = "#cf9a5c"
+    static let rawBrickTop = "#dcad74"
+    static let rawBrickShade = "#a7743e"
     static let timber = "#8a5a33"
     static let timberLight = "#a8743f"
     static let timberDark = "#6b4a2a"
@@ -41,7 +48,9 @@ enum BronzeBuildingsInk {
     /// Cast bronze: fittings, studs, a gong.
     static let bronze = "#b47b36"
     static let bronzeLight = "#dba75c"
+    static let bronzeShade = "#8a5c26"
     static let stone = "#b8b0a0"
+    static let stoneTop = "#d0c9b9"
     static let stoneShade = "#958c7c"
     /// A doorway's or a pit's dark.
     static let dark = "#3d3029"
@@ -145,6 +154,102 @@ struct BronzeBuildingsPainter {
         }
     }
 
+    /// An enclosure open to the sky from (x0, y0) to (x1, y1): walls `t` tiles
+    /// thick from `h0` up to `h1`, round a floor at `floor` (a roof inside its
+    /// parapet, the ground inside walls being raised, the bottom of a pit). The
+    /// two inner walls at the back show, and `inside` draws what stands within,
+    /// before the front walls hide its foot. A pit (`outer` false) has no outer walls.
+    mutating func shell(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double, from h0: Double, floor: Double,
+                        to h1: Double, thickness t: Double, lit: Paint, shade: Paint, top: Paint, ground: Paint,
+                        outer: Bool = true, width: Double = 1.2, inside: (inout BronzeBuildingsPainter) -> Void = { _ in }) {
+        let (a0, b0, a1, b1) = (x0 + t, y0 + t, x1 - t, y1 - t)
+        colour(level(a0, b0, a1, b1, floor), ground)
+        // The inner face of the wall at the back right faces +y, lit; the one at the back left faces +x.
+        colour([iso(a0, b0, floor), iso(a1, b0, floor), iso(a1, b0, h1), iso(a0, b0, h1)], lit)
+        colour([iso(a0, b1, floor), iso(a0, b0, floor), iso(a0, b0, h1), iso(a0, b1, h1)], shade)
+        line([iso(a0, b1, floor), iso(a0, b0, floor), iso(a1, b0, floor)], width: width * 0.7)
+        line([iso(a0, b0, floor), iso(a0, b0, h1)], width: width * 0.7)
+        // The tops of the walls at the back, behind whatever stands inside.
+        if t > 0 {
+            colour([iso(x0, y0, h1), iso(x1, y0, h1), iso(a1, b0, h1), iso(a0, b0, h1)], top)
+            colour([iso(x0, y1, h1), iso(x0, y0, h1), iso(a0, b0, h1), iso(a0, b1, h1)], top)
+            line([iso(a0, b1, h1), iso(a0, b0, h1), iso(a1, b0, h1)], width: width * 0.8)
+        }
+        line([iso(x0, y1, h1), iso(x0, y0, h1), iso(x1, y0, h1)], width: width)
+        inside(&self)
+        if outer {
+            colour([iso(x0, y1, h0), iso(x1, y1, h0), iso(x1, y1, h1), iso(x0, y1, h1)], lit)
+            colour([iso(x1, y1, h0), iso(x1, y0, h0), iso(x1, y0, h1), iso(x1, y1, h1)], shade)
+        }
+        if t > 0 {
+            colour([iso(x1, y0, h1), iso(x1, y1, h1), iso(a1, b1, h1), iso(a1, b0, h1)], top)
+            colour([iso(x1, y1, h1), iso(x0, y1, h1), iso(a0, b1, h1), iso(a1, b1, h1)], top)
+            line([iso(a0, b1, h1), iso(a1, b1, h1), iso(a1, b0, h1)], width: width * 0.8)
+        }
+        if outer {
+            line([iso(x0, y1, h1), iso(x0, y1, h0), iso(x1, y1, h0), iso(x1, y0, h0), iso(x1, y0, h1)], width: width)
+            line([iso(x1, y1, h0), iso(x1, y1, h1)], width: width)
+        }
+        line([iso(x0, y1, h1), iso(x1, y1, h1), iso(x1, y0, h1)], width: width)
+    }
+
+    /// A coping of rounded scallops along an edge from `a` to `b` on the
+    /// screen, `count` of them rising `rise` points, filled with `paint`.
+    mutating func scallops(_ a: P, _ b: P, count: Int, rise: Double, _ paint: Paint) {
+        func trace(_ o: P) -> PathData {
+            var d = PathData()
+            d.move(a + o)
+            for i in 0..<count {
+                let s = a + (b - a) * (Double(i) / Double(count)), e = a + (b - a) * (Double(i + 1) / Double(count))
+                d.quad((s + e) * 0.5 + P(0, -2 * rise) + o, e + o)
+            }
+            return d
+        }
+        colour(paint) { d, o in
+            d = trace(o)
+            d.close()
+        }
+        line(width: 0.9) { d in d = trace(P(0, 0)) }
+    }
+
+    /// Stepped merlons along a wall drawn with `wall`, standing on `v`, from `u0` to `u1`.
+    mutating func merlons(_ u0: Double, _ u1: Double, on v: Double, size s: Double = 1, _ paint: Paint) {
+        let pitch = 6.4 * s
+        var u = u0 + 0.6 * s
+        while u + 4.6 * s <= u1 + 0.01 {
+            let w = 4.6 * s
+            shape([uv(u, v), uv(u, v + 3 * s), uv(u + 1.1 * s, v + 3 * s), uv(u + 1.1 * s, v + 4.8 * s),
+                   uv(u + w - 1.1 * s, v + 4.8 * s), uv(u + w - 1.1 * s, v + 3 * s), uv(u + w, v + 3 * s), uv(u + w, v)],
+                  paint, width: 0.8)
+            u += pitch
+        }
+    }
+
+    /// A sharpened stake of timber standing at (x, y) on `h`, `height` points
+    /// tall to its point and `radius` points thick.
+    mutating func stake(_ x: Double, _ y: Double, on h: Double, height: Double, radius r: Double) {
+        typealias I = BronzeBuildingsInk
+        let foot = iso(x, y, h), shoulder = foot - P(0, height - r * 1.8), tip = foot - P(0, height)
+        colour([foot + P(-r, 0), foot + P(r, 0), shoulder + P(r, 0), tip, shoulder + P(-r, 0)], .colour(I.timber))
+        // The lit side of the round stake.
+        colour([foot + P(-r, 0), foot + P(-r * 0.2, 0), shoulder + P(-r * 0.2, 0), tip, shoulder + P(-r, 0)],
+               .colour(I.timberLight))
+        line([foot + P(-r, 0.4), shoulder + P(-r, 0), tip, shoulder + P(r, 0), foot + P(r, 0.4)], width: 0.9)
+        line([shoulder + P(-r, 0), shoulder + P(r * 0.1, r * 0.5), shoulder + P(r, 0)], width: 0.6)
+    }
+
+    /// A round shield hung at `p` on the screen: a face of the team's colour
+    /// with a light spiral, and a bronze rim and boss.
+    mutating func shield(at p: P, radius r: Double) {
+        typealias I = BronzeBuildingsInk
+        svg.ellipse(p + shift, r, r * 1.08, fill: .colour(I.bronze))
+        svg.ellipse(p + shift * 0.5, r * 0.74, r * 0.8, fill: .team)
+        svg.path("M\(num(p.x)),\(num(p.y)) m\(num(-r * 0.42)),0 a\(num(r * 0.42)),\(num(r * 0.42)) 0 1 1 \(num(r * 0.42)),\(num(r * 0.42))",
+                 stroke: .colour(I.light), width: 0.7)
+        svg.ellipse(p, r, r * 1.08, fill: .none, stroke: .colour(I.line), width: 0.9)
+        svg.circle(p, r * 0.18, fill: .colour(I.bronzeLight), stroke: .colour(I.line), width: 0.5)
+    }
+
     /// Draws on a wall as on flat paper. `content` is given points written
     /// `P(u, -v)`: `u` points along the wall from its left end on the screen,
     /// `v` points up from `h`. The left wall faces +y and runs along x from
@@ -180,6 +285,27 @@ struct BronzeBuildingsPainter {
         }
         svg.path(trace(shift), fill: paint)
         svg.path(trace(P(0, 0)), stroke: .colour(BronzeBuildingsInk.line), width: width2)
+    }
+
+    /// Courses of brick on a wall drawn with `wall`, from `u0` to `u1` and
+    /// `v0` to `v1`: a line along each course, and the joints between the
+    /// bricks staggered from one course to the next.
+    mutating func courses(_ u0: Double, _ u1: Double, _ v0: Double, _ v1: Double, course: Double = 2.6,
+                          brick: Double = 6.4, opacity: Double = 0.5) {
+        var d = PathData()
+        var v = v0, row = 0
+        while v < v1 - 0.4 {
+            if v > v0 { d.move(uv(u0, v)); d.line(uv(u1, v)) }
+            var u = u0 + (row % 2 == 0 ? brick / 2 : brick)
+            while u < u1 - 0.6 {
+                d.move(uv(u, v + 0.35))
+                d.line(uv(u, min(v + course, v1) - 0.35))
+                u += brick
+            }
+            v += course
+            row += 1
+        }
+        svg.path(d, stroke: .colour(BronzeBuildingsInk.line), width: 0.45, opacity: opacity)
     }
 
     /// A zigzag along a wall from `u0` to `u1`, between `v0` and `v1`, its teeth `pitch` apart.
