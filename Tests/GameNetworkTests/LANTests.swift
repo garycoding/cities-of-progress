@@ -281,3 +281,21 @@ extension LANTests {
         #expect(client.state == .gaveUp(reason: "The host could not be reached."))
     }
 }
+
+extension LANTests {
+    @Test func openSeatsGoToComputersSoThatAResumedMatchCanStartWithoutAnAbsentPerson() async throws {
+        let lan = try Loopback()
+        defer { lan.stop() }
+        let hyun = try await lan.join("Hyun")
+        try await until("Hyun is seated") { hyun.state == .inLobby && hyun.lobby != nil }
+        #expect(hyun.chooseCivilization(.harappa))
+        try await until("Hyun has chosen") { lan.server.lobby.seats[1].civilization == .harappa }
+        #expect(!lan.server.lobby.isReady)
+        #expect(lan.server.giveOpenSeatsToComputers(difficulty: .hard) == [PlayerID(2)])
+        #expect(lan.server.lobby.seats[2].kind == .computer(.hard))
+        #expect(lan.server.lobby.seats[2].civilization != nil)
+        #expect(Set(lan.server.lobby.taken).count == lan.server.lobby.seats.count)
+        #expect(lan.server.lobby.isReady)
+        try await until("Hyun sees the computer") { hyun.lobby?.seats[2].kind == .computer(.hard) }
+    }
+}

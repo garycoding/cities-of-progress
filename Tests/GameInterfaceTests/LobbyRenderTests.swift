@@ -42,11 +42,22 @@ import Testing
         LobbyView(model: LobbyModel(lobby: sampleLobby(joinerCivilization: .rome, fixed: true), me: PlayerID(1)), onLeave: {})
     })
 
+    // The new-match screen as the app shows it, with hosting and joining offered.
+    #expect(renderHosted("lan-new-match-with-join-window", width: 1440, height: 900) {
+        NewMatchView(model: NewMatchModel(maxPlayers: 6, hostName: "Gary"), onStart: { _ in }, onHost: { _ in }, onJoin: {})
+            .padding(24).frame(maxWidth: .infinity, maxHeight: .infinity)
+    })
+
     // Joining.
     let found = [FoundMatch(id: "a", name: "Gary\u{2019}s match", host: "Gary", openSeats: 1),
                  FoundMatch(id: "b", name: "Saturday", host: "Ana", openSeats: 2)]
     #expect(renderHosted("lan-join-two-matches", width: 820, height: 380) {
         JoinView(matches: found, name: "Hyun", onJoin: { _, _ in }, onCancel: {})
+    })
+    // As discovery finds them: the name alone, without the host or the open seats.
+    #expect(renderHosted("lan-join-discovered", width: 820, height: 380) {
+        JoinView(matches: [FoundMatch(id: "a", name: "Gary\u{2019}s match"), FoundMatch(id: "b", name: "Saturday")],
+                 name: "Hyun", onJoin: { _, _ in }, onCancel: {})
     })
     #expect(renderHosted("lan-join-empty-unnamed", width: 820, height: 320) {
         JoinView(matches: [], name: "", onJoin: { _, _ in }, onCancel: {})

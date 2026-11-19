@@ -143,20 +143,29 @@ public struct NewMatchView: View {
     let onStart: (NewMatchChoice) -> Void
     let onHost: ((Lobby) -> Void)?
     let onCancel: (() -> Void)?
+    let onJoin: (() -> Void)?
 
+    /// `onJoin`, when given, offers to join a match another Mac on the LAN is hosting instead.
     public init(model: NewMatchModel = NewMatchModel(), onStart: @escaping (NewMatchChoice) -> Void,
-                onHost: ((Lobby) -> Void)? = nil, onCancel: (() -> Void)? = nil) {
+                onHost: ((Lobby) -> Void)? = nil, onCancel: (() -> Void)? = nil, onJoin: (() -> Void)? = nil) {
         _model = State(initialValue: model)
         self.onStart = onStart
         self.onHost = onHost
         self.onCancel = onCancel
+        self.onJoin = onJoin
     }
 
     public var body: some View {
         // Two seats to a row, three once there are more than four, so that six fit in two rows.
         let columns = model.seats.count > 4 ? 3 : 2
         VStack(alignment: .leading, spacing: 14) {
-            Text("New match").font(Typeface.text(28, bold: true))
+            HStack(alignment: .firstTextBaseline) {
+                Text("New match").font(Typeface.text(28, bold: true))
+                Spacer()
+                if let onJoin {
+                    PillButton(title: "Join a match on this network", size: 12, action: onJoin)
+                }
+            }
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 14, alignment: .top), count: columns),
                       alignment: .leading, spacing: 14) {
                 ForEach(model.seats) { seat in SeatPanel(model: $model, seatID: seat.id, hosting: onHost != nil) }
@@ -411,11 +420,13 @@ public struct JoinView: View {
                     HStack(spacing: 12) {
                         VStack(alignment: .leading, spacing: 1) {
                             Text(row.name).font(Typeface.text(15, bold: true))
-                            Text(row.hostLine).font(Typeface.text(11)).foregroundStyle(Palette.inkSoft)
+                            if !row.hostLine.isEmpty {
+                                Text(row.hostLine).font(Typeface.text(11)).foregroundStyle(Palette.inkSoft)
+                            }
                         }
                         Spacer()
                         Text(row.seatsLine).font(Typeface.text(12))
-                            .foregroundStyle(row.match.openSeats > 0 ? Palette.ink : Palette.inkSoft)
+                            .foregroundStyle((row.match.openSeats ?? 1) > 0 ? Palette.ink : Palette.inkSoft)
                         PillButton(title: "Join", fill: Palette.ochre, enabled: row.canJoin, size: 13) {
                             onJoin(row.match, model.trimmedName)
                         }
