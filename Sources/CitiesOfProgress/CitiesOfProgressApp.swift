@@ -22,6 +22,14 @@ struct CitiesOfProgressApp: App {
                     .keyboardShortcut("n")
                 Button("Open Match…") { game.open() }
                     .keyboardShortcut("o")
+                Menu("Open Autosave") {
+                    ForEach(game.recentAutosaves.prefix(12), id: \.url) { entry in
+                        Button("\(entry.match), \(entry.date.formatted(date: .omitted, time: .shortened))") {
+                            game.openAutosave(entry)
+                        }
+                    }
+                    if game.recentAutosaves.isEmpty { Text("No automatic saves yet") }
+                }
             }
             CommandMenu("Speed") {
                 Picker("Speed", selection: $game.speed) {

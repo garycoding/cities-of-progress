@@ -43,7 +43,8 @@ final class Match {
     /// so the rules and the computer players are the same at every speed.
     var speed = 1.0
 
-    init(host: Host, player: PlayerID, camera: Camera? = nil) {
+    init(host: Host, player: PlayerID, camera: Camera? = nil, name: String) {
+        self.name = name
         var host = host
         let view = host.view(for: player)
         let relay = OrderRelay()
@@ -79,6 +80,13 @@ final class Match {
 
     var isOver: Bool { host.outcome != nil }
 
+    /// The match's name, under which its automatic saves are kept.
+    var name: String
+    /// Seconds of play since the last automatic save; a pause does not count.
+    private var playedSinceAutosave: TimeInterval = 0
+    /// Called every `Autosaves.interval` seconds of play.
+    var autosave: ((Match) -> Void)?
+
     fileprivate func apply(_ order: Order) {
         host.apply(order, from: player)
     }
@@ -90,6 +98,13 @@ final class Match {
         let elapsed = lastTime.map { now - $0 } ?? 0
         lastTime = now
         owed = min(owed + elapsed * Double(Tick.rate) * speed, Self.catchUpFrames * speed)
+        if !host.isPaused && host.outcome == nil {
+            playedSinceAutosave += elapsed
+            if playedSinceAutosave >= Autosaves.interval {
+                playedSinceAutosave = 0
+                autosave?(self)
+            }
+        }
         while owed >= 1 {
             host.advance()
             owed -= 1
@@ -104,9 +119,11 @@ final class Match {
         var camera: Camera
         /// Absent in saves made before speeds existed.
         var speed: Double?
+        /// Absent in saves made before autosaves existed.
+        var name: String?
     }
 
-    var saved: Saved { Saved(host: host, player: player, camera: session.camera, speed: speed) }
+    var saved: Saved { Saved(host: host, player: player, camera: session.camera, speed: speed, name: name) }
 }
 
 /// The app's state: the match in play, if any, and the artwork every match shares.
@@ -116,6 +133,37 @@ final class GameController {
     private(set) var match: Match?
     let sprites = GameSprites()
     var problem: String?
+    let autosaves = Autosaves()
+    /// The automatic saves, newest first, for the File menu.
+    private(set) var recentAutosaves: [Autosaves.Entry] = []
+
+    init() {
+        recentAutosaves = autosaves.entries()
+        NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification, object: nil,
+                                               queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.autosaveNow() }
+        }
+    }
+
+    /// Saves the match in play automatically, unless it is over.
+    func autosaveNow() {
+        guard let match, !match.isOver else { return }
+        write(automatic: match)
+    }
+
+    private func write(automatic match: Match) {
+        do {
+            try autosaves.write(try JSONEncoder().encode(match.saved), match: match.name)
+            recentAutosaves = autosaves.entries()
+        } catch {
+            // An automatic save that fails is tried again two minutes later; play goes on.
+        }
+    }
+
+    /// A new match's name: the date and time it began.
+    private static func newName(at date: Date = Date()) -> String {
+        "Match of " + date.formatted(.dateTime.year().month().day().hour().minute())
+    }
 
     /// The match's speed, shown in the Speed menu.
     var speed = 1.0 {
@@ -134,13 +182,14 @@ final class GameController {
         let map = MapGenerator().generate(MapRequest(playerCount: choice.players.count, seed: seed))
         let setup = choice.setup(map: map, seed: seed)
         guard let person = setup.players.first(where: { $0.controller == .human }) else { return }
-        let new = Match(host: Host(setup: setup), player: person.id)
+        let new = Match(host: Host(setup: setup), player: person.id, name: Self.newName())
         new.speed = speed
         begin(new)
     }
 
     private func begin(_ new: Match) {
         match?.stop()
+        new.autosave = { [weak self] match in self?.write(automatic: match) }
         match = new
         new.start()
     }
@@ -148,6 +197,7 @@ final class GameController {
     /// Leave the match and show the new-match screen.
     func endMatch() {
         guard mayLeaveMatch(to: "start a new match") else { return }
+        autosaveNow()
         match?.stop()
         match = nil
     }
@@ -191,9 +241,21 @@ final class GameController {
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { match?.start(); return }
+        open(url)
+    }
+
+    /// Opens one of the automatic saves listed in the File menu.
+    func openAutosave(_ entry: Autosaves.Entry) {
+        guard mayLeaveMatch(to: "open a saved match") else { return }
+        match?.stop()
+        open(entry.url)
+    }
+
+    private func open(_ url: URL) {
         do {
             let saved = try JSONDecoder().decode(Match.Saved.self, from: Data(contentsOf: url))
-            let opened = Match(host: saved.host, player: saved.player, camera: saved.camera)
+            let opened = Match(host: saved.host, player: saved.player, camera: saved.camera,
+                               name: saved.name ?? url.deletingPathExtension().lastPathComponent)
             opened.speed = saved.speed ?? 1
             speed = opened.speed
             begin(opened)
