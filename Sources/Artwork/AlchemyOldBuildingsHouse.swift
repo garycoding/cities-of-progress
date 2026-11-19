@@ -77,7 +77,7 @@ extension AlchemyOldBuildingsPainter {
                   width: 0.5)
         }
         // The roof, its gable to the street.
-        let ridge = e + 28
+        let ridge = e + 26
         gableAlongY(x0, y0, u1, v1, eave: e, ridge: ridge, over: 0.06, gableWall: .colour(I.light)) { p, w, rise in
             // King post, collar and braces, and a small window in the apex.
             p.timber(p.uv(w / 2, 0), p.uv(w / 2, rise - 1.5), width: 2)
@@ -90,13 +90,13 @@ extension AlchemyOldBuildingsPainter {
         // The chimney of stone, rising through the roof's lit slope, with two pots.
         let (cx0, cy0, cx1, cy1) = (0.2, -0.62, 0.36, -0.46)
         let foot = e + (ridge - e) * ((u1 + 0.06) - (cx0 + cx1) / 2) / ((u1 + 0.06) - (x0 + u1) / 2) - 2
-        block(cx0, cy0, cx1, cy1, foot, ridge + 3, top: .colour(I.stoneTop), left: .colour(I.stone), right: .colour(I.stoneShade),
+        block(cx0, cy0, cx1, cy1, foot, ridge + 1, top: .colour(I.stoneTop), left: .colour(I.stone), right: .colour(I.stoneShade),
               width: 0.9)
-        wall(.left, from: cx0, cy1, at: foot) { p in p.courses(0, 5.1, 0, ridge + 3 - foot, course: 3.2, brick: 5.1, opacity: 0.5) }
-        block(cx0 - 0.02, cy0 - 0.02, cx1 + 0.02, cy1 + 0.02, ridge + 3, ridge + 4.6, top: .colour(I.stoneTop),
+        wall(.left, from: cx0, cy1, at: foot) { p in p.courses(0, 5.1, 0, ridge + 1 - foot, course: 3.2, brick: 5.1, opacity: 0.5) }
+        block(cx0 - 0.02, cy0 - 0.02, cx1 + 0.02, cy1 + 0.02, ridge + 1, ridge + 2.6, top: .colour(I.stoneTop),
               left: .colour(I.stoneTop), right: .colour(I.stone), width: 0.8)
         for (x, y) in [(cx0 + 0.04, cy0 + 0.05), (cx1 - 0.04, cy1 - 0.04)] {
-            let p = iso(x, y, ridge + 4.6)
+            let p = iso(x, y, ridge + 2.6)
             shape([p + P(-1.5, 0), p + P(1.5, 0), p + P(1.1, -3.4), p + P(-1.1, -3.4)], .colour(I.clay), width: 0.6)
         }
         // Barrels and a bench in the yard.

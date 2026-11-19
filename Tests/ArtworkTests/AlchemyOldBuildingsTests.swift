@@ -88,7 +88,7 @@ import Testing
             let halfWidth = Double(footprint.x + footprint.y) * 32, halfHeight = Double(footprint.x + footprint.y) * 16
             let drawn = try #require(pixels.bounds(alphaAbove: 128), "\(key) is empty")
             #expect(drawn.minY > 0 && drawn.minX > 0 && drawn.maxX < pixels.width - 1 && drawn.maxY < pixels.height - 1,
-                    "\(key) reaches the edge of its picture")
+                    "\(key) reaches the edge of its picture \(drawn) \(pixels.width)x\(pixels.height)")
             let tolerance = 5.0
             #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
             #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
@@ -262,7 +262,7 @@ private enum AlchemyOldBuildingsPreview {
                     Preview.place(image, anchor: sprite.anchor, at: CGPoint(x: rect.midX, y: rect.minY + 14 + Double(f.x + f.y) * 16),
                                   in: context)
                 }
-                let text = "\(kind.name), \(isIron ? "Iron" : "Alchemy"), \(cell.civilization), "
+                let text = "\(kind.name), \(isIron ? "Iron" : "Alchemy"), \(String(describing: cell.civilization).capitalized), "
                     + (cell.complete ? "complete" : "building")
                 Preview.label(text, in: context, at: CGPoint(x: Double(column * cellW + 10), y: Double(top - label + 6)), size: 17)
             }

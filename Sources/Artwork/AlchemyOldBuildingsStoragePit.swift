@@ -20,7 +20,7 @@ extension AlchemyOldBuildingsPainter {
     /// The shed at the back left: posts of oak under a gabled roof of slate.
     private mutating func storeShed(roofed: Bool) {
         typealias I = AlchemyOldBuildingsInk
-        let h0 = 1.5, (x0, y0, x1, y1) = (-0.98, -0.98, -0.62, -0.12), eave = 18.0
+        let h0 = 1.5, (x0, y0, x1, y1) = (-0.98, -0.98, -0.62, -0.12), eave = 17.0
         shadow(level(x0, y0, x1 + 0.12, y1 + 0.12, h0), opacity: 0.16)
         for (x, y) in [(x0 + 0.03, y0 + 0.03), (x1 - 0.03, y0 + 0.03)] { pole(iso(x, y, h0), iso(x, y, h0 + eave), width: 1.6, colour: I.oak) }
         if roofed {
@@ -32,7 +32,7 @@ extension AlchemyOldBuildingsPainter {
             return
         }
         pole(iso(x1 - 0.03, y0, h0 + eave - 0.6), iso(x1 - 0.03, y1, h0 + eave - 0.6), width: 1.8, colour: I.oak)
-        gableAlongY(x0, y0, x1, y1, eave: h0 + eave, ridge: h0 + eave + 12, over: 0.04, gableWall: .colour(I.light)) { p, w, r in
+        gableAlongY(x0, y0, x1, y1, eave: h0 + eave, ridge: h0 + eave + 10, over: 0.04, gableWall: .colour(I.light)) { p, w, r in
             p.timber(p.uv(w / 2, 0), p.uv(w / 2, r - 1), width: 1.5)
             p.timber(p.uv(1, 1), p.uv(w - 1, 1), width: 1.6)
         }

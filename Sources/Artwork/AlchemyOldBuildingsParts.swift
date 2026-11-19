@@ -115,7 +115,8 @@ extension AlchemyOldBuildingsPainter {
     /// ridge running along x at `ridge` points and its eaves at `eave`,
     /// overhanging by `over` tiles. Its gable faces +x (the screen's lower
     /// right); `gable` draws on the gable's wall before the verge covers it,
-    /// given the wall's width and the ridge's height above the eaves.
+    /// given the wall's width and the ridge's height above the eaves. A gilt
+    /// finial stands on the gable's apex when `finials`.
     mutating func gableAlongX(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double, eave: Double, ridge: Double,
                               over: Double = 0.08, gableWall: Paint, finials: Bool = true,
                               gable: (inout AlchemyOldBuildingsPainter, Double, Double) -> Void = { _, _, _ in }) {
@@ -140,7 +141,6 @@ extension AlchemyOldBuildingsPainter {
         svg.line([iso(a0, ym, ridge), iso(a1, ym, ridge)], stroke: .colour(I.line), width: 2.8)
         svg.line([iso(a0, ym, ridge), iso(a1, ym, ridge)], stroke: .colour(I.ironLight), width: 1.3)
         if finials {
-            finial(at: iso(a0, ym, ridge), size: 0.9)
             finial(at: iso(a1, ym, ridge), size: 1)
         }
     }
@@ -148,7 +148,8 @@ extension AlchemyOldBuildingsPainter {
     /// A steep gabled roof of slate over a box from (x0, y0) to (x1, y1), its
     /// ridge running along y at `ridge` points and its eaves at `eave`. Its
     /// gable faces +y (the screen's lower left); `gable` draws on the gable's
-    /// wall, given the wall's width and the ridge's height above the eaves.
+    /// wall, given the wall's width and the ridge's height above the eaves. A
+    /// gilt finial stands on the gable's apex when `finials`.
     mutating func gableAlongY(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double, eave: Double, ridge: Double,
                               over: Double = 0.08, gableWall: Paint, finials: Bool = true,
                               gable: (inout AlchemyOldBuildingsPainter, Double, Double) -> Void = { _, _, _ in }) {
@@ -172,7 +173,6 @@ extension AlchemyOldBuildingsPainter {
         svg.line([iso(xm, b0, ridge), iso(xm, b1, ridge)], stroke: .colour(I.line), width: 2.8)
         svg.line([iso(xm, b0, ridge), iso(xm, b1, ridge)], stroke: .colour(I.ironLight), width: 1.3)
         if finials {
-            finial(at: iso(xm, b0, ridge), size: 0.9)
             finial(at: iso(xm, b1, ridge), size: 1)
         }
     }

@@ -8,8 +8,9 @@ import Foundation
 // loops for guns and bows up its shaft. At the top a lookout of oak and
 // plaster, glazed on every side, stands out on corbels over the shaft, a band
 // of the owner's colour along its sill and a bell hung before it; over it a
-// steep pyramid of slate carries a gilt weathervane, and a banner of
-// the owner's colour hangs on the shaft below the corbels. Its footprint is one tile: x and y run from -0.5 to 0.5.
+// steep pyramid of slate carries a gilt weathervane, and a banner of the
+// owner's colour hangs on the shaft below the corbels. Its footprint is one
+// tile: x and y run from -0.5 to 0.5.
 
 extension AlchemyOldBuildingsPainter {
     mutating func watchTower(complete: Bool) {
