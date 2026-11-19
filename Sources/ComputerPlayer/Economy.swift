@@ -204,7 +204,7 @@ extension Turn {
         case .gathering(let kind):
             return Task(site: kind)
         case .working:
-            return .herding
+            return memory.assignment(of: worker.id)?.task == .crafting ? .crafting : .herding
         case .carrying(let resource, _):
             if let last = memory.assignment(of: worker.id), last.task.resource == resource { return last.task }
             switch resource {
@@ -233,6 +233,8 @@ extension Turn {
         } else {
             set(.food, 0.34); set(.wood, 0.24); set(.stone, 0.08); set(.bronze, 0.22); set(.gold, 0.12)
             if view.age >= .iron { set(.iron, 0.1) }
+            // Craftsmen turn wood into gunpowder, so the Alchemy age fells more.
+            if view.age >= .alchemy { set(.wood, 0.32) }
         }
         for resource in Resource.allCases where share[resource.rawValue] > 0 {
             let short = max(0, reserve[resource] - view.resources[resource])
@@ -341,6 +343,45 @@ extension Turn {
               let task = Task(site: to), let site = nearestSite(to, to: mover.position, open: &open) else { return }
         give(.gather(units: [mover.id], site: site.id), to: [mover.id])
         memory.assign(Assignment(worker: mover.id, task: task, site: site.id, building: nil, tick: view.tick))
+    }
+
+    /// Craftsmen at the first alchemist's workshop: as many as it holds whilst
+    /// gunpowder is under 300 and the stock holds 100 wood or more, taken from
+    /// the idle workers and then from those felling; none once gunpowder
+    /// reaches 500 or wood falls under 40, when they are stopped and go back
+    /// to other work.
+    func employCraftsmen() {
+        guard let workshop = catalogue.workshop,
+              let place = Turn.nearest(completeBuildings(.alchemistsWorkshop), to: base) else { return }
+        let crafting = workers.filter { worker in
+            guard let last = memory.assignment(of: worker.id), last.task == .crafting, last.building == place.id else { return false }
+            return worker.activity == .working || worker.activity == .moving
+        }
+        let powder = view.resources[.gunpowder], wood = view.resources[.wood]
+        if powder >= 500 || wood < 40 {
+            let stopping = crafting.filter { isFree($0) }.map(\.id)
+            guard !stopping.isEmpty else { return }
+            give(.stop(units: stopping), to: stopping)
+            for id in stopping { memory.assign(Assignment(worker: id, task: .felling, site: nil, building: nil, tick: view.tick)) }
+            return
+        }
+        guard powder < 300, wood >= 100, crafting.count < workshop.workers, workers.count >= 10 else { return }
+        let candidates = workers.filter { isFree($0) && !crafting.contains($0) }
+        let idle = candidates.filter { $0.activity == .idle }
+        let felling = candidates.filter { $0.activity == .gathering(.tree) }
+        var chosen: [EntityID] = []
+        for pool in [idle, felling] {
+            var pool = pool
+            while chosen.count + crafting.count < workshop.workers, let next = Turn.nearest(pool, to: place.position) {
+                pool.removeAll { $0.id == next.id }
+                chosen.append(next.id)
+            }
+        }
+        guard !chosen.isEmpty else { return }
+        give(.work(units: chosen, at: place.id), to: chosen)
+        for id in chosen {
+            memory.assign(Assignment(worker: id, task: .crafting, site: nil, building: place.id, tick: view.tick))
+        }
     }
 
     // MARK: Scholars and engineers

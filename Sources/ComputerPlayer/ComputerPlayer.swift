@@ -23,7 +23,9 @@ import GameCore
 ///   raid of three or more calls an attacking army home.
 /// - **Building.** Engineers build a house before the population limit stops
 ///   training, a town centre if none stands, from the Bronze age a barracks, a
-///   stock pen and a watch tower, and a storage pit beside resources gathered
+///   stock pen and a watch tower, from the Iron age farms, a stable, a siege
+///   workshop and a stone wall, from the Alchemy age an alchemist's workshop
+///   and a castle, and a storage pit beside resources gathered
 ///   far from any building that accepts them. A place is chosen with
 ///   `Placement.canPlace`, with a tile of open ground around each building.
 /// - **Training.** The town centre trains workers, engineers and scholars up to
@@ -44,7 +46,9 @@ import GameCore
 /// - **Work.** Idle workers go to the nearest suitable sites that they can
 ///   reach, in shares that follow the age and what is being saved for: food,
 ///   wood and stone, and from the Bronze age copper and tin in pairs, gold, and
-///   herding at a stock pen. Idle scholars study at the town centre; idle
+///   herding at a stock pen; in the Alchemy age up to three craftsmen make
+///   gunpowder at the workshop whilst it runs short and wood allows. Idle
+///   scholars study at the town centre; idle
 ///   engineers finish and repair buildings.
 ///
 /// Its state is Codable, random generator included, so that a saved match

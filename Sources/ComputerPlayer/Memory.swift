@@ -3,9 +3,10 @@
 
 import GameCore
 
-/// The work a worker is given: a kind of site, or herding at a stock pen.
+/// The work a worker is given: a kind of site, herding at a stock pen or a
+/// farm, or crafting gunpowder at an alchemist's workshop.
 enum Task: Int, Codable, Sendable, CaseIterable {
-    case hunting, felling, quarrying, copper, tin, gold, iron, herding
+    case hunting, felling, quarrying, copper, tin, gold, iron, herding, crafting
 
     init?(site kind: SiteKind) {
         switch kind {
@@ -20,7 +21,7 @@ enum Task: Int, Codable, Sendable, CaseIterable {
         }
     }
 
-    /// The kind of site worked; herding works at a stock pen instead.
+    /// The kind of site worked; herding and crafting work at a building instead.
     var site: SiteKind? {
         switch self {
         case .hunting: .prey
@@ -30,11 +31,11 @@ enum Task: Int, Codable, Sendable, CaseIterable {
         case .tin: .tin
         case .gold: .gold
         case .iron: .iron
-        case .herding: nil
+        case .herding, .crafting: nil
         }
     }
 
-    var resource: Resource { site?.yield ?? .food }
+    var resource: Resource { self == .crafting ? .gunpowder : site?.yield ?? .food }
 }
 
 /// An opponent's building the player has seen, remembered after it passes out of sight.
@@ -61,7 +62,7 @@ struct Assignment: Codable, Sendable, Hashable {
     var worker: EntityID
     var task: Task
     var site: SiteID?
-    /// The stock pen, for herding.
+    /// The stock pen or farm, for herding; the workshop, for crafting.
     var building: EntityID?
     var tick: Int
 }

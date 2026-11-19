@@ -193,6 +193,7 @@ final class Turn {
         research()
         campaign()
         scout()
+        employCraftsmen()
         employWorkers()
         employScholars()
         employEngineers()

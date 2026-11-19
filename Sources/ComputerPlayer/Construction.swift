@@ -15,7 +15,7 @@ extension Turn {
             + memory.plans.filter { $0.kind != .house }.count
         for (kind, anchor, rings) in wanted() {
             guard underway < tuning.builds else { return }
-            let builders = kind == .barracks || kind == .townCentre ? 2 : 1
+            let builders = kind == .barracks || kind == .townCentre ? 2 : kind == .castle ? 3 : 1
             if construct(kind, near: anchor, rings: rings, builders: builders) { underway += 1 }
         }
     }
@@ -67,6 +67,13 @@ extension Turn {
             if count(.stable) == 0 { out.append((.stable, Turn.toward(base, front, by: 7), 0...8)) }
             if count(.siegeWorkshop) == 0 && count(.stable) > 0 {
                 out.append((.siegeWorkshop, Turn.toward(base, front, by: 6), 0...8))
+            }
+        }
+        if view.age >= .alchemy {
+            // The alchemist's workshop first, for the gunpowder every Alchemy warfighter needs; then the castle.
+            if count(.alchemistsWorkshop) == 0 { out.append((.alchemistsWorkshop, homeSide(by: 6), 0...10)) }
+            if count(.castle) == 0 && count(.alchemistsWorkshop) > 0 {
+                out.append((.castle, Turn.toward(base, front, by: 7), 0...10))
             }
         }
         if count(.storagePit) < 4, let cluster = distantCluster() { out.append((.storagePit, cluster, 0...5)) }

@@ -130,3 +130,24 @@ func reportHowEqualsPlay() {
     #expect(reached, "no one reached the Iron age")
     #expect(host.outcome != nil, "no winner after \(host.tick) ticks")
 }
+
+/// Two hard computer players on a larger map, seed 3: one reaches the Alchemy
+/// age, makes gunpowder at its workshop and trains a warfighter of the age
+/// (plan step 4 of the Alchemy age). The match is followed until then.
+@Test func aHardComputerPlayerReachesTheAlchemyAgeAndMakesGunpowder() {
+    var host = Host(setup: computerMatch(seed: 3, size: 96, difficulties: [.hard, .hard]))
+    var done = false
+    while !done && host.outcome == nil && host.tick < Tick.seconds(60 * 60) {
+        host.advance()
+        guard host.tick % 200 == 0 else { continue }
+        for p in 0..<2 {
+            let v = host.peek(for: PlayerID(p))
+            guard v.age == .alchemy else { continue }
+            let alchemyKinds: [UnitKind] = [.knight, .musketeer, .cannon]
+            let trained = v.entities.contains { e in e.owner == PlayerID(p) && alchemyKinds.contains { e.kind == .unit($0) } }
+            let workshop = v.entities.contains { $0.owner == PlayerID(p) && $0.kind == .building(.alchemistsWorkshop) }
+            if trained && workshop { done = true }
+        }
+    }
+    #expect(done, "no one reached the Alchemy age, built a workshop and trained an Alchemy warfighter by \(host.tick / Tick.rate / 60) minutes")
+}
