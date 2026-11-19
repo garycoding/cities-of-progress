@@ -17,7 +17,7 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
     public private(set) var simulation: Simulation
     public private(set) var computers: [Computer]
     /// The player each computer controls, in the order of `computers`.
-    public let computerPlayers: [PlayerID]
+    public private(set) var computerPlayers: [PlayerID]
     public let catalogue: Catalogue
 
     /// Starts a match: one computer player for each player the setup gives to a computer.
@@ -78,4 +78,25 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
     }
 
     public func checksum() -> UInt64 { simulation.checksum() }
+
+    /// Whether a computer player now plays this player's seat.
+    public func isComputer(_ player: PlayerID) -> Bool { computerPlayers.contains(player) }
+
+    /// A computer player takes a person's seat (ruling of 2026-11-18: the host
+    /// may hand a dropped person's seat to the computer). It begins with fresh
+    /// memory, from a seed drawn from the match's state, so that it is the same
+    /// on every run of the same match.
+    public mutating func handToComputer(_ player: PlayerID, difficulty: Difficulty) {
+        guard !isComputer(player) else { return }
+        let seed = simulation.checksum() &* 0x9E37_79B9_7F4A_7C15 &+ UInt64(player.rawValue + 1)
+        computers.append(Computer(player: player, difficulty: difficulty, seed: seed))
+        computerPlayers.append(player)
+    }
+
+    /// The person takes their seat back from the computer player.
+    public mutating func takeBack(_ player: PlayerID) {
+        guard let k = computerPlayers.firstIndex(of: player) else { return }
+        computers.remove(at: k)
+        computerPlayers.remove(at: k)
+    }
 }
