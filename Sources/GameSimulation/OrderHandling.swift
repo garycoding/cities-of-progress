@@ -262,7 +262,7 @@ extension Simulation {
         return .accepted
     }
 
-    /// A founder builds a town centre, free, with `founderWorkers` workers beside
+    /// A founder builds a town centre, free, with `founderPeople` people beside
     /// it, and disappears (requirement 26).
     mutating func found(_ founder: EntityID, at origin: GridPoint, player: PlayerID) -> OrderResult {
         guard let f = index(of: founder), entities[f].owner == player, entities[f].isFounder else {
@@ -274,8 +274,8 @@ extension Simulation {
         removeDead()
         let centre = placeBuilding(.townCentre, owner: player, origin: origin, complete: true)
         record(.constructed(entities[centre].id, .townCentre), for: p)
-        for k in 0..<catalogue.founderWorkers {
-            spawnPerson(.worker, owner: player, at: freeTile(besideBuilding: centre, index: k).centre)
+        for k in 0..<catalogue.founderPeople {
+            spawnPerson(k == 0 ? .engineer : .worker, owner: player, at: freeTile(besideBuilding: centre, index: k).centre)
         }
         return .accepted
     }

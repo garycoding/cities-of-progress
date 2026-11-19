@@ -29,10 +29,11 @@ struct Canvas: Hashable, Sendable {
     }
 
     /// Every person of every pose: room for a club or a sling swung overhead and
-    /// for a stone thrown forward. A figure stands about 72 units tall, and the
-    /// game shows a person about 48 points tall, so a unit is 2/3 of a point:
-    /// 4/3 of a pixel at twice the size in points.
-    static let person = Canvas(minX: -36, minY: -102, width: 96, height: 108, pixelsPerUnit: 4.0 / 3.0)
+    /// for a stone thrown forward. A figure stands about 79 units from its feet
+    /// to the top of its hair, and the game shows a person about 48 points tall,
+    /// so a unit is 5/8 of a point: 1.25 pixels at twice the size in points
+    /// (120 by 135 pixels, and a person of about 49 points).
+    static let person = Canvas(minX: -36, minY: -102, width: 96, height: 108, pixelsPerUnit: 1.25)
 }
 
 /// A sprite's two pictures, before they are wrapped as a `SpriteImage`.
@@ -165,8 +166,10 @@ enum Grain {
                                          w: -strength * threshold / (1 - threshold))
             return (matrix.outputImage ?? noise).applyingFilter("CIColorClamp")
         }
-        let grain = speckles(fine, threshold: 0.62, strength: 0.38)
-            .composited(over: speckles(coarse, threshold: 0.56, strength: 0.30)).cropped(to: rect)
+        // As strong as the reference drawings' grain: a spread of about 5 in 255
+        // on a flat field, with the darkest speckles some 15 below it.
+        let grain = speckles(fine, threshold: 0.78, strength: 0.26)
+            .composited(over: speckles(coarse, threshold: 0.6, strength: 0.12)).cropped(to: rect)
         let context = CIContext(options: [.useSoftwareRenderer: true, .workingColorSpace: Raster.sRGB,
                                           .outputColorSpace: Raster.sRGB, .cacheIntermediates: false])
         return context.createCGImage(grain, from: rect, format: .RGBA8, colorSpace: Raster.sRGB)

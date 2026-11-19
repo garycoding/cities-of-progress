@@ -114,3 +114,17 @@ import Testing
         }
     }
 }
+
+/// A building drawn taller than its block is hit up to the top of its drawing,
+/// measured from its anchor, and no higher, even over its back corner.
+@Test func aTallBuildingIsHitUpToTheTopOfItsDrawingAndNoHigher() {
+    var view = Samples.bronzeAgeSkirmish()
+    view.entities.removeAll { if case .unit = $0.kind { true } else { false } }
+    let centre = view.entities.first { $0.kind == .building(.townCentre) && $0.owner == view.player }!
+    let g = geometry(centre.position.x, centre.position.y)
+    let anchor = g.scenePoint(for: centre.position)
+    let tall: (EntityView) -> Double? = { $0.id == centre.id ? 100 : nil }
+    // Over the anchor: hit below the top, missed above it.
+    #expect(MapHitTesting.entity(at: CGPoint(x: anchor.x, y: anchor.y + 95), in: view, geometry: g, drawnHeight: tall)?.id == centre.id)
+    #expect(MapHitTesting.entity(at: CGPoint(x: anchor.x, y: anchor.y + 105), in: view, geometry: g, drawnHeight: tall)?.id != centre.id)
+}

@@ -43,7 +43,7 @@ The rules a reader could take two ways are settled in the documentation of `Orde
 
 ## Time
 
-The simulation advances in ticks, `Tick.rate` (20) a second. Every duration in the catalogue is in ticks. The app steps the simulation 20 times a second, asks each computer player for orders a few times a second, and hands each human player's session a fresh view after each step.
+The simulation advances in ticks, `Tick.rate` (20) a second. Every duration in the catalogue is in ticks. The match is held by `MatchHost` (in `GameNetwork`), which the app and the match tests both drive: each tick it gives each computer player its own view four times a second, spread across the ticks, applies the orders, and steps the simulation. The app advances it 20 ticks a second from a timer, running at most five ticks in one frame after a stall, and hands the person's session a fresh view each frame. `MatchHost` is `Codable`, so a saved match holds the computer players as well as the simulation (requirement 23).
 
 ## Determinism
 
@@ -67,6 +67,7 @@ A building's footprint (`BuildingStats.footprint`) covers tiles from its origin 
 - **Size.** Pictures are drawn at twice their size in points, for Retina displays. A person stands about 48 points tall on a tile 64 points wide; a building covers its footprint's diamonds.
 - **Anchor.** `SpriteImage.anchor` is the point of the image placed on the entity's `EntityView.position`: for a person, between its feet; for a building, the centre of its footprint at ground level, which on screen is the centre of the footprint's diamond. It is a fraction of the image with (0, 0) at the bottom left.
 - **Team colour.** A sprite has a base image and, where it carries a civilization's colour, a mask: white where the colour goes. The drawing tints the mask with `TeamColour.of(civilization)` and lays it over the base, so that one picture serves every civilization.
+- **The batches.** Each batch of artwork supplies its own `SpriteSource`; `GameSprites` asks them in turn, and the drawing shows a placeholder for a key none answers. The drawing measures each building's height from its picture's topmost drawn pixel, for clicks and health bars.
 - **The look.** The artwork follows the Cartoon Modern style recorded in `design.md` and [`art-style.md`](art-style.md). It is written as SVG, drawn by macOS, with a grain added by Core Image ([`decisions.md`](decisions.md#verifications-2026-11-18)). The SVG is held in Swift source as string literals, not as package resources, so that the assembled app needs no resource bundle.
 
 ## Checks

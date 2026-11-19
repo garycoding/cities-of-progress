@@ -46,7 +46,7 @@ These come from the person for whom the game is made and are settled.
 23. A match can be saved and resumed later.
 24. The map is seen at an angle, as in the original: buildings have height and people stand upright. The drawing [`art/view-sample-1.png`](art/view-sample-1.png) shows the view chosen, on its right-hand side.
 25. The first version has no ships. Water appears only as terrain that cannot be crossed.
-26. A player all of whose people and buildings are destroyed, whilst an ally still lives, receives one person to control: a founder. The founder cannot attack. It can only build a new town centre, which comes with six workers, and it then disappears. The founder reappears whenever everything the player owns is again destroyed whilst an ally still lives.
+26. A player all of whose people and buildings are destroyed, whilst an ally still lives, receives one person to control: a founder. The founder cannot attack. It can only build a new town centre, which comes with six people (five workers and an engineer, so that a house can be built), and it then disappears. The founder reappears whenever everything the player owns is again destroyed whilst an ally still lives.
 27. A founder cannot be killed. A team whose players have only founders is defeated, and the match ends for it.
 28. A player may have engineers demolish one of the player's own buildings. Demolition takes half the building's construction time, and when the building comes down the player receives half its cost. Training or research under way there is cancelled and refunded in full. A demolished house lowers the population limit; nobody already living is lost, but no one is trained whilst the population exceeds the limit.
 
