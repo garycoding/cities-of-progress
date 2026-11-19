@@ -22,7 +22,7 @@ extension IronNewBuildingsPainter {
 
     private static let rangeBox = (x0: -1.36, y0: -1.36, x1: 1.36, y1: -0.3)
     private static let footing = 9.0
-    private static let eave = 28.0
+    private static let eave = 31.0
     /// The middles of the stalls' doors, in points along the front wall, and their width.
     private static let doors: [Double] = (0..<4).map { (Double($0) + 0.5) * (2.72 * 32) / 4 }
     private static let doorWidth = 12.0
@@ -47,7 +47,7 @@ extension IronNewBuildingsPainter {
     private mutating func stableRange() {
         typealias I = IronNewBuildingsInk
         let (x0, y0, x1, y1) = Self.rangeBox
-        let h0 = 1.5, f = Self.footing, eave = Self.eave, ridge = 46.0
+        let h0 = 1.5, f = Self.footing, eave = Self.eave, ridge = 49.0
         let length = (x1 - x0) * 32, depth = (y1 - y0) * 32
         shadow([iso(x1, y0, h0), iso(x1 + 0.3, y0 + 0.16, h0), iso(x1 + 0.3, y1 + 0.12, h0), iso(x1, y1, h0)])
         ashlar(x0, y0, x1, y1, h0, f, course: 3.75, stone: 8)
@@ -90,7 +90,7 @@ extension IronNewBuildingsPainter {
         // The horses looking out over the open doors.
         for k in [1, 3] {
             let x = x0 + Self.doors[k] / 32
-            horseHead(at: iso(x - 0.02, y1 + 0.02, h0 + 9.4), facing: k == 1 ? -1 : 1)
+            horseHead(at: iso(x - 0.04, y1 + 0.02, h0 + 9.2), facing: -1)
         }
         pennant(at: iso(x1 + 0.08, (y0 + y1) / 2, ridge - 1), height: 14, length: 15)
         yard()
@@ -142,7 +142,7 @@ extension IronNewBuildingsPainter {
     /// blaze, a dark mane, pricked ears, an eye and a nostril, and a halter.
     private mutating func horseHead(at q: P, facing f: Double) {
         typealias I = IronNewBuildingsInk
-        let s = 0.74
+        let s = 0.86
         func at(_ x: Double, _ y: Double) -> P { q + P(x * f * s, y * s) }
         // The far ear, then the neck, the head, the near ear.
         shape([at(0.4, -14.4), at(-0.2, -18.6), at(2, -15)], .colour(I.horseShade), width: 0.7)
@@ -237,8 +237,8 @@ extension IronNewBuildingsPainter {
     }
 
     /// A rick of hay at `p` on the screen: a round stack with a domed top,
-    /// lit on the left and shaded on the right, combed down its sides, with a
-    /// cap of thatch tied at the top.
+    /// lit on the left and shaded on the right, combed down its sides, with
+    /// wisps standing from its crown.
     private mutating func hayRick(at p: P) {
         typealias I = IronNewBuildingsInk
         let r = 12.0, h = 8.0
@@ -270,10 +270,13 @@ extension IronNewBuildingsPainter {
         }
         svg.path(combing, stroke: .colour(I.line), width: 0.45, opacity: 0.6)
         line(width: 0.9) { d in d = outline(P(0, 0)) }
-        line([p + P(-r + 0.6, -h + 2), p + P(-3, -h + 3.6), p + P(r - 0.6, -h + 2)], width: 0.7)
-        // The cap and its knot.
-        shape([p + P(-3, -h - 6.4), p + P(3, -h - 6.4), p + P(1.4, -h - 9.4), p + P(-1.4, -h - 9.4)], .colour(I.strawShade), width: 0.7)
-        svg.circle(p + P(0, -h - 10), 1, fill: .colour(I.timberDark), stroke: .colour(I.line), width: 0.5)
+        // Wisps of hay standing from its crown.
+        var wisps = PathData()
+        for (x, lean) in [(-2.4, -1.2), (-0.6, -0.4), (1.2, 0.6), (2.8, 1.4)] {
+            let foot = p + P(x, -h - 6.2 + abs(x) * 0.3)
+            wisps.move(foot); wisps.quad(foot + P(lean * 0.4, -1.6), foot + P(lean, -3))
+        }
+        svg.path(wisps, stroke: .colour(I.strawShade), width: 0.8)
     }
 
     /// The stable being built: its footing of dressed stone laid, with the

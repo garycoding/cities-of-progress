@@ -42,10 +42,19 @@ enum IronNewBuildingsDeposit {
         band(&svg, [P(-21.4, 1.2), P(-12, -0.4), P(-3, 0.4), P(5.8, -1)], width: 2.2)
         band(&svg, [P(6, -1), P(12.6, -1.8), P(19.4, -3.6)], width: 2)
         band(&svg, [P(-17, 6.4), P(-8, 5.6), P(4.6, 6.4)], width: 1.6)
-        band(&svg, [P(-14, -13.4), P(-6, -14.6), P(4, -13.8)], width: 1.6, colour: oreLight)
-        // Rust running down from the bands.
-        for (x, y, length) in [(-15.0, -4.4, 4.0), (-4.0, -4.8, 3.2), (-9.0, 1.0, 3.4), (11.0, -7.6, 4.2), (15.0, -2.2, 3.0)] {
-            svg.line([P(x, y + 1.4), P(x - 0.3, y + 1.4 + length)], stroke: .colour(rust), width: 1.1, opacity: 0.9)
+        // Flecks of ore showing on the crag's top.
+        for (x, y, size) in [(-9.0, -19.0, 1.0), (-2.0, -22.4, 0.8), (7.0, -18.6, 0.9), (-12.4, -15.2, 0.7)] {
+            let fleck = [P(-1.6, 0.4), P(-0.8, -1), P(1.4, -0.8), P(1.6, 0.6), P(0, 1)].map { P(x, y) + $0 * size }
+            svg.polygon(fleck, fill: .colour(ore), stroke: line, width: 0.5)
+        }
+        // Rust stains below the bands, where water has run over the ore.
+        for (x, y, length) in [(-15.0, -3.4, 3.4), (-4.0, -3.8, 2.6), (-9.0, 2.2, 2.8), (11.0, -6.6, 3.4), (15.4, -1.4, 2.4)] {
+            var stain = PathData()
+            stain.move(P(x - 1.1, y))
+            stain.quad(P(x - 0.6, y + length * 0.7), P(x, y + length))
+            stain.quad(P(x + 0.6, y + length * 0.7), P(x + 1.1, y))
+            stain.close()
+            svg.path(stain, fill: .colour(rust), opacity: 0.6)
         }
         svg.polygon(outline, fill: .none, stroke: line, width: 1.25)
         svg.line([P(-16, -13.6), P(-8, -12), P(5, -12), P(17, -14)], stroke: line, width: 0.85)

@@ -16,8 +16,8 @@ import Foundation
 extension IronNewBuildingsPainter {
     mutating func stoneWall(complete: Bool) {
         if complete {
-            wallBody(height: 34, finished: true)
-            for (x, y) in Self.merlonPlaces { merlon(x, y, on: 34) }
+            wallBody(height: 38, finished: true)
+            for (x, y) in Self.merlonPlaces { merlon(x, y, on: 38) }
         } else {
             wallBody(height: 13, finished: false)
             wallRising()
@@ -25,7 +25,7 @@ extension IronNewBuildingsPainter {
     }
 
     /// The tile's merlons, the farthest first.
-    private static let merlonPlaces: [(Double, Double)] = [(-0.25, -0.25), (0.25, -0.25), (-0.25, 0.25), (0.25, 0.25)]
+    private static let merlonPlaces: [(Double, Double)] = [(0, 0)]
 
     /// The wall's body, filling the tile from the ground to `height`: dressed
     /// stone in courses on a darker footing, and, when `finished`, a coping and
@@ -35,7 +35,8 @@ extension IronNewBuildingsPainter {
         let e = 0.5
         colour([iso(-e, e, 0), iso(e, e, 0), iso(e, e, h), iso(-e, e, h)], .colour(I.stone))
         colour([iso(e, e, 0), iso(e, -e, 0), iso(e, -e, h), iso(e, e, h)], .colour(I.stoneShade))
-        colour(level(-e, -e, e, e, h), .colour(I.stoneTop))
+        // The walkway along the top, worn darker than the faces of the coping.
+        colour(level(-e, -e, e, e, h), .colour(finished ? I.walkway : I.stoneTop))
         let brick = 32.0 / 3
         for side in [IronNewBuildingsSide.left, .right] {
             wall(side, from: side == .left ? -e : e, e, at: 0) { p in
@@ -65,12 +66,22 @@ extension IronNewBuildingsPainter {
     /// A merlon standing on the wall's top at (x, y): a block of dressed stone with a capping.
     private mutating func merlon(_ x: Double, _ y: Double, on h: Double) {
         typealias I = IronNewBuildingsInk
-        let s = 0.13
-        block(x - s, y - s, x + s, y + s, h, h + 7, top: .colour(I.stoneTop), left: .colour(I.stone), right: .colour(I.stoneShade),
-              width: 0.9)
-        line([iso(x - s, y + s, h + 3.5), iso(x + s, y + s, h + 3.5), iso(x + s, y - s, h + 3.5)], width: 0.45, opacity: 0.6)
-        block(x - s - 0.02, y - s - 0.02, x + s + 0.02, y + s + 0.02, h + 7, h + 8.6, top: .colour(I.plasterTop),
-              left: .colour(I.stoneTop), right: .colour(I.stone), width: 0.8)
+        let s = 0.27, rise = 12.0
+        shadow([iso(x + s, y - s, h), iso(x + s + 0.16, y - s + 0.06, h), iso(x + s + 0.16, y + s + 0.06, h), iso(x + s, y + s, h)],
+               opacity: 0.16)
+        block(x - s, y - s, x + s, y + s, h, h + rise, top: nil, left: .colour(I.stone), right: .colour(I.stoneShade), width: 0.9)
+        wall(.left, from: x - s, y + s, at: h) { p in p.courses(0, 2 * s * 32, 0, rise, course: 3.7, brick: 32.0 / 3, phase: -8 / 3) }
+        wall(.right, from: x + s, y + s, at: h) { p in p.courses(0, 2 * s * 32, 0, rise, course: 3.7, brick: 32.0 / 3, phase: -8 / 3) }
+        // A cap cut to a low point, lit on its left.
+        let apex = iso(x, y, h + rise + 2.6)
+        let (back, right, front, left) = (iso(x - s, y - s, h + rise), iso(x + s, y - s, h + rise), iso(x + s, y + s, h + rise),
+                                          iso(x - s, y + s, h + rise))
+        colour([left, front, apex], .colour(I.stoneTop))
+        colour([front, right, apex], .colour(I.stone))
+        colour([back, left, apex], .colour(I.plasterTop))
+        line([back, left, front, right, back], closed: true, width: 0.8)
+        line([left, apex, right], width: 0.7)
+        line([front, apex], width: 0.6)
     }
 
     /// The wall being built: the next course begun along its back, a stone

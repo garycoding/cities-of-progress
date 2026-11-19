@@ -23,6 +23,8 @@ enum IronNewBuildingsInk {
     static let stone = "#b8b0a0"
     static let stoneShade = "#948b7b"
     static let stoneDark = "#776f62"
+    /// The worn walkway along the top of a wall.
+    static let walkway = "#a39a89"
     /// Fired roof tile, the legion red.
     static let tile = "#c8402f"
     static let tileTop = "#d65a47"
@@ -49,8 +51,8 @@ enum IronNewBuildingsInk {
     static let straw = "#d4b468"
     static let strawShade = "#a98a42"
     /// A horse's chestnut coat and dark mane.
-    static let horse = "#8f5434"
-    static let horseShade = "#6e3e25"
+    static let horse = "#a9643a"
+    static let horseShade = "#7c4528"
     /// A doorway's dark.
     static let dark = "#3d3029"
 }

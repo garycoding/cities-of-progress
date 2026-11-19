@@ -200,10 +200,11 @@ struct IronNewBuildingsRenders {
             ("Stable", keys(.stable), [("Bronze stock pen", SpriteKey(.building(.stockPen, .bronze), .complete))]),
             ("Siege workshop", keys(.siegeWorkshop), [("Bronze barracks", SpriteKey(.building(.barracks, .bronze), .complete))]),
             ("Stone wall", keys(.stoneWall), [("Bronze palisade", SpriteKey(.building(.palisade, .bronze), .complete))]),
+            ("Stone wall in rows, joining", [nil, nil, nil, nil], []),
             ("Iron deposit", [SpriteKey(.site(.iron), .complete), nil, nil, nil],
              [("stone, copper, tin, gold", SpriteKey(.site(.stone), .complete))]),
         ]
-        let width = Int(left * 2 + column * 5), height = Int(top + row * Double(rows.count) + 40)
+        let width = Int(left * 2 + column * 5), height = Int(top + row * Double(rows.count) + 120)
         let context = Raster.bitmap(width: width, height: height)!
         context.draw(Preview.ground(width: width, height: height, tile: 128), in: CGRect(x: 0, y: 0, width: width, height: height))
         Preview.label("The Iron age's new buildings and the iron deposit, at game size, in Sumer's and Egypt's colours", in: context,
@@ -235,13 +236,18 @@ struct IronNewBuildingsRenders {
                 }
                 Preview.label(label, in: context, at: CGPoint(x: x - column / 2 + 10, y: groundLine - 120), size: 16)
             }
-            if name == "Stone wall" {
+            if name.hasPrefix("Stone wall in rows") {
                 // Rows of wall, along x and along y, to show the tiles joining.
                 guard let sprite = source.sprite(SpriteKey(.building(.stoneWall, .iron), .complete)) else { continue }
                 let image = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colours[1])
+                // Along x, running down to the right, and along y, running down to the left: the farthest tile first.
                 for k in 0..<4 {
-                    Preview.place(image, anchor: sprite.anchor, at: CGPoint(x: left + 1.25 * column + Double(k) * 64,
-                                                                            y: groundLine + 120 - Double(k) * 32), in: context)
+                    Preview.place(image, anchor: sprite.anchor, at: CGPoint(x: left + 0.6 * column + Double(k) * 64,
+                                                                            y: groundLine + 100 - Double(k) * 32), in: context)
+                }
+                for k in 0..<4 {
+                    Preview.place(image, anchor: sprite.anchor, at: CGPoint(x: left + 2.6 * column - Double(k) * 64,
+                                                                            y: groundLine + 100 - Double(k) * 32), in: context)
                 }
             }
         }
@@ -255,15 +261,15 @@ struct IronNewBuildingsRenders {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let width = 1800, height = 1100
         let context = Raster.bitmap(width: width, height: height)!
-        let origin = CGPoint(x: 900, y: -220)
+        let origin = CGPoint(x: 900, y: -200)
         /// The screen point of a place on the map, in pixels with the origin at the bottom left.
         func screen(_ x: Double, _ y: Double) -> CGPoint {
             CGPoint(x: origin.x + (x - y) * 64, y: Double(height) - (origin.y + (x + y) * 32))
         }
-        for i in -4..<26 {
-            for j in -4..<26 {
-                let terrain: Terrain = (i + 2 * j) % 11 == 0 ? .dirt : .grass
-                guard let tile = others.sprite(SpriteKey(.terrain(terrain, variant: (i * 7 + j * 3 & 0xff) % 4), .complete)) else { continue }
+        for i in -8..<36 {
+            for j in -8..<36 {
+                let terrain: Terrain = (i + 2 * j + 40) % 11 == 0 ? .dirt : .grass
+                guard let tile = others.sprite(SpriteKey(.terrain(terrain, variant: (i * 7 + j * 3 + 400) % 4), .complete)) else { continue }
                 let p = screen(Double(i) + 0.5, Double(j) + 0.5)
                 if p.x < -100 || p.x > Double(width) + 100 || p.y < -100 || p.y > Double(height) + 100 { continue }
                 Preview.place(tile.base, anchor: tile.anchor, at: p, in: context)
@@ -271,37 +277,38 @@ struct IronNewBuildingsRenders {
         }
         // What stands on the map: the key, its centre on the map, and its civilization.
         var things: [(SpriteKey, Double, Double, Civilization?)] = [
-            (SpriteKey(.building(.townCentre, .bronze), .complete), 9.5, 8.5, .sumer),
-            (SpriteKey(.building(.house, .bronze), .complete), 13, 7, .sumer),
+            (SpriteKey(.building(.townCentre, .bronze), .complete), 9.5, 9.5, .sumer),
+            (SpriteKey(.building(.house, .bronze), .complete), 12, 7, .sumer),
             (SpriteKey(.building(.house, .bronze), .complete), 7, 12, .sumer),
-            (SpriteKey(.building(.farm, .iron), .complete), 5.5, 6.5, .sumer),
-            (SpriteKey(.building(.farm, .iron), .complete), 5.5, 9.5, .sumer),
-            (SpriteKey(.building(.farm, .iron), .underConstruction), 5.5, 12.5, .sumer),
+            (SpriteKey(.building(.farm, .iron), .underConstruction), 4.5, 5.5, .sumer),
+            (SpriteKey(.building(.farm, .iron), .complete), 4.5, 8.5, .sumer),
+            (SpriteKey(.building(.farm, .iron), .complete), 4.5, 11.5, .sumer),
             (SpriteKey(.building(.stable, .iron), .complete), 13.5, 10.5, .sumer),
-            (SpriteKey(.building(.siegeWorkshop, .iron), .complete), 10.5, 13.5, .sumer),
-            (SpriteKey(.building(.siegeWorkshop, .iron), .underConstruction), 14.5, 14.5, .sumer),
-            (SpriteKey(.site(.iron), .complete), 16.5, 6.5, nil),
-            (SpriteKey(.site(.iron), .complete), 17.5, 7.5, nil),
-            (SpriteKey(.site(.stone), .complete), 17.5, 5.5, nil),
-            (SpriteKey(.site(.tree), .complete), 3.5, 3.5, nil),
-            (SpriteKey(.site(.tree), .complete), 4.5, 2.5, nil),
-            (SpriteKey(.site(.tree), .complete), 2.5, 15.5, nil),
-            (SpriteKey(.unit(.worker, .bronze), .working), 7.6, 7.2, .sumer),
-            (SpriteKey(.unit(.engineer, .bronze), .working), 13.2, 15.2, .sumer),
-            (SpriteKey(.unit(.spearman, .bronze), .standing), 12.2, 12.4, .sumer),
-            (SpriteKey(.unit(.worker, .bronze), .walking), 11.8, 9.8, .sumer),
+            (SpriteKey(.building(.siegeWorkshop, .iron), .complete), 9.5, 14.5, .sumer),
+            (SpriteKey(.building(.siegeWorkshop, .iron), .underConstruction), 13.5, 14.5, .sumer),
+            (SpriteKey(.building(.stable, .iron), .complete), 21.5, 12.5, .egypt),
+            (SpriteKey(.site(.iron), .complete), 19.5, 6.5, nil),
+            (SpriteKey(.site(.iron), .complete), 20.5, 7.5, nil),
+            (SpriteKey(.site(.iron), .complete), 20.5, 5.5, nil),
+            (SpriteKey(.site(.stone), .complete), 19.5, 3.5, nil),
+            (SpriteKey(.site(.tree), .complete), 1.5, 3.5, nil),
+            (SpriteKey(.site(.tree), .complete), 2.5, 1.5, nil),
+            (SpriteKey(.site(.tree), .complete), 1.5, 15.5, nil),
+            (SpriteKey(.site(.tree), .complete), 7.5, 2.5, nil),
+            (SpriteKey(.unit(.worker, .bronze), .working), 6.9, 9.4, .sumer),
+            (SpriteKey(.unit(.engineer, .bronze), .working), 11.6, 15.8, .sumer),
+            (SpriteKey(.unit(.spearman, .bronze), .standing), 15.6, 9.6, .sumer),
+            (SpriteKey(.unit(.worker, .bronze), .walking), 11.4, 11.6, .sumer),
         ]
-        // A row of stone wall along the town's east, with a gap for a gate, one tile still being built.
-        for y in 3..<17 where y != 9 && y != 10 {
-            things.append((SpriteKey(.building(.stoneWall, .iron), y == 15 ? .underConstruction : .complete), 19.5, Double(y) + 0.5, .sumer))
+        // The town's wall along its east and south, with a gate in each, one tile still being built.
+        for y in 3..<18 where y != 9 && y != 10 {
+            things.append((SpriteKey(.building(.stoneWall, .iron), y == 15 ? .underConstruction : .complete), 17.5, Double(y) + 0.5, .sumer))
         }
-        for x in 3..<20 where x != 11 {
+        for x in 2..<17 where x != 9 && x != 10 {
             things.append((SpriteKey(.building(.stoneWall, .iron), .complete), Double(x) + 0.5, 17.5, .sumer))
         }
-        // A rival's stable beyond the wall.
-        things.append((SpriteKey(.building(.stable, .iron), .complete), 22.5, 6.5, .egypt))
-        things.append((SpriteKey(.building(.stoneWall, .iron), .complete), 21.5, 9.5, .egypt))
-        things.append((SpriteKey(.building(.stoneWall, .iron), .complete), 21.5, 10.5, .egypt))
+        // A short run of a rival's wall.
+        for x in 21..<25 { things.append((SpriteKey(.building(.stoneWall, .iron), .complete), Double(x) + 0.5, 15.5, .egypt)) }
         for (key, x, y, civilization) in things.sorted(by: { ($0.1 + $0.2, $0.1) < ($1.1 + $1.2, $1.1) }) {
             guard let sprite = source.sprite(key) ?? others.sprite(key) else { continue }
             let image = civilization.map { Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: .of($0)) } ?? sprite.base

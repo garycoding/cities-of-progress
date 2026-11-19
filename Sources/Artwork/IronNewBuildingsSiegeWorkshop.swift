@@ -20,11 +20,12 @@ extension IronNewBuildingsPainter {
         if complete { shed() } else { shedRising() }
     }
 
-    private static let shedBox = (x0: -1.36, y0: -1.36, x1: 0.58, y1: 0.3)
-    private static let shedEave = 36.0
-    private static let shedRidge = 57.0
-    private static let postsAlongX: [Double] = [-1.32, -0.39, 0.54]
-    private static let postsAlongY: [Double] = [-1.32, -0.51, 0.26]
+    private static let shedBox = (x0: -1.36, y0: -1.36, x1: 0.62, y1: -0.05)
+    private static let shedEave = 38.0
+    private static let shedRidge = 54.0
+    /// The posts along the back; the front is open between its two corner posts.
+    private static let postsAlongX: [Double] = [-1.32, -0.37, 0.58]
+    private static let postsAlongY: [Double] = [-1.32, -0.09]
 
     /// Chips and shavings of timber over the yard, at fixed places.
     private mutating func chippings(on h: Double) {
@@ -43,11 +44,10 @@ extension IronNewBuildingsPainter {
         let (x0, y0, x1, y1) = Self.shedBox
         let h0 = 1.5, eave = Self.shedEave
         // The floor under the roof lies in its shade.
-        shadow(level(x0, y0, x1 + 0.42, y1 + 0.2, h0), opacity: 0.16)
+        shadow(level(x0, y0, x1 + 0.3, y1 + 0.22, h0), opacity: 0.16)
         backFrame()
         beamsStacked(-1.2, -1.2, on: h0)
-        catapultFrame()
-        workbench(at: (-1.05, -0.05))
+        beamsStacked(-0.3, -1.2, on: h0)
         frontFrame()
         // The banner of the owner's colour, hung from the front plate at its left.
         wall(.left, from: x0, y1, at: h0) { p in p.hanging(12, top: eave - 2.6, width: 9, length: 17) }
@@ -59,12 +59,15 @@ extension IronNewBuildingsPainter {
             // A round opening for light in the gable.
             p.svg.circle(p.uv(w / 2, rise * 0.4), 2.6, fill: .colour(I.dark), stroke: .colour(I.line), width: 0.7)
         }
+        // The catapult stands half under the roof, at its open front.
+        catapultFrame()
+        workbench(at: (0.62, 0.98))
         catapultArm()
         crane(complete: true)
     }
 
     /// The posts along the back and at the left end, with their plates and braces.
-    private mutating func backFrame(rafters: Bool = false) {
+    private mutating func backFrame() {
         typealias I = IronNewBuildingsInk
         let (x0, y0, x1, _) = Self.shedBox
         let h0 = 1.5, eave = Self.shedEave
@@ -73,8 +76,8 @@ extension IronNewBuildingsPainter {
         pole(iso(x0, Self.postsAlongY[0], eave), iso(x1, Self.postsAlongY[0], eave), width: 2.4, colour: I.timber)
         pole(iso(Self.postsAlongX[0], y0, eave), iso(Self.postsAlongX[0], Self.shedBox.y1, eave), width: 2.4, colour: I.timber)
         for (a, b) in zip(Self.postsAlongX, Self.postsAlongX.dropFirst()) {
-            brace(from: (a, Self.postsAlongY[0]), toward: (b, Self.postsAlongY[0]), eave: eave)
-            brace(from: (b, Self.postsAlongY[0]), toward: (a, Self.postsAlongY[0]), eave: eave)
+            brace(from: (a, Self.postsAlongY[0]), toward: (a + 0.26, Self.postsAlongY[0]), eave: eave)
+            brace(from: (b, Self.postsAlongY[0]), toward: (b - 0.26, Self.postsAlongY[0]), eave: eave)
         }
     }
 
@@ -83,15 +86,13 @@ extension IronNewBuildingsPainter {
         typealias I = IronNewBuildingsInk
         let (x0, y0, x1, y1) = Self.shedBox
         let h0 = 1.5, eave = Self.shedEave
-        let front = Self.postsAlongY.last!, end = Self.postsAlongX.last!
-        for y in Self.postsAlongY.dropFirst().dropLast() { post(end, y, from: h0, to: eave) }
-        for x in Self.postsAlongX { post(x, front, from: h0, to: eave) }
+        let front = Self.postsAlongY.last!, (first, end) = (Self.postsAlongX.first!, Self.postsAlongX.last!)
+        post(end, front, from: h0, to: eave)
         pole(iso(end, y0, eave), iso(end, y1, eave), width: 2.4, colour: I.timber)
         pole(iso(x0, front, eave), iso(x1, front, eave), width: 2.4, colour: I.timber)
-        for (a, b) in zip(Self.postsAlongX, Self.postsAlongX.dropFirst()) {
-            brace(from: (a, front), toward: (b, front), eave: eave)
-            brace(from: (b, front), toward: (a, front), eave: eave)
-        }
+        brace(from: (first, front), toward: (first + 0.3, front), eave: eave)
+        brace(from: (end, front), toward: (end - 0.3, front), eave: eave)
+        brace(from: (end, front), toward: (end, front - 0.3), eave: eave)
     }
 
     /// A squared post of timber at (x, y), from `h0` to `h1`, on a pad of stone.
@@ -106,8 +107,7 @@ extension IronNewBuildingsPainter {
     /// A brace from the head of the post at `a` toward the post at `b`, both on the map.
     private mutating func brace(from a: (Double, Double), toward b: (Double, Double), eave: Double) {
         typealias I = IronNewBuildingsInk
-        let t = 0.26
-        let foot = iso(a.0, a.1, eave - 10), head = iso(a.0 + (b.0 - a.0) * t, a.1 + (b.1 - a.1) * t, eave - 1)
+        let foot = iso(a.0, a.1, eave - 10), head = iso(b.0, b.1, eave - 1)
         pole(foot, head, width: 1.4, colour: I.timber)
     }
 
@@ -123,7 +123,7 @@ extension IronNewBuildingsPainter {
     /// uprights with their crossbar, braced back to the frame.
     private mutating func catapultFrame() {
         typealias I = IronNewBuildingsInk
-        let h0 = 1.5, (ax, bx) = (-1.0, 0.2), (fy, ny) = (-0.95, -0.42), w = 4.0
+        let h0 = 1.5, (ax, bx) = (-1.0, 0.2), (fy, ny) = (-0.4, 0.13), w = 4.0
         let up = h0 + w
         // The far sill, the cross pieces, the near sill.
         beam(ax, fy, bx, fy, on: up, size: 3.2)
@@ -134,11 +134,11 @@ extension IronNewBuildingsPainter {
         }
         // The uprights and the crossbar where the arm will strike.
         let ux = -0.25
-        for y in [fy, ny] { pole(iso(ux, y, up + 3), iso(ux, y, up + 24), width: 2.4, colour: I.timber) }
-        for y in [fy, ny] { pole(iso(ux + 0.35, y, up + 3), iso(ux + 0.02, y, up + 18), width: 1.6, colour: I.timber) }
-        pole(iso(ux, fy - 0.04, up + 22), iso(ux, ny + 0.04, up + 22), width: 2.6, colour: I.timberLight)
+        for y in [fy, ny] { pole(iso(ux, y, up + 3), iso(ux, y, up + 20), width: 2.4, colour: I.timber) }
+        for y in [fy, ny] { pole(iso(ux + 0.35, y, up + 3), iso(ux + 0.02, y, up + 15), width: 1.6, colour: I.timber) }
+        pole(iso(ux, fy - 0.04, up + 18), iso(ux, ny + 0.04, up + 18), width: 2.6, colour: I.timberLight)
         // The padding of the crossbar, bound in rope.
-        let pad = iso(ux, (fy + ny) / 2, up + 22)
+        let pad = iso(ux, (fy + ny) / 2, up + 18)
         shape([pad + P(-3.4, -3), pad + P(3.4, 0.4), pad + P(3.4, 2.6), pad + P(-3.4, -0.8)], .colour(I.straw), width: 0.7)
         // The skein of rope at the back of the frame, its windlass not yet fitted.
         let skein = iso(ax + 0.2, (fy + ny) / 2, up + 3)
@@ -221,14 +221,14 @@ extension IronNewBuildingsPainter {
     /// is being built), the owner's pennant at its head.
     private mutating func crane(complete: Bool) {
         typealias I = IronNewBuildingsInk
-        let h0 = 1.5, apex = iso(0.98, -0.36, 74)
-        let feet = [(1.22, -0.92), (1.22, 0.2)]
+        let h0 = 1.5, (cx, cy) = (1.05, -0.72), apex = iso(cx, cy, 66)
+        let feet = [(1.3, -1.25), (1.3, -0.2)]
         // The stay to its stake.
-        svg.line([apex, iso(1.44, -0.36, h0)], stroke: .colour(I.line), width: 0.6)
-        pole(iso(1.44, -0.36, h0), iso(1.44, -0.36, h0 + 5), width: 1.2, colour: I.timberDark)
+        svg.line([apex, iso(1.46, cy, h0)], stroke: .colour(I.line), width: 0.6)
+        pole(iso(1.46, cy, h0), iso(1.46, cy, h0 + 5), width: 1.2, colour: I.timberDark)
         pole(iso(feet[0].0, feet[0].1, h0), apex, width: 2.2, colour: I.timber)
         // The windlass between the legs.
-        let drum = (iso(1.22, -0.8, h0 + 7), iso(1.22, 0.08, h0 + 7))
+        let drum = (iso(1.3, -1.13, h0 + 7), iso(1.3, -0.32, h0 + 7))
         pole(drum.0, drum.1, width: 3.4, colour: I.timberLight)
         for t in [0.35, 0.45, 0.55] {
             let m = drum.0 + (drum.1 - drum.0) * t
@@ -237,17 +237,17 @@ extension IronNewBuildingsPainter {
         let crank = drum.1
         line([crank, crank + P(2.4, 4), crank + P(4.6, 3)], width: 1.1)
         // The rope from the windlass up to the head, and down to the load.
-        let hook = iso(0.98, -0.36, 30)
+        let hook = iso(cx, cy, 30)
         svg.line([drum.0 + (drum.1 - drum.0) * 0.45, apex], stroke: .colour(I.line), width: 0.6)
         svg.line([apex, hook], stroke: .colour(I.line), width: 0.7)
         // A pulley at the head.
         svg.circle(apex + P(0, 2.4), 1.8, fill: .colour(I.timberDark), stroke: .colour(I.line), width: 0.6)
         if complete {
             // A beam slung from the hook, along y.
-            let a = iso(0.98, -0.82, 22), b = iso(0.98, 0.1, 22)
+            let a = iso(cx, cy - 0.42, 22), b = iso(cx, cy + 0.42, 22)
             svg.line([hook, a + P(0, -3.6)], stroke: .colour(I.line), width: 0.6)
             svg.line([hook, b + P(0, -3.6)], stroke: .colour(I.line), width: 0.6)
-            beam(0.98, -0.82, 0.98, 0.1, on: 22, size: 3.6)
+            beam(cx, cy - 0.42, cx, cy + 0.42, on: 22, size: 3.6)
         } else {
             // A rafter on the hook, hanging nearly upright.
             pole(hook + P(-1, 2), hook + P(4, 22), width: 2.2, colour: I.timber)
@@ -275,8 +275,7 @@ extension IronNewBuildingsPainter {
         beamsStacked(-0.9, -0.3, on: h0)
         // The posts at the front, all set, their plate only begun.
         let front = Self.postsAlongY.last!, end = Self.postsAlongX.last!
-        for y in Self.postsAlongY.dropFirst().dropLast() { post(end, y, from: h0, to: eave) }
-        for x in Self.postsAlongX { post(x, front, from: h0, to: eave) }
+        post(end, front, from: h0, to: eave)
         pole(iso(Self.postsAlongX[0], front, eave), iso(Self.postsAlongX[1], front, eave), width: 2.4, colour: I.timber)
         roofTiles(-1.0, 0.65, -0.45, 0.95, from: h0, courses: 4)
         roofTiles(-0.3, 0.7, 0.1, 0.95, from: h0, courses: 2)
