@@ -102,6 +102,7 @@ enum Task: Codable, Sendable, Hashable {
     /// same kind nearby once this one is exhausted.
     case gather(site: SiteID, kind: SiteKind, tile: GridPoint)
     case work(EntityID)
+    case demolish(EntityID)
     case attack(EntityID)
 }
 
@@ -163,6 +164,8 @@ struct Entity: Codable, Sendable, Hashable {
     var complete = true
     /// Health owed by construction or repair, in units of 1 / buildTime.
     var healthCredit = 0
+    /// Engineer-ticks of demolition done.
+    var demolished = 0
     var queue: [UnitKind] = []
     var trainProgress = 0
     var research: Improvement?
