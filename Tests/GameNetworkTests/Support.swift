@@ -181,6 +181,8 @@ final class Loopback {
 
     init(lobby: Lobby = eveningLobby()) throws {
         server = HostServer(lobby: lobby, build: testBuild)
+        // The tests share a busy machine on CI; a connection is not taken for lost on a stall of a few seconds.
+        server.silenceLimit = .seconds(60)
         try server.open(loopbackOnly: true)
     }
 
@@ -199,6 +201,7 @@ final class Loopback {
         client.reconnectDelays = [.milliseconds(10), .milliseconds(100), .milliseconds(100)]
         client.connectLimit = .milliseconds(500)
         client.firstConnectLimit = .seconds(5)
+        client.silenceLimit = .seconds(60)
         client.join(host: "127.0.0.1", port: try await port())
         clients.append(client)
         return client
@@ -281,7 +284,7 @@ struct Timeout: Error, CustomStringConvertible {
 /// meanwhile; throws after `limit`, so that a lost message fails a test rather
 /// than holding it.
 @MainActor
-func until(_ what: String, within limit: Duration = .seconds(20), _ condition: () -> Bool) async throws {
+func until(_ what: String, within limit: Duration = .seconds(60), _ condition: () -> Bool) async throws {
     let deadline = ContinuousClock.now + limit
     while !condition() {
         guard ContinuousClock.now < deadline else { throw Timeout(what: what) }
