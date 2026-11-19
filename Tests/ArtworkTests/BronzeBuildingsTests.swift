@@ -30,6 +30,22 @@ import Testing
         #expect(supplied == Set(Self.batch))
     }
 
+    /// A building takes the look of its owner's age: once its owner is in the
+    /// Bronze age, every building, the Stone age's included, is drawn from here.
+    @Test func everyBuildingOfABronzeAgeOwnerIsSupplied() {
+        for stats in Catalogue.standard.buildings {
+            let entity = EntityView(id: EntityID(1), owner: PlayerID(0), kind: .building(stats.kind), position: MapPosition(x: 5, y: 5),
+                                    tile: GridPoint(4, 4), facing: .right, health: stats.health, maxHealth: stats.health,
+                                    activity: .idle)
+            let subject = SpriteSubject.of(entity, ownerAge: .bronze)
+            #expect(Self.source.sprite(SpriteKey(subject, .complete)) != nil, "\(stats.kind)")
+            #expect(Self.source.sprite(SpriteKey(subject, .underConstruction)) != nil, "\(stats.kind)")
+            // In the Stone age only the buildings that the Bronze age brings take this look.
+            let early = Self.source.sprite(SpriteKey(SpriteSubject.of(entity, ownerAge: .stone), .complete))
+            #expect((early != nil) == (stats.age == .bronze), "\(stats.kind)")
+        }
+    }
+
     @Test func everySpriteCarriesTeamColour() throws {
         for key in Self.batch {
             let sprite = try #require(Self.source.sprite(key), "\(key)")
@@ -57,6 +73,9 @@ import Testing
             // Two pixels a point: a tile's diamond is 128 by 64 pixels.
             let halfWidth = Double(footprint.x + footprint.y) * 32, halfHeight = Double(footprint.x + footprint.y) * 16
             let drawn = try #require(pixels.bounds(alphaAbove: 128), "\(key) is empty")
+            // Nothing is cut off by the edges of the picture.
+            #expect(drawn.minY > 0 && drawn.minX > 0 && drawn.maxX < pixels.width - 1 && drawn.maxY < pixels.height - 1,
+                    "\(key) reaches the edge of its picture")
             let tolerance = 5.0
             #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
             #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")

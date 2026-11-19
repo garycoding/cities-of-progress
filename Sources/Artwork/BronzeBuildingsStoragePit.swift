@@ -85,11 +85,12 @@ extension BronzeBuildingsPainter {
         }
     }
 
-    /// The store being dug: the pit open and unlined, its earth heaped behind
-    /// it, a ladder down into it, the hoist's post set up, bricks waiting.
+    /// The store being dug: the pit open, its lining of fired brick laid
+    /// partway up the far walls, its earth heaped behind it, a ladder down into
+    /// it, the hoist's post set up, bricks waiting.
     private mutating func storeDug() {
         typealias I = BronzeBuildingsInk
-        let h0 = 1.5, floor = -7.0, e = 0.62
+        let h0 = 1.5, floor = -7.0, e = 0.62, lining = 4.4, length = 2 * e * 32
         let foot = iso(0.8, -0.8, h0)
         // The spoil: a heap of earth behind the pit.
         heap(at: iso(-0.66, -0.66, h0), width: 34, height: 12)
@@ -97,6 +98,19 @@ extension BronzeBuildingsPainter {
         pennant(at: foot - P(0, 30), height: 10, length: 14)
         shell(-e, -e, e, e, from: h0, floor: floor, to: h0, thickness: 0, lit: .colour(I.earthShade),
               shade: .colour(I.dark), top: .colour(I.earth), ground: .colour(I.earthShade), outer: false) { p in
+            // The lining's first courses on the two far walls, stepping down where the work has reached.
+            p.wall(.left, from: -e, -e, at: floor) { q in
+                q.shape([q.uv(0, 0), q.uv(length, 0), q.uv(length, lining - 2.2), q.uv(length * 0.6, lining - 2.2),
+                         q.uv(length * 0.6, lining), q.uv(0, lining)], .colour(I.terracotta), width: 0.8)
+                q.courses(0, length, 0, lining - 2.2, course: 2.2, brick: 5.6, opacity: 0.6)
+                q.courses(0, length * 0.6, lining - 2.2, lining, course: 2.2, brick: 5.6, opacity: 0.6)
+            }
+            p.wall(.right, from: -e, e, at: floor) { q in
+                q.shape([q.uv(0, 0), q.uv(length, 0), q.uv(length, lining), q.uv(length * 0.45, lining),
+                         q.uv(length * 0.45, lining - 2.2), q.uv(0, lining - 2.2)], .colour(I.terracottaShade), width: 0.8)
+                q.courses(0, length, 0, lining - 2.2, course: 2.2, brick: 5.6, opacity: 0.6)
+                q.courses(length * 0.45, length, lining - 2.2, lining, course: 2.2, brick: 5.6, opacity: 0.6)
+            }
             p.basket(at: p.iso(-0.2, -0.3, floor), size: 0.9)
             p.ladder(foot: p.iso(-0.3, -0.45, floor), p.iso(-0.08, -0.45, floor), head: p.iso(-0.3, -e - 0.1, h0 + 6),
                      p.iso(-0.08, -e - 0.1, h0 + 6), rungs: 4)
