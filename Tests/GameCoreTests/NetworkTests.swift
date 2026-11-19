@@ -33,8 +33,8 @@ private func lobby() -> Lobby {
     let start = MatchStart(player: PlayerID(0), mapWidth: view.mapWidth, mapHeight: view.mapHeight,
                            terrain: view.terrain, catalogue: .standard, speed: 2)
     let messages: [NetMessage] = [
-        .hello(protocolVersion: NetMessage.protocolVersion, build: "abc1234", name: "Hyun", rejoining: nil),
-        .hello(protocolVersion: 1, build: "abc1234", name: "Hyun", rejoining: PlayerID(1)),
+        .hello(protocolVersion: NetMessage.protocolVersion, build: "abc1234", name: "Hyun", rejoining: nil, viewsReceived: nil),
+        .hello(protocolVersion: 2, build: "abc1234", name: "Hyun", rejoining: PlayerID(1), viewsReceived: 412),
         .chooseCivilization(.harappa), .order(.stop(units: [EntityID(3)])), .setSpeed(1.5), .ping(7),
         .welcome(seat: PlayerID(1)), .turnedAway(reason: "Another version"), .lobby(lobby()), .start(start),
         .view(view.withoutTerrain), .notice(.dropped(player: PlayerID(1), name: "Hyun")), .notice(.hostLeaving), .pong(7),

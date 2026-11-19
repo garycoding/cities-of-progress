@@ -110,14 +110,17 @@ public enum Notice: Hashable, Codable, Sendable {
 public enum NetMessage: Hashable, Codable, Sendable {
     /// Raised whenever the shape of any message changes, so that two Macs that
     /// would not understand each other say so instead.
-    public static let protocolVersion = 1
+    public static let protocolVersion = 2
 
     // From a joining Mac.
     /// The first message. The host turns a Mac away unless both `protocolVersion`
     /// and `build` equal its own. A person coming back to a match is given back
     /// the dropped seat whose holder has the same `name`; `rejoining` is the seat
     /// they held, when their app still knows it, and only a hint.
-    case hello(protocolVersion: Int, build: String, name: String, rejoining: PlayerID?)
+    /// `viewsReceived` is how many views of the match in play the Mac has
+    /// received, when it comes back to one: the host sends again the events
+    /// of any view it sent after those, lost when the connection broke.
+    case hello(protocolVersion: Int, build: String, name: String, rejoining: PlayerID?, viewsReceived: Int?)
     case chooseCivilization(Civilization)
     case order(Order)
     case setSpeed(Double)
