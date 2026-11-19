@@ -4,16 +4,16 @@
 import Foundation
 import GameCore
 
-/// The knight and the musketeer of the Alchemy age, drawn in the Cartoon
+/// The knight, the musketeer and the cannon with its crew of two of the Alchemy age, drawn in the Cartoon
 /// Modern style of docs/art-style.md on the jointed figure every age shares
 /// (Figure.swift), one age on from the Iron warriors (`IronWarriorSprites`).
 ///
 /// A warfighter keeps the look of its own age (`SpriteSubject.of(_:ownerAge:)`),
-/// so this source supplies `SpriteSubject.unit(kind, .alchemy)` for those two
+/// so this source supplies `SpriteSubject.unit(kind, .alchemy)` for those three
 /// kinds in the poses standing, walking and fighting, each a cycle of 12 frames
 /// (`SpriteKey.frame` 0 to 11). The warfighters never work, and the drawing
 /// falls back to standing where a pose is missing, so the working pose is not
-/// supplied. The cannon is not drawn here yet. Every other key returns nil.
+/// supplied. Every other key returns nil.
 ///
 /// Each call draws its picture afresh, and the same key always gives the same
 /// pixels. Nothing is kept here: the drawing keeps what it is given.
@@ -51,6 +51,7 @@ enum AlchemyWarriorsLooks {
         switch kind {
         case .knight: AlchemyWarriorsKnight()
         case .musketeer: AlchemyWarriorsMusketeer()
+        case .cannon: AlchemyWarriorsCannon()
         default: nil
         }
     }
@@ -58,6 +59,7 @@ enum AlchemyWarriorsLooks {
     static func canvas(_ kind: UnitKind) -> Canvas {
         switch kind {
         case .knight: AlchemyWarriorsKnight.canvas
+        case .cannon: AlchemyWarriorsCannon.canvas
         default: AlchemyWarriorsMusketeer.canvas
         }
     }
