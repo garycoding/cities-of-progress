@@ -110,6 +110,18 @@ extension EnvironmentValues {
     }
 }
 
+private struct TeamColourKey: EnvironmentKey {
+    static let defaultValue: TeamColour? = nil
+}
+
+extension EnvironmentValues {
+    /// The colour an icon's team-colour layer takes: the viewing player's.
+    public var teamColour: TeamColour? {
+        get { self[TeamColourKey.self] }
+        set { self[TeamColourKey.self] = newValue }
+    }
+}
+
 /// A resource's symbol: a flat shape in the resource's colour.
 struct ResourceGlyph: View {
     let resource: Resource
@@ -155,6 +167,7 @@ struct ResourceGlyph: View {
 /// otherwise a symbol drawn here.
 struct EntityIcon: View {
     @Environment(\.spriteSource) private var sprites
+    @Environment(\.teamColour) private var team
     let kind: EntityKind
     var subject: SpriteSubject?
     var size: CGFloat = 32
@@ -162,7 +175,14 @@ struct EntityIcon: View {
     var body: some View {
         Group {
             if let image = sprite {
-                Image(decorative: image.base, scale: 2).resizable().scaledToFit()
+                ZStack {
+                    Image(decorative: image.base, scale: 2).resizable().scaledToFit()
+                    // The team-colour layer, tinted as the map tints it.
+                    if let mask = image.teamMask, let team {
+                        Image(decorative: mask, scale: 2).resizable().scaledToFit()
+                            .colorMultiply(Color(red: team.red, green: team.green, blue: team.blue))
+                    }
+                }
             } else {
                 switch kind {
                 case .unit(let u): PersonGlyph(kind: u)

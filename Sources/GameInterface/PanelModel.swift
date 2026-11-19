@@ -72,6 +72,15 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         }
     }
 
+    /// The button's second line: what it costs, or for demolition what it returns.
+    public var costLine: String {
+        if case .demolish = action, let back = refund { return "Returns \(InterfaceText.cost(back))" }
+        return InterfaceText.cost(cost)
+    }
+
+    /// What the action gives back, for demolition.
+    public var refund: ResourceAmounts?
+
     public var tooltip: String {
         var text = "\(section.heading) \(title): \(detail.isEmpty ? "" : detail + " ")Cost: \(InterfaceText.cost(cost))."
         if let unavailable { text += " Not now: \(unavailable.explanation)." }
@@ -237,7 +246,7 @@ public struct PanelModel: Sendable {
                 id: "demolish", section: .demolish, title: kind.name,
                 detail: "Engineers pull it down and return half its cost (\(InterfaceText.cost(back))).",
                 cost: ResourceAmounts(), action: .demolish(engineers: crew, building: b.id), unavailable: why,
-                shortcut: "x", icon: nil, iconSubject: nil)]
+                shortcut: "x", icon: nil, iconSubject: nil, refund: back)]
         }
 
         // Buildings for engineers, of the ages reached.
