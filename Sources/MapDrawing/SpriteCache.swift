@@ -34,6 +34,7 @@ final class SpriteCache {
     private var people: [PersonKey: ResolvedSprite] = [:]
     private var buildings: [BuildingKey: ResolvedSprite] = [:]
     private var sites: [SiteKind: ResolvedSprite] = [:]
+    private var outcrop: ResolvedSprite?
     private var terrainTextures: [TerrainKey: (texture: SKTexture, size: CGSize)] = [:]
     private var variantCounts: [Terrain: Int] = [:]
     private var footprints: [BuildingKind: GridPoint] = [:]
@@ -104,6 +105,13 @@ final class SpriteCache {
         if let known = sites[kind] { return known }
         let sprite = supplied(SpriteKey(.site(kind), .complete)) ?? Self.placeholder(Placeholders.site(kind))
         sites[kind] = sprite
+        return sprite
+    }
+
+    func spriteForOutcrop() -> ResolvedSprite {
+        if let known = outcrop { return known }
+        let sprite = supplied(SpriteKey(.outcrop, .complete)) ?? Self.placeholder(Placeholders.outcrop())
+        outcrop = sprite
         return sprite
     }
 
