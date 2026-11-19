@@ -189,23 +189,36 @@ struct Drawing {
         self.rig = rig
         joints = Joints(rig)
         self.phase = phase
-        // The lower foot, after the lean, rests on the ground.
-        let lowest = max(joints.backFoot.rotated(rig.lean, about: Drawing.hips).y,
-                         joints.frontFoot.rotated(rig.lean, about: Drawing.hips).y)
-        bob = -lowest
+        // The lower foot rests on the ground. The legs do not lean with the body
+        // (`legs()`), so that both feet can stay planted in a lunge.
+        bob = -max(joints.backFoot.y, joints.frontFoot.y)
     }
 
     /// The upper body's offset for a breath.
     var chest: P { P(0, -rig.lift) }
 
+    /// A point of the body (inside `figure`) where it falls in the picture,
+    /// after the lean and the bob: for things that stand outside the body, such
+    /// as the post a blow lands on.
+    func world(_ p: P) -> P { p.rotated(rig.lean, about: Drawing.hips) + P(0, bob) }
+
     // MARK: Limbs
 
     func legPath(_ hip: P, _ knee: P, _ foot: P) -> [P] { [hip, knee, foot, foot + P(4.5, 0.3)] }
 
+    /// Both legs, upright whatever the body's lean: their angles are taken from
+    /// straight down on the ground, not from the leaning body.
     mutating func legs() {
-        svg.line(legPath(Joints.frontHip, joints.frontKnee, joints.frontFoot), stroke: .colour(Ink.line), width: 2.1)
-        svg.line(legPath(Joints.backHip, joints.backKnee, joints.backFoot), stroke: .colour(Ink.line), width: 2.1)
+        let front = legPath(Joints.frontHip, joints.frontKnee, joints.frontFoot)
+        let back = legPath(Joints.backHip, joints.backKnee, joints.backFoot)
+        svg.group(turned: -rig.lean, about: Drawing.hips) { svg in
+            svg.line(front, stroke: .colour(Ink.line), width: 2.1)
+            svg.line(back, stroke: .colour(Ink.line), width: 2.1)
+        }
     }
+
+    /// A foot where it falls in the picture: on the ground (y = 0) when it is the lower one.
+    func worldFoot(front: Bool) -> P { (front ? joints.frontFoot : joints.backFoot) + P(0, bob) }
 
     mutating func arm(front: Bool, width: Double = 1.9) {
         let points = front ? [joints.frontShoulder, joints.frontElbow, joints.frontHand]
