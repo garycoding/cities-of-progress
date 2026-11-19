@@ -1,0 +1,148 @@
+// SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+/// How one player sees one tile.
+public enum TileVisibility: UInt8, Codable, Sendable, Hashable {
+    /// Never seen: drawn black.
+    case unexplored
+    /// Seen before: the terrain is shown, but not what stands there now.
+    case explored
+    /// In sight of the player or an ally now.
+    case visible
+}
+
+/// What a person or building is doing, for the drawing and the interface.
+public enum Activity: Hashable, Codable, Sendable {
+    case idle
+    case moving
+    case gathering(SiteKind)
+    /// Carrying a load back to be delivered.
+    case carrying(Resource, Int)
+    /// Working at a building (herding, studying, researching, repairing).
+    case working
+    case constructing
+    case fighting
+    /// A building whose construction is in progress, from 0 to 1.
+    case underConstruction(Double)
+    /// A building training a person, from 0 to 1, with the queue's length.
+    case training(UnitKind, Double, queued: Int)
+    /// A building where research is in progress, from 0 to 1.
+    case researching(Improvement, Double)
+}
+
+/// A person or building as a player sees it.
+public struct EntityView: Hashable, Codable, Sendable {
+    public var id: EntityID
+    public var owner: PlayerID
+    public var kind: EntityKind
+    /// For a person, where it stands; for a building, the centre of its footprint.
+    public var position: MapPosition
+    /// For a building, the origin tile of its footprint.
+    public var tile: GridPoint
+    public var facing: Facing
+    public var health: Int
+    public var maxHealth: Int
+    public var activity: Activity
+
+    public init(id: EntityID, owner: PlayerID, kind: EntityKind, position: MapPosition, tile: GridPoint,
+                facing: Facing, health: Int, maxHealth: Int, activity: Activity) {
+        self.id = id; self.owner = owner; self.kind = kind; self.position = position; self.tile = tile
+        self.facing = facing; self.health = health; self.maxHealth = maxHealth; self.activity = activity
+    }
+}
+
+/// Another player, as everyone may know them.
+public struct PlayerSummary: Hashable, Codable, Sendable {
+    public var id: PlayerID
+    public var civilization: Civilization
+    public var team: TeamID
+    public var isHuman: Bool
+    public var age: Age
+    public var isDefeated: Bool
+    /// Whether the player owns nothing but a founder (requirement 26).
+    public var isFounding: Bool
+
+    public init(id: PlayerID, civilization: Civilization, team: TeamID, isHuman: Bool, age: Age,
+                isDefeated: Bool, isFounding: Bool) {
+        self.id = id; self.civilization = civilization; self.team = team; self.isHuman = isHuman
+        self.age = age; self.isDefeated = isDefeated; self.isFounding = isFounding
+    }
+}
+
+/// Something that happened since the last view, for sounds and messages.
+public enum GameEvent: Hashable, Codable, Sendable {
+    case trained(EntityID, UnitKind)
+    case constructed(EntityID, BuildingKind)
+    case researched(Improvement)
+    case ageReached(Age)
+    case underAttack(EntityID)
+    case destroyed(EntityID)
+    case allyDefeated(PlayerID)
+    case refused(OrderRefusal)
+}
+
+public enum MatchOutcome: Hashable, Codable, Sendable {
+    /// The team that defeated every player who is not an ally (requirement 7).
+    case won(TeamID)
+}
+
+/// Everything one player may know at one tick. It is what the drawing and the
+/// interface show, what a computer player decides from, and what the Mac that
+/// runs a match will send to another Mac in a later milestone.
+///
+/// Two rules shape it. Sight is shared within a team: a tile is visible if any
+/// ally sees it (docs/requirements.md, "Co-operative play"). Deposits are not
+/// shared: a site appears only if this player has reached its kind's
+/// `firstAge`, whatever an ally can see (requirement 19).
+public struct PlayerView: Hashable, Codable, Sendable {
+    public var tick: Int
+    public var player: PlayerID
+    public var age: Age
+    public var resources: ResourceAmounts
+    public var population: Int
+    public var populationLimit: Int
+    /// Study toward the next age, from 0 to 1; 1 means `Order.advanceAge` may be given.
+    public var ageProgress: Double
+    public var improvements: [Improvement]
+    public var players: [PlayerSummary]
+    /// The map's dimensions and terrain, which never change in a match.
+    public var mapWidth: Int
+    public var mapHeight: Int
+    public var terrain: [Terrain]
+    /// Row-major, as the terrain.
+    public var visibility: [TileVisibility]
+    /// The player's own and allies' entities, and others' where visible; ordered by id.
+    public var entities: [EntityView]
+    /// The sites on explored tiles whose age this player has reached; ordered by id.
+    public var sites: [ResourceSite]
+    public var events: [GameEvent]
+    public var outcome: MatchOutcome?
+    public var isPaused: Bool
+
+    public init(tick: Int, player: PlayerID, age: Age, resources: ResourceAmounts, population: Int,
+                populationLimit: Int, ageProgress: Double, improvements: [Improvement], players: [PlayerSummary],
+                mapWidth: Int, mapHeight: Int, terrain: [Terrain], visibility: [TileVisibility],
+                entities: [EntityView], sites: [ResourceSite], events: [GameEvent], outcome: MatchOutcome?,
+                isPaused: Bool) {
+        self.tick = tick; self.player = player; self.age = age; self.resources = resources
+        self.population = population; self.populationLimit = populationLimit; self.ageProgress = ageProgress
+        self.improvements = improvements; self.players = players; self.mapWidth = mapWidth
+        self.mapHeight = mapHeight; self.terrain = terrain; self.visibility = visibility
+        self.entities = entities; self.sites = sites; self.events = events; self.outcome = outcome
+        self.isPaused = isPaused
+    }
+
+    public func visibility(at p: GridPoint) -> TileVisibility { visibility[p.y * mapWidth + p.x] }
+    public func terrain(at p: GridPoint) -> Terrain { terrain[p.y * mapWidth + p.x] }
+    public func entity(_ id: EntityID) -> EntityView? { entities.first { $0.id == id } }
+    public var me: PlayerSummary? { players.first { $0.id == player } }
+
+    /// Whether `other` is this player or an ally.
+    public func isAlly(_ other: PlayerID) -> Bool {
+        guard let mine = me?.team, let theirs = players.first(where: { $0.id == other })?.team else { return false }
+        return mine == theirs
+    }
+
+    /// The resources the interface shows: those of the ages reached (requirement 13).
+    public var shownResources: [Resource] { Resource.allCases.filter { $0.firstAge <= age } }
+}
