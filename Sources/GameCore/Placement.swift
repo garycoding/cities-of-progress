@@ -52,13 +52,16 @@ public enum Placement {
     }
 
     /// The same rule as the player sees it: for the drawing's outline and the
-    /// computer player. The simulation applies it to its full state.
+    /// computer player. The simulation applies it to its full state. An
+    /// outcrop (`PlayerView.outcrops`) is a deposit not yet revealed, and
+    /// blocks its tile as the deposit does.
     public static func canPlace(_ kind: BuildingKind, at origin: GridPoint, in view: PlayerView,
                                 catalogue: Catalogue = .standard) -> Bool {
         let buildings: [(kind: BuildingKind, origin: GridPoint)] = view.entities.compactMap {
             if case .building(let k) = $0.kind { return (k, $0.tile) } else { return nil }
         }
-        let occupied = occupied(buildings: buildings, sites: view.sites, catalogue: catalogue)
+        var occupied = occupied(buildings: buildings, sites: view.sites, catalogue: catalogue)
+        for t in view.outcrops { occupied.insert(t) }
         return canPlace(kind, at: origin, width: view.mapWidth, height: view.mapHeight, terrain: view.terrain,
                         occupied: occupied, explored: { view.visibility(at: $0) != .unexplored }, catalogue: catalogue)
     }
