@@ -322,6 +322,14 @@ enum OrderFixture { static let expected: UInt64 = 0xA1F5_25B1_3C8F_62B2 }
     }
 }
 
+/// Two milliseconds in a release build, as the game runs; a debug build on a
+/// shared CI runner is several times slower, so it is allowed ten.
+#if DEBUG
+private let decisionLimit = Duration.milliseconds(10)
+#else
+private let decisionLimit = Duration.milliseconds(2)
+#endif
+
 @Test func decidesInUnderTwoMillisecondsWithFourHundredEntities() {
     let view = TestViews.crowded()
     #expect(view.entities.count == 400)
@@ -341,6 +349,6 @@ enum OrderFixture { static let expected: UInt64 = 0xA1F5_25B1_3C8F_62B2 }
         }
         let median = times.sorted()[times.count / 2]
         print("decide, \(difficulty), 400 entities: median \(median), longest \(times.max()!)")
-        #expect(median < .milliseconds(2), "\(difficulty): \(median)")
+        #expect(median < decisionLimit, "\(difficulty): \(median)")
     }
 }
