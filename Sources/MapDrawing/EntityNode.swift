@@ -1,0 +1,243 @@
+// SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import AppKit
+import GameCore
+import SpriteKit
+
+/// What a node needs to know to draw an entity or a site, gathered once for a view.
+struct DrawContext {
+    var cache: SpriteCache
+    var catalogue: Catalogue
+    var players: [PlayerID: PlayerSummary]
+    var me: PlayerID
+    var myTeam: TeamID?
+    /// 0 or 1: the frame of limited animation now.
+    var frame: Int
+
+    func relation(of owner: PlayerID) -> EntityNode.Relation {
+        if owner == me { return .own }
+        if let myTeam, players[owner]?.team == myTeam { return .ally }
+        return .enemy
+    }
+}
+
+/// A person or a building on the map: its sprite (mirrored for facing, with the
+/// team colour laid over its mask), and, where needed, a selection ring, a health
+/// bar and a construction bar. Everything but the sprite is made when first needed,
+/// so that the many people who are neither selected nor hurt cost one sprite each.
+@MainActor
+final class EntityNode: SKNode {
+    enum Relation { case own, ally, enemy }
+
+    private struct Look: Equatable {
+        var kind: EntityKind
+        var civilization: Civilization
+        var age: Age
+        var pose: SpritePose
+        var frame: Int
+    }
+
+    let body = SKSpriteNode()
+    private var mask: SKSpriteNode?
+    private var ring: SKShapeNode?
+    private var health: Bar?
+    private var construction: Bar?
+
+    private(set) var entity: EntityView?
+    private var look: Look?
+    private var isSelected = false
+    private var relation = Relation.own
+    private var barHeight = 58.0
+    private var barWidth = 30.0
+    /// The view number in which this node was last updated; others are removed.
+    var generation = 0
+
+    @MainActor private final class Bar {
+        let back: SKSpriteNode
+        let fill: SKSpriteNode
+        init(width: Double) {
+            back = SKSpriteNode(color: NSColor(white: 0, alpha: 0.65), size: CGSize(width: width + 2, height: 6))
+            fill = SKSpriteNode(color: .green, size: CGSize(width: width, height: 4))
+            fill.anchorPoint = CGPoint(x: 0, y: 0.5)
+            fill.position = CGPoint(x: -width / 2, y: 0)
+            fill.zPosition = 0.1
+            back.addChild(fill)
+        }
+    }
+
+    override init() {
+        super.init()
+        addChild(body)
+    }
+
+    required init?(coder aDecoder: NSCoder) { fatalError("EntityNode is not decoded") }
+
+    /// Bring the node up to date with the entity. Nothing is touched where nothing changed.
+    func apply(_ entity: EntityView, context: DrawContext, selected: Bool, relation: Relation) {
+        let previous = self.entity
+        if let previous, previous == entity, isSelected == selected, self.relation == relation,
+           look?.frame == context.frame {
+            return
+        }
+        self.entity = entity
+
+        if previous?.position != entity.position {
+            let s = Projection.screen(entity.position)
+            position = CGPoint(x: s.x, y: s.y)
+            zPosition = Projection.depth(entity.position)
+        }
+
+        let isBuilding: Bool
+        if case .building = entity.kind { isBuilding = true } else { isBuilding = false }
+        let summary = context.players[entity.owner]
+        let newLook = Look(kind: entity.kind, civilization: summary?.civilization ?? .sumer, age: summary?.age ?? .stone,
+                           pose: SpriteKey.pose(for: entity.activity, isBuilding: isBuilding), frame: context.frame)
+        if newLook != look {
+            let first = look == nil
+            look = newLook
+            applyLook(newLook, entity: entity, context: context)
+            if first, isBuilding { configureBars(for: entity, context: context) }
+        }
+        if !isBuilding, previous?.facing != entity.facing || previous == nil {
+            body.xScale = entity.facing == .left ? -1 : 1
+        }
+
+        isSelected = selected
+        self.relation = relation
+        updateRing(entity: entity, context: context)
+        updateBars(entity: entity)
+    }
+
+    private func applyLook(_ look: Look, entity: EntityView, context: DrawContext) {
+        let subject = SpriteSubject.of(entity, ownerAge: look.age, catalogue: context.catalogue)
+        let sprite = context.cache.sprite(for: entity.kind, subject: subject, civilization: look.civilization,
+                                          pose: look.pose, frame: look.frame)
+        body.texture = sprite.texture
+        body.size = sprite.size
+        body.anchorPoint = sprite.anchor
+        if let maskTexture = sprite.mask {
+            let node: SKSpriteNode
+            if let existing = mask { node = existing } else {
+                node = SKSpriteNode()
+                node.colorBlendFactor = 1
+                node.zPosition = 0.01
+                body.addChild(node)
+                mask = node
+            }
+            let t = TeamColour.of(look.civilization)
+            node.color = NSColor(srgbRed: t.red, green: t.green, blue: t.blue, alpha: 1)
+            node.texture = maskTexture
+            node.size = sprite.size
+            node.anchorPoint = sprite.anchor
+            node.isHidden = false
+        } else {
+            mask?.isHidden = true
+        }
+    }
+
+    private func configureBars(for entity: EntityView, context: DrawContext) {
+        guard case .building(let kind) = entity.kind else { return }
+        let size = context.cache.footprint(kind)
+        let span = Double(size.x + size.y)
+        barWidth = max(30, span * 14)
+        barHeight = Stature.building(kind) + span * 6 + 10
+    }
+
+    private func updateRing(entity: EntityView, context: DrawContext) {
+        guard isSelected else { ring?.isHidden = true; return }
+        let node: SKShapeNode
+        if let existing = ring { node = existing } else {
+            let path = CGMutablePath()
+            if case .building(let kind) = entity.kind {
+                let size = context.cache.footprint(kind)
+                let w = Double(size.x), h = Double(size.y)
+                let corners = [MapPosition(x: -w / 2, y: -h / 2), MapPosition(x: w / 2, y: -h / 2),
+                               MapPosition(x: w / 2, y: h / 2), MapPosition(x: -w / 2, y: h / 2)].map { p -> CGPoint in
+                    let s = Projection.screen(MapPosition(x: p.x * 1.04, y: p.y * 1.04))
+                    return CGPoint(x: s.x, y: s.y)
+                }
+                path.addLines(between: corners)
+                path.closeSubpath()
+            } else {
+                path.addEllipse(in: CGRect(x: -16, y: -8, width: 32, height: 16))
+            }
+            node = SKShapeNode(path: path)
+            node.lineWidth = 2.5
+            node.fillColor = .clear
+            node.zPosition = -0.5
+            addChild(node)
+            ring = node
+        }
+        node.isHidden = false
+        node.strokeColor = switch relation {
+        case .own: NSColor(srgbRed: 0.25, green: 0.95, blue: 0.35, alpha: 1)
+        case .ally: NSColor(srgbRed: 0.98, green: 0.90, blue: 0.25, alpha: 1)
+        case .enemy: NSColor(srgbRed: 0.95, green: 0.25, blue: 0.2, alpha: 1)
+        }
+    }
+
+    private func makeBar() -> Bar {
+        let bar = Bar(width: barWidth)
+        bar.back.zPosition = 1_000
+        addChild(bar.back)
+        return bar
+    }
+
+    private func updateBars(entity: EntityView) {
+        let wounded = entity.health < entity.maxHealth && entity.health > 0
+        if isSelected || wounded {
+            let bar: Bar
+            if let existing = health { bar = existing } else { bar = makeBar(); health = bar }
+            let fraction = entity.maxHealth > 0 ? min(max(Double(entity.health) / Double(entity.maxHealth), 0), 1) : 0
+            bar.back.isHidden = false
+            bar.back.position = CGPoint(x: 0, y: barHeight)
+            bar.fill.xScale = fraction
+            bar.fill.color = fraction > 0.6 ? NSColor(srgbRed: 0.3, green: 0.85, blue: 0.3, alpha: 1)
+                : (fraction > 0.3 ? NSColor(srgbRed: 0.95, green: 0.8, blue: 0.2, alpha: 1)
+                    : NSColor(srgbRed: 0.9, green: 0.2, blue: 0.15, alpha: 1))
+        } else {
+            health?.back.isHidden = true
+        }
+        if case .underConstruction(let progress) = entity.activity {
+            let bar: Bar
+            if let existing = construction { bar = existing } else {
+                bar = makeBar()
+                bar.fill.color = NSColor(srgbRed: 0.35, green: 0.65, blue: 1, alpha: 1)
+                construction = bar
+            }
+            bar.back.isHidden = false
+            bar.back.position = CGPoint(x: 0, y: barHeight + 8)
+            bar.fill.xScale = min(max(progress, 0), 1)
+        } else {
+            construction?.back.isHidden = true
+        }
+    }
+}
+
+/// A resource site: a sprite on its tile, hidden on a tile never seen and
+/// darkened on one not in sight.
+@MainActor
+final class SiteNode: SKSpriteNode {
+    var generation = 0
+    private var kind: SiteKind?
+    private var visibility: TileVisibility?
+
+    func apply(_ site: ResourceSite, visibility: TileVisibility, cache: SpriteCache) {
+        if kind != site.kind {
+            kind = site.kind
+            let sprite = cache.sprite(forSite: site.kind)
+            texture = sprite.texture
+            size = sprite.size
+            anchorPoint = sprite.anchor
+            let s = Projection.screen(site.tile.centre)
+            position = CGPoint(x: s.x, y: s.y)
+            zPosition = Projection.depth(site.tile.centre)
+        }
+        guard self.visibility != visibility else { return }
+        self.visibility = visibility
+        isHidden = visibility == .unexplored
+        color = .black
+        colorBlendFactor = visibility == .explored ? 0.45 : 0
+    }
+}
