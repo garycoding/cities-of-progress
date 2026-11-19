@@ -103,19 +103,48 @@ public struct AdvanceStats: Hashable, Codable, Sendable {
     }
 }
 
-/// Gathering rates and loads.
+/// Gathering rates and loads. Tables are arrays indexed by `SiteKind.rawValue`,
+/// not dictionaries, so that they encode identically in every process.
 public struct GatheringStats: Hashable, Codable, Sendable {
-    /// Units of the resource a worker takes from a site per second.
-    public var perSecond: [SiteKind: Double]
+    /// Units of the resource a worker takes from a site per second, by site kind.
+    public var perSecondBySite: [Double]
     /// Food per second a worker earns tending a stock pen (herds, Bronze age).
     public var herdingPerSecond: Double
     /// How much a worker carries before returning to deliver it.
     public var load: Int
-    /// What each kind of site holds when the map is made.
-    public var siteAmount: [SiteKind: Int]
+    /// What each kind of site holds when the map is made, by site kind.
+    public var amountBySite: [Int]
 
     public init(perSecond: [SiteKind: Double], herdingPerSecond: Double, load: Int, siteAmount: [SiteKind: Int]) {
-        self.perSecond = perSecond; self.herdingPerSecond = herdingPerSecond; self.load = load; self.siteAmount = siteAmount
+        perSecondBySite = SiteKind.allCases.map { perSecond[$0] ?? 0 }
+        amountBySite = SiteKind.allCases.map { siteAmount[$0] ?? 0 }
+        self.herdingPerSecond = herdingPerSecond; self.load = load
+    }
+
+    public func perSecond(_ kind: SiteKind) -> Double { perSecondBySite[kind.rawValue] }
+    public func amount(_ kind: SiteKind) -> Int { amountBySite[kind.rawValue] }
+}
+
+/// A damage multiplier when one kind strikes another.
+public struct Bonus: Hashable, Codable, Sendable {
+    public var attacker: UnitKind
+    public var defender: UnitKind
+    public var multiplier: Double
+    public init(_ attacker: UnitKind, against defender: UnitKind, _ multiplier: Double) {
+        self.attacker = attacker; self.defender = defender; self.multiplier = multiplier
+    }
+}
+
+/// Paying to turn warfighters of one kind into the kind a later age brings
+/// (requirement 17). Done at a building that trains the new kind.
+public struct UpgradeStats: Hashable, Codable, Sendable {
+    public var from: UnitKind
+    public var to: UnitKind
+    /// Per warfighter upgraded.
+    public var cost: ResourceAmounts
+    public var time: Int
+    public init(from: UnitKind, to: UnitKind, cost: ResourceAmounts, time: Int) {
+        self.from = from; self.to = to; self.cost = cost; self.time = time
     }
 }
 
@@ -126,21 +155,25 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public var improvements: [ImprovementStats]
     public var advances: [AdvanceStats]
     public var gathering: GatheringStats
-    /// Damage multipliers: `bonuses[attacker]?[defender]`, 1 where absent.
-    public var bonuses: [UnitKind: [UnitKind: Double]]
+    /// Damage multipliers; 1 where none is listed.
+    public var bonuses: [Bonus]
+    public var upgrades: [UpgradeStats]
     /// What every player holds at the start of a match.
     public var startingResources: ResourceAmounts
     /// Workers each player begins with, beside the town centre.
     public var startingWorkers: Int
     /// The population limit can never exceed this, however many houses stand.
     public var populationMaximum: Int
+    /// Workers that come with a town centre built by a founder (requirement 26).
+    public var founderWorkers: Int
 
     public init(units: [UnitStats], buildings: [BuildingStats], improvements: [ImprovementStats],
-                advances: [AdvanceStats], gathering: GatheringStats, bonuses: [UnitKind: [UnitKind: Double]],
-                startingResources: ResourceAmounts, startingWorkers: Int, populationMaximum: Int) {
+                advances: [AdvanceStats], gathering: GatheringStats, bonuses: [Bonus], upgrades: [UpgradeStats],
+                startingResources: ResourceAmounts, startingWorkers: Int, populationMaximum: Int, founderWorkers: Int) {
         self.units = units; self.buildings = buildings; self.improvements = improvements; self.advances = advances
-        self.gathering = gathering; self.bonuses = bonuses; self.startingResources = startingResources
-        self.startingWorkers = startingWorkers; self.populationMaximum = populationMaximum
+        self.gathering = gathering; self.bonuses = bonuses; self.upgrades = upgrades
+        self.startingResources = startingResources; self.startingWorkers = startingWorkers
+        self.populationMaximum = populationMaximum; self.founderWorkers = founderWorkers
     }
 
     public func stats(_ kind: UnitKind) -> UnitStats { units.first { $0.kind == kind }! }
@@ -150,8 +183,11 @@ public struct Catalogue: Hashable, Codable, Sendable {
 
     /// The damage multiplier when `attacker` strikes `defender`.
     public func bonus(_ attacker: UnitKind, against defender: UnitKind) -> Double {
-        bonuses[attacker]?[defender] ?? 1
+        bonuses.first { $0.attacker == attacker && $0.defender == defender }?.multiplier ?? 1
     }
+
+    /// The upgrade available for a kind, if any.
+    public func upgrade(from kind: UnitKind) -> UpgradeStats? { upgrades.first { $0.from == kind } }
 
     /// The tables of the first milestone: the Stone and Bronze ages.
     public static let standard: Catalogue = {
@@ -214,15 +250,19 @@ public struct Catalogue: Hashable, Codable, Sendable {
             load: 10,
             siteAmount: [.tree: 100, .prey: 150, .stone: 300, .copper: 400, .tin: 250, .gold: 400, .iron: 500, .oilField: 2000]
         )
-        let bonuses: [UnitKind: [UnitKind: Double]] = [
-            .spearman: [.chariot: 3],
-            .chariot: [.archer: 2, .slinger: 2],
-            .archer: [.spearman: 1.5, .clubman: 1.5],
-            .clubman: [.slinger: 1.5],
+        let bonuses: [Bonus] = [
+            Bonus(.spearman, against: .chariot, 3),
+            Bonus(.chariot, against: .archer, 2), Bonus(.chariot, against: .slinger, 2),
+            Bonus(.archer, against: .spearman, 1.5), Bonus(.archer, against: .clubman, 1.5),
+            Bonus(.clubman, against: .slinger, 1.5),
+        ]
+        let upgrades: [UpgradeStats] = [
+            UpgradeStats(from: .clubman, to: .spearman, cost: cost([.food: 20, .bronze: 15]), time: s(6)),
+            UpgradeStats(from: .slinger, to: .archer, cost: cost([.wood: 20, .gold: 15]), time: s(6)),
         ]
         return Catalogue(units: units, buildings: buildings, improvements: improvements, advances: advances,
-                         gathering: gathering, bonuses: bonuses,
+                         gathering: gathering, bonuses: bonuses, upgrades: upgrades,
                          startingResources: cost([.food: 200, .wood: 200, .stone: 50]),
-                         startingWorkers: 3, populationMaximum: 100)
+                         startingWorkers: 3, populationMaximum: 200, founderWorkers: 6)
     }()
 }

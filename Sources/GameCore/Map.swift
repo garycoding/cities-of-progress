@@ -37,7 +37,8 @@ public struct MapPosition: Hashable, Codable, Sendable, CustomStringConvertible 
 }
 
 /// The ground of a tile. Forest is the trees' ground; the trees themselves are
-/// resource sites. Water cannot be crossed (requirement 25).
+/// resource sites, which block the tile until felled (`Placement`). Water
+/// cannot be crossed (requirement 25).
 public enum Terrain: Int, CaseIterable, Codable, Sendable, Hashable {
     case grass, dirt, sand, forest, shallowWater, deepWater
 
@@ -45,7 +46,7 @@ public enum Terrain: Int, CaseIterable, Codable, Sendable, Hashable {
     public var isPassable: Bool { self != .shallowWater && self != .deepWater }
 
     /// Whether a building may stand on the tile.
-    public var isBuildable: Bool { self == .grass || self == .dirt || self == .sand }
+    public var isBuildable: Bool { isPassable }
 }
 
 /// The kinds of resource site on the map (requirement 13 and "Economy").
@@ -67,6 +68,11 @@ public enum SiteKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .oilField: .industrial
         }
     }
+
+    /// Whether the site occupies its tile, so that nothing walks or is built
+    /// there whilst it remains. Prey and oil fields do not; trees, stone and
+    /// metal deposits do (`Placement`).
+    public var blocksTile: Bool { self != .prey && self != .oilField }
 
     /// What gathering at the site yields. Copper and tin each yield bronze, but
     /// only whilst the player mines both (requirement 18).
@@ -102,9 +108,12 @@ public struct MapRequest: Hashable, Codable, Sendable {
     /// The number of players, each of whom needs a fair start.
     public var playerCount: Int
     public var seed: UInt64
+    /// Read for what each site holds (`GatheringStats.amount`).
+    public var catalogue: Catalogue
 
-    public init(width: Int = 96, height: Int = 96, playerCount: Int, seed: UInt64) {
+    public init(width: Int = 96, height: Int = 96, playerCount: Int, seed: UInt64, catalogue: Catalogue = .standard) {
         self.width = width; self.height = height; self.playerCount = playerCount; self.seed = seed
+        self.catalogue = catalogue
     }
 }
 

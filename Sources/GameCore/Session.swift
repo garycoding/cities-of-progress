@@ -35,29 +35,28 @@ public final class PlayerSession {
     public var placing: BuildingKind?
     /// Numbered groups (requirement "Controls"): number key → entities.
     public var groups: [Int: [EntityID]] = [:]
-    /// The most recent refusal, for the interface to show; cleared when read.
+    /// The most recent refusal, from the latest view's `GameEvent.refused`, for
+    /// the interface to show; the interface sets it to `nil` once shown.
     public var lastRefusal: OrderRefusal?
 
-    private let sink: @MainActor (Order) -> OrderResult
+    private let sink: @MainActor (Order) -> Void
 
-    /// - Parameter sink: where orders go: the simulation, through the app.
-    public init(view: PlayerView, catalogue: Catalogue, camera: Camera, sink: @escaping @MainActor (Order) -> OrderResult) {
+    /// - Parameter sink: where orders go: the simulation, through the app, or in a
+    ///   later milestone across the LAN. It returns nothing; a refusal arrives in
+    ///   a later view, so that the simulation need not run on the main actor.
+    public init(view: PlayerView, catalogue: Catalogue, camera: Camera, sink: @escaping @MainActor (Order) -> Void) {
         self.view = view; self.catalogue = catalogue; self.camera = camera; self.sink = sink
     }
 
-    /// Give an order. A refusal is kept in `lastRefusal` as well as returned.
-    @discardableResult
-    public func issue(_ order: Order) -> OrderResult {
-        let result = sink(order)
-        if case .refused(let why) = result { lastRefusal = why }
-        return result
-    }
+    /// Give an order. Whether it was accepted shows in a later view.
+    public func issue(_ order: Order) { sink(order) }
 
-    /// Show a newer view. Selected entities that no longer exist are dropped.
+    /// Show a newer view. Selected entities that no longer exist are dropped, and
+    /// the view's last refusal, if any, becomes `lastRefusal`.
     public func update(_ newView: PlayerView) {
         view = newView
-        let present = Set(newView.entities.map(\.id))
-        selection.removeAll { !present.contains($0) }
+        selection.removeAll { newView.entity($0) == nil }
+        for event in newView.events { if case .refused(let why) = event { lastRefusal = why } }
     }
 
     /// The selected entities that belong to this player.

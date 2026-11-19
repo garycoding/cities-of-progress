@@ -37,7 +37,8 @@ public struct EntityView: Hashable, Codable, Sendable {
     public var kind: EntityKind
     /// For a person, where it stands; for a building, the centre of its footprint.
     public var position: MapPosition
-    /// For a building, the origin tile of its footprint.
+    /// For a building, the origin tile of its footprint (`Placement.origin`);
+    /// for a person, the tile it stands on.
     public var tile: GridPoint
     public var facing: Facing
     public var health: Int
@@ -78,6 +79,8 @@ public enum GameEvent: Hashable, Codable, Sendable {
     case underAttack(EntityID)
     case destroyed(EntityID)
     case allyDefeated(PlayerID)
+    /// An order this player gave was refused. The simulation reports every
+    /// refusal this way, in the view after the order; the session shows it.
     case refused(OrderRefusal)
 }
 
@@ -134,7 +137,16 @@ public struct PlayerView: Hashable, Codable, Sendable {
 
     public func visibility(at p: GridPoint) -> TileVisibility { visibility[p.y * mapWidth + p.x] }
     public func terrain(at p: GridPoint) -> Terrain { terrain[p.y * mapWidth + p.x] }
-    public func entity(_ id: EntityID) -> EntityView? { entities.first { $0.id == id } }
+    /// Found by binary search: `entities` is ordered by id.
+    public func entity(_ id: EntityID) -> EntityView? {
+        var low = 0, high = entities.count - 1
+        while low <= high {
+            let mid = (low + high) / 2
+            if entities[mid].id == id { return entities[mid] }
+            if entities[mid].id < id { low = mid + 1 } else { high = mid - 1 }
+        }
+        return nil
+    }
     public var me: PlayerSummary? { players.first { $0.id == player } }
 
     /// Whether `other` is this player or an ally.

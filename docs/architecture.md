@@ -22,7 +22,7 @@ A module uses another only through the types in `GameCore` and the protocols nam
 
 ## Who may change what
 
-`GameCore` and `Package.swift` are shared by every module. Whilst modules are being built in parallel, only the coordinating session changes them, each change in its own pull request, after which `develop` is brought into the other branches. An agent that needs a change to either reports it and does not make it.
+`GameCore`, `Package.swift` and `Sources/Artwork/SpriteSource.swift` (the sprite seam) are shared by every module. Whilst modules are being built in parallel, only the coordinating session changes them, each change in its own pull request, after which `develop` is brought into the other branches. An agent that needs a change to either reports it and does not make it.
 
 ## The seams
 
@@ -33,7 +33,11 @@ A module uses another only through the types in `GameCore` and the protocols nam
 - **`PlayerSession`** (in `GameCore`). The state one person's screen shares between the map and the panels: the latest view, the selection, the camera, a building being placed, numbered groups, and the last refusal. The app owns it and passes it to `MapDrawing` and `GameInterface`.
   - `MapDrawing` owns clicks and dragged boxes on the map: it changes the selection, places buildings, and issues orders.
   - `GameInterface` owns the panels: its buttons issue orders and set `placing`; a click on the small map moves the camera; it shows `lastRefusal`.
-  - Both issue orders through `PlayerSession.issue`, never to the simulation directly.
+  - Both issue orders through `PlayerSession.issue`, never to the simulation directly. Orders flow one way: `issue` returns nothing, and a refusal comes back as `GameEvent.refused` in a later view, which `PlayerSession.update` turns into `lastRefusal`. The simulation therefore need not run on the main actor, and a second Mac can send orders across the LAN in the same way.
+
+`Placement` in `GameCore` is the one rule for where things may stand: a tile is blocked by impassable terrain, a building's footprint, or a tree, stone or metal deposit that remains (`SiteKind.blocksTile`); a building may be placed where every tile of its footprint is inside the map, buildable, unblocked and explored. The simulation, the drawing's placement outline and the computer player all use it.
+
+The rules a reader could take two ways are settled in the documentation of `Order` (copper and tin, what scholars do at a building) and of `GameSimulating` (refusals, the checksum).
 
 `Samples` in `GameCore` gives fixed maps and views (`stoneAgeOpening`, `bronzeAgeSkirmish`, `twoPlayerSetup`), so that the drawing, the interface and the computer player can be built and tested before the simulation exists.
 
@@ -57,14 +61,14 @@ A building's footprint (`BuildingStats.footprint`) covers tiles from its origin 
 
 ## Sprites
 
-- **Keys.** A sprite is named by a `SpriteKey`: a subject (a person of a kind at an age, a building in an age's style, a site, or a terrain tile), a pose, and a frame. `SpriteKey.required(through:)` lists every picture a milestone needs; it is the artwork's checklist.
+- **Keys.** A sprite is named by a `SpriteKey`, whose subject for an entity is chosen by `SpriteSubject.of(_:ownerAge:)` in both the drawing and the artwork: a subject (a person of a kind at an age, a building in an age's style, a site, or a terrain tile), a pose, and a frame. `SpriteKey.required(through:)` lists every picture a milestone needs; it is the artwork's checklist.
 - **Poses.** `standing`, `walking`, `working` and `fighting` for people; `complete` and `under-construction` for buildings. Poses are open-ended strings, so that the art style guide can add more; the drawing falls back to `standing` or `complete` where a pose is missing. Limited animation alternates a few frames of a pose.
 - **Facing.** Artwork is drawn facing right; the drawing mirrors it for an entity facing left.
 - **Size.** Pictures are drawn at twice their size in points, for Retina displays. A person stands about 48 points tall on a tile 64 points wide; a building covers its footprint's diamonds.
-- **Anchor.** `SpriteImage.anchor` is the point at the subject's feet (for a building, the centre of its footprint's front edge), as a fraction of the image with (0, 0) at the bottom left.
+- **Anchor.** `SpriteImage.anchor` is the point of the image placed on the entity's `EntityView.position`: for a person, between its feet; for a building, the centre of its footprint at ground level, which on screen is the centre of the footprint's diamond. It is a fraction of the image with (0, 0) at the bottom left.
 - **Team colour.** A sprite has a base image and, where it carries a civilization's colour, a mask: white where the colour goes. The drawing tints the mask with `TeamColour.of(civilization)` and lays it over the base, so that one picture serves every civilization.
-- **The look.** The artwork follows the Cartoon Modern style recorded in `design.md` and the art style guide (`art-style.md`, once ruled). It is written as SVG, drawn by macOS, with a grain added by Core Image ([`decisions.md`](decisions.md#verifications-2026-11-18)).
+- **The look.** The artwork follows the Cartoon Modern style recorded in `design.md` and the art style guide (`art-style.md`, once ruled). It is written as SVG, drawn by macOS, with a grain added by Core Image ([`decisions.md`](decisions.md#verifications-2026-11-18)). The SVG is held in Swift source as string literals, not as package resources, so that the assembled app needs no resource bundle.
 
 ## Checks
 
-`swift build` and `swift test` must pass, and `reuse lint` with them (see [`CONTRIBUTING.md`](CONTRIBUTING.md)). Tests use Swift Testing.
+Whole matches between computer players, run without a screen, live in the `MatchTests` target. `swift build` and `swift test` must pass, and `reuse lint` with them (see [`CONTRIBUTING.md`](CONTRIBUTING.md)). Tests use Swift Testing.

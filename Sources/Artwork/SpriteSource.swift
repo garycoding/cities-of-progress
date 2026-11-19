@@ -4,7 +4,18 @@
 import CoreGraphics
 import GameCore
 
+/// The point of an image at which it stands, as a fraction of the image with
+/// (0, 0) at the bottom left, as SpriteKit's anchor point has it.
+public struct SpriteAnchor: Hashable, Sendable {
+    public var x: Double
+    public var y: Double
+    public init(x: Double, y: Double) { self.x = x; self.y = y }
+}
+
 /// One sprite, ready to draw (docs/architecture.md, "Sprites").
+///
+/// This file is the seam between `Artwork` and `MapDrawing`; whilst the modules
+/// are built in parallel, only the coordinating session changes it.
 public struct SpriteImage: @unchecked Sendable {
     /// The picture, drawn facing right, at twice its size in points (for Retina).
     public var base: CGImage
@@ -12,19 +23,22 @@ public struct SpriteImage: @unchecked Sendable {
     /// drawing tints it with `TeamColour` and lays it over `base`. `nil` where
     /// the subject carries no team colour (sites, terrain).
     public var teamMask: CGImage?
-    /// The point at the subject's feet (for a building, the centre of its
-    /// footprint's front edge), as a fraction of the image: (0, 0) is the
-    /// bottom left, as SpriteKit's anchor point has it.
-    public var anchor: (x: Double, y: Double)
+    /// The point placed on the entity's map position: for a person, between
+    /// its feet; for a building, the centre of its footprint at ground level
+    /// (`EntityView.position`), which on screen is the centre of the
+    /// footprint's diamond.
+    public var anchor: SpriteAnchor
 
-    public init(base: CGImage, teamMask: CGImage?, anchor: (x: Double, y: Double)) {
+    public init(base: CGImage, teamMask: CGImage?, anchor: SpriteAnchor) {
         self.base = base; self.teamMask = teamMask; self.anchor = anchor
     }
 }
 
 /// Supplies sprites by key. `MapDrawing` asks; `Artwork` answers. A missing
 /// sprite returns `nil`, and the drawing then shows a placeholder shape, so that
-/// neither waits for the other.
+/// neither waits for the other. It is called from the main actor during
+/// drawing; an implementation that caches must be safe for that (a `Mutex`, or
+/// everything rendered in `init`).
 public protocol SpriteSource: Sendable {
     func sprite(_ key: SpriteKey) -> SpriteImage?
 }

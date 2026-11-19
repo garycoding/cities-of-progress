@@ -5,6 +5,12 @@
 /// computer player can be built and tested before the simulation exists. They
 /// are deterministic: the same call gives the same value.
 public enum Samples {
+    /// A building's footprint origin, or the tile a person stands on.
+    private static func tile(_ kind: EntityKind, _ position: MapPosition) -> GridPoint {
+        if case .building(let b) = kind { return Placement.origin(b, centre: position) }
+        return position.tile
+    }
+
     /// A 32 × 32 map for two players: grass, a forest to the north-west, a lake
     /// to the south-east, and sites of every Stone and Bronze age kind.
     public static func map() -> GameMap {
@@ -16,7 +22,7 @@ public enum Samples {
         for x in 10..<14 { set(x, 14, .dirt) }
         var sites: [ResourceSite] = []
         func site(_ kind: SiteKind, _ x: Int, _ y: Int) {
-            let amount = Catalogue.standard.gathering.siteAmount[kind] ?? 100
+            let amount = Catalogue.standard.gathering.amount(kind)
             sites.append(ResourceSite(id: SiteID(sites.count), kind: kind, tile: GridPoint(x, y), remaining: amount))
         }
         for y in 0..<6 { for x in 0..<8 where (x + y) % 2 == 0 { site(.tree, x, y) } }
@@ -41,7 +47,7 @@ public enum Samples {
             }
             let position = MapPosition(x: x, y: y)
             entities.append(EntityView(id: EntityID(entities.count + 1), owner: owner, kind: kind, position: position,
-                                       tile: position.tile, facing: .right, health: health ?? maxHealth,
+                                       tile: tile(kind, position), facing: .right, health: health ?? maxHealth,
                                        maxHealth: maxHealth, activity: activity))
         }
         add(.building(.townCentre), me, 9.5, 9.5)
@@ -69,15 +75,16 @@ public enum Samples {
     }
 
     /// Player 0 in the Bronze age, with buildings of both ages, warfighters of
-    /// every kind, an opponent's force in sight, and work under way.
+    /// every kind, an opponent's force in sight, and work under way. Its
+    /// population is at its limit (15 of 15), so training is refused.
     public static func bronzeAgeSkirmish() -> PlayerView {
         var view = stoneAgeOpening()
         view.tick = Tick.seconds(600)
         view.age = .bronze
         view.ageProgress = 0
         view.resources = ResourceAmounts([.food: 420, .wood: 310, .stone: 120, .bronze: 85, .gold: 60])
-        view.population = 22
-        view.populationLimit = 25
+        view.population = 15
+        view.populationLimit = 15
         view.improvements = [.betterTools]
         view.players[0].age = .bronze
         view.players[1].age = .bronze
@@ -90,16 +97,17 @@ public enum Samples {
             case .building(let k): maxHealth = Catalogue.standard.stats(k).health
             }
             let position = MapPosition(x: x, y: y)
-            view.entities.append(EntityView(id: EntityID(next), owner: owner, kind: kind, position: position, tile: position.tile,
+            view.entities.append(EntityView(id: EntityID(next), owner: owner, kind: kind, position: position, tile: tile(kind, position),
                                             facing: facing, health: maxHealth - damage, maxHealth: maxHealth, activity: activity))
             next += 1
         }
         add(.building(.house), me, 6, 10, .idle)
+        add(.building(.house), me, 3, 10, .idle)
         add(.building(.storagePit), me, 4, 8, .idle)
         add(.building(.barracks), me, 13.5, 6.5, .training(.spearman, 0.4, queued: 2))
         add(.building(.stockPen), me, 6.5, 14.5, .idle)
         add(.building(.watchTower), me, 15.5, 13.5, .underConstruction(0.6))
-        add(.building(.palisade), me, 16.5, 9.5, .idle)
+        add(.building(.palisade), me, 14.5, 9.5, .idle)
         add(.unit(.worker), me, 16, 9.5, .gathering(.copper))
         add(.unit(.worker), me, 18, 9.5, .gathering(.tin))
         add(.unit(.engineer), me, 15, 14, .constructing)

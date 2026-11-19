@@ -46,13 +46,16 @@ public protocol GameSimulating: Codable, Sendable {
     var tick: Int { get }
     var outcome: MatchOutcome? { get }
     var isPaused: Bool { get set }
-    /// Apply an order from a player at the current tick.
+    /// Apply an order from a player at the current tick. A refusal is also
+    /// reported as `GameEvent.refused` in that player's next view.
     mutating func apply(_ order: Order, from player: PlayerID) -> OrderResult
     /// Advance one tick (1 / `Tick.rate` seconds), unless paused.
     mutating func step()
     /// What the player may know now, with the events since the player's last view.
     mutating func view(for player: PlayerID) -> PlayerView
-    /// A checksum of the whole state, the same in every process for the same state.
+    /// A checksum of the whole state, the same in every process for the same
+    /// state. Computed field by field from the simulation's own ordered arrays,
+    /// never by hashing an encoding that contains a dictionary.
     func checksum() -> UInt64
 }
 

@@ -9,10 +9,15 @@ public enum Order: Hashable, Codable, Sendable {
     /// Walk to a point.
     case move(units: [EntityID], to: MapPosition)
     /// Workers gather at a site: fell a tree, hunt prey, or mine a deposit.
+    /// Copper and tin miners carry loads home like any other; on delivery each
+    /// unit of copper ore pairs with a unit of tin ore to make one unit of
+    /// bronze. Unpaired ore is held, unseen by the player, up to one load of
+    /// each; ore beyond that is lost. So bronze is made only whilst both are
+    /// mined (requirement 18).
     case gather(units: [EntityID], site: SiteID)
-    /// Work at a building: workers tend a stock pen; scholars study at a town
-    /// centre (progress toward the next age) or research where research is under
-    /// way; engineers finish or repair it.
+    /// Work at a building: workers tend a stock pen; engineers finish or repair
+    /// it; scholars research where research is under way at that building, and
+    /// otherwise, at a town centre, study toward the next age.
     case work(units: [EntityID], at: EntityID)
     /// Engineers construct a new building with its footprint's origin at `at`.
     case construct(engineers: [EntityID], building: BuildingKind, at: GridPoint)
@@ -28,8 +33,15 @@ public enum Order: Hashable, Codable, Sendable {
     /// Advance to the next age, once the scholars' study is complete; this pays
     /// the advance's cost (requirement 16).
     case advanceAge
-    /// A founder builds a new town centre, free of cost, at `at` (requirement 26).
+    /// A founder builds a new town centre, free of cost, at `at`; it comes with
+    /// `Catalogue.founderWorkers` workers and the founder disappears (requirement 26).
     case found(founder: EntityID, at: GridPoint)
+    /// Pay to turn warfighters into the kind a later age brings, at a building
+    /// that trains that kind (requirement 17; see `Catalogue.upgrades`).
+    case upgrade(units: [EntityID], to: UnitKind, at: EntityID)
+    /// Pause or resume the match for everyone (docs/requirements.md, "The match").
+    /// Accepted from any human player, and accepted whilst paused.
+    case setPaused(Bool)
     /// Stop whatever the units are doing.
     case stop(units: [EntityID])
 }
@@ -52,7 +64,7 @@ public enum OrderRefusal: Hashable, Codable, Sendable, CustomStringConvertible {
     case cannotAttack
     /// The scholars' study is not yet complete.
     case studyIncomplete
-    /// The match is over or paused.
+    /// The match is over, or paused (every order but `setPaused` is refused whilst paused).
     case notNow
 
     public var description: String {

@@ -5,14 +5,27 @@
 /// the artwork (`Artwork`) supplies them, so that the two agree without either
 /// waiting for the other (docs/architecture.md, "Sprites").
 public enum SpriteSubject: Hashable, Codable, Sendable {
-    /// A person of a kind, at the owner's age (the stage of a peaceful sector
-    /// follows the age; a warfighter's kind fixes its look).
+    /// A person of a kind with the look of an age. Use `SpriteSubject.of(_:ownerAge:)`
+    /// to choose it: a peaceful sector's look follows the owner's age, whereas a
+    /// warfighter or founder keeps the look of the age its kind belongs to.
     case unit(UnitKind, Age)
     /// A building, in the style of the owner's age.
     case building(BuildingKind, Age)
     case site(SiteKind)
     /// A ground tile; `variant` gives variety between neighbouring tiles.
     case terrain(Terrain, variant: Int)
+
+    /// The subject for an entity, as both the drawing and the artwork must name it.
+    public static func of(_ entity: EntityView, ownerAge: Age, catalogue: Catalogue = .standard) -> SpriteSubject {
+        switch entity.kind {
+        case .unit(let kind):
+            let own = catalogue.stats(kind).age
+            let look = (kind.isWarfighter || kind == .founder) ? own : max(own, ownerAge)
+            return .unit(kind, look)
+        case .building(let kind):
+            return .building(kind, max(catalogue.stats(kind).age, ownerAge))
+        }
+    }
 }
 
 /// A pose within limited animation. Open-ended, so that the art style guide can

@@ -21,6 +21,7 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
         .attack(units: [EntityID(6)], target: EntityID(9)), .train(at: EntityID(1), unit: .worker),
         .cancelTraining(at: EntityID(1)), .research(at: EntityID(1), improvement: .betterTools), .advanceAge,
         .found(founder: EntityID(7), at: GridPoint(1, 1)), .stop(units: [EntityID(1)]),
+        .upgrade(units: [EntityID(8)], to: .spearman, at: EntityID(3)), .setPaused(true),
     ]
     #expect(try roundTrip(orders) == orders)
     #expect(try roundTrip(OrderResult.refused(.notEnough(ResourceAmounts([.wood: 20])))) == .refused(.notEnough(ResourceAmounts([.wood: 20]))))
@@ -90,15 +91,58 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     #expect(!keys.contains(SpriteKey(.site(.iron), .complete)))
 }
 
-@MainActor @Test func sessionKeepsRefusalsAndDropsVanishedSelection() {
-    let session = PlayerSession(view: Samples.bronzeAgeSkirmish(), catalogue: .standard,
-                                camera: Camera(centre: MapPosition(x: 10, y: 10))) { _ in .refused(.populationLimit) }
+@MainActor @Test func sessionTakesRefusalsFromTheViewAndDropsVanishedSelection() {
+    var sent: [Order] = []
+    let session = PlayerSession(view: Samples.stoneAgeOpening(), catalogue: .standard,
+                                camera: Camera(centre: MapPosition(x: 10, y: 10))) { sent.append($0) }
     session.selection = [EntityID(1), EntityID(999)]
-    session.update(Samples.bronzeAgeSkirmish())
+    session.issue(.setPaused(true))
+    #expect(sent == [.setPaused(true)])
+    var next = Samples.bronzeAgeSkirmish()
+    next.events.append(.refused(.populationLimit))
+    session.update(next)
     #expect(session.selection == [EntityID(1)])
-    #expect(session.issue(.advanceAge) == .refused(.populationLimit))
     #expect(session.lastRefusal == .populationLimit)
 }
+
+@Test func placementFollowsTheOneRule() {
+    let view = Samples.stoneAgeOpening()
+    // On open, explored grass beside the town centre: allowed.
+    #expect(Placement.canPlace(.house, at: GridPoint(12, 7), in: view))
+    // Over the town centre's own footprint: refused.
+    #expect(!Placement.canPlace(.house, at: GridPoint(9, 9), in: view))
+    // On a tree: refused; on unexplored ground: refused; off the map: refused.
+    #expect(!Placement.canPlace(.house, at: GridPoint(4, 4), in: view))
+    #expect(!Placement.canPlace(.house, at: GridPoint(28, 2), in: view))
+    #expect(!Placement.canPlace(.house, at: GridPoint(-1, 3), in: view))
+    #expect(Placement.footprint(.townCentre, at: GridPoint(8, 8)).count == 9)
+    #expect(Placement.origin(.townCentre, centre: MapPosition(x: 9.5, y: 9.5)) == GridPoint(8, 8))
+    #expect(Placement.centre(.townCentre, origin: GridPoint(8, 8)) == MapPosition(x: 9.5, y: 9.5))
+}
+
+@Test func spriteSubjectsAgreeWithTheChecklist() {
+    let view = Samples.bronzeAgeSkirmish()
+    let keys = Set(SpriteKey.required(through: .bronze))
+    for entity in view.entities {
+        let owner = view.players.first { $0.id == entity.owner }!
+        let subject = SpriteSubject.of(entity, ownerAge: owner.age)
+        let pose: SpritePose = { if case .building = entity.kind { return .complete } else { return .standing } }()
+        #expect(keys.contains(SpriteKey(subject, pose)), "\(subject)")
+    }
+}
+
+@Test func encodingsDoNotDependOnTheProcess() throws {
+    // A fixed value: if a dictionary crept back into these types, the encoding
+    // would change between processes and this would fail at random.
+    let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+    var sum = StableChecksum()
+    sum.add(bytes: try encoder.encode(Catalogue.standard))
+    sum.add(bytes: try encoder.encode(Samples.twoPlayerSetup()))
+    sum.add(bytes: try encoder.encode(Samples.bronzeAgeSkirmish()))
+    #expect(sum.value == EncodingFixture.expected, "update EncodingFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
+}
+
+enum EncodingFixture { static let expected: UInt64 = 0x9371_C962_368A_FC2A }
 
 @Test func samplesAreConsistent() {
     for view in [Samples.stoneAgeOpening(), Samples.bronzeAgeSkirmish()] {
@@ -107,7 +151,15 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
         #expect(view.entities.map(\.id) == view.entities.map(\.id).sorted())
         #expect(Set(view.entities.map(\.id)).count == view.entities.count)
         #expect(view.sites.allSatisfy { $0.kind.firstAge <= view.age })
+        for e in view.entities { if case .building(let b) = e.kind { #expect(Placement.origin(b, centre: e.position) == e.tile, "\(b)") } }
     }
+    let skirmish = Samples.bronzeAgeSkirmish()
+    let used = skirmish.entities.filter { $0.owner == skirmish.player }.reduce(0) { n, e in
+        if case .unit(let k) = e.kind { return n + Catalogue.standard.stats(k).population } else { return n } }
+    let housing = skirmish.entities.filter { $0.owner == skirmish.player }.reduce(0) { n, e in
+        if case .building(let k) = e.kind { return n + Catalogue.standard.stats(k).housing } else { return n } }
+    #expect(skirmish.population == used && skirmish.populationLimit == housing)
+    #expect(Samples.stoneAgeOpening().entities.first!.tile == Samples.map().starts[0])
     let map = Samples.map()
     #expect(map.starts.count == 2)
     #expect(map.sites.map(\.id) == map.sites.map(\.id).sorted())
