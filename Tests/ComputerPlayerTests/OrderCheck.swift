@@ -94,6 +94,9 @@ enum OrderCheck {
                     problems.append("construct: \(kind) overlaps another building ordered at \(tile)")
                 }
                 spent = spent + stats.cost
+            case .demolish(let engineers, let at):
+                command(engineers, "demolish") { $0 == .engineer }
+                if building(at) == nil { problems.append("demolish: \(at) is not a building it owns") }
             case .attack(let units, let target):
                 command(units, "attack") { $0 != .founder && catalogue.stats($0).attack != nil }
                 guard let struck = view.entity(target) else {
