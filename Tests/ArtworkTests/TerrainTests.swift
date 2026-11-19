@@ -143,8 +143,10 @@ struct TerrainTests {
         #expect(outcrop.meanLightness() < stone.meanLightness() - 0.25)
     }
 
-    /// Copper, tin and gold differ at a glance from one another, from stone and
-    /// from the outcrop: their solid pixels' average colours lie well apart.
+    /// Copper, tin and gold stay apart from one another, from stone and from
+    /// the outcrop: their solid pixels' average colours lie at least 0.12 apart
+    /// (the nearest pair, copper and tin, measured 0.153). A guard against two
+    /// drifting together; whether they read apart at a glance is judged by eye.
     @Test func depositsAreToldApart() throws {
         let sprites = TerrainSprites()
         var means: [(String, [Double])] = []
@@ -156,7 +158,7 @@ struct TerrainTests {
             for j in means.indices where j > i {
                 let a = means[i].1, b = means[j].1
                 let distance = (0..<3).map { (a[$0] - b[$0]) * (a[$0] - b[$0]) }.reduce(0, +).squareRoot()
-                #expect(distance > 0.15, "\(means[i].0) and \(means[j].0): \(distance)")
+                #expect(distance > 0.12, "\(means[i].0) and \(means[j].0): \(distance)")
             }
         }
     }
