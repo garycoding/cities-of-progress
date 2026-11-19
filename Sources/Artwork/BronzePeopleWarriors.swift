@@ -108,8 +108,9 @@ struct BronzePeopleSpearman: PersonLook {
                                            stroke: .colour(Ink.line), width: 1.1, opacity: 0.6) }
                 if frame == 8 { d.impact(at: tip + P(2, 0), size: 1.1) }
             default:
-                // Upright, its butt on the ground beside the front foot.
-                let below = max(4, -d.bob - hand.y - 0.6)
+                // Upright: its butt rests on the ground beside the front foot, and is
+                // carried clear of the ground on the march.
+                let below = max(4, -d.bob - hand.y - (pose == .walking ? 7 : 0.6))
                 Self.spear(&d.svg, at: hand, degrees: degrees, ahead: 54, behind: below)
             }
             d.arm(front: true, width: 2.1)
