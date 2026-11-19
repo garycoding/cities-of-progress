@@ -106,7 +106,12 @@ extension Simulation {
         case .arrived: break
         }
         deliver(i)
-        if thenIdle { setIdle(i) } else { entities[i].route = Route() }
+        if thenIdle {
+            setIdle(i)
+        } else {
+            entities[i].route = Route()
+            entities[i].doing = .moving
+        }
     }
 
     func accepts(_ building: Int, _ resource: Resource, from owner: PlayerID) -> Bool {

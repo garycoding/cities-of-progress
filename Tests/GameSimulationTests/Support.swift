@@ -88,4 +88,10 @@ extension Simulation {
     }
 
     func health(_ id: EntityID) -> Int? { entity(id)?.health }
+
+    /// An entity the test knows to be alive.
+    func living(_ id: EntityID) -> Entity {
+        guard let e = entity(id) else { preconditionFailure("\(id) is not alive") }
+        return e
+    }
 }
