@@ -12,7 +12,7 @@ import Testing
 /// directory is `COP_RENDERS` where set; otherwise the images are rendered and
 /// checked but not written.
 @MainActor
-private func render<V: View>(_ name: String, width: CGFloat, height: CGFloat, scale: CGFloat = 2, @ViewBuilder _ content: () -> V) -> Bool {
+func render<V: View>(_ name: String, width: CGFloat, height: CGFloat, scale: CGFloat = 2, @ViewBuilder _ content: () -> V) -> Bool {
     let framed = content()
         .frame(width: width, height: height)
         .environment(\.colorScheme, .light)
@@ -29,14 +29,14 @@ private func render<V: View>(_ name: String, width: CGFloat, height: CGFloat, sc
 }
 
 @MainActor
-private func session(_ view: PlayerView, select ids: [EntityID] = [], placing: BuildingKind? = nil) -> PlayerSession {
+func session(_ view: PlayerView, select ids: [EntityID] = [], placing: BuildingKind? = nil) -> PlayerSession {
     let s = makeSession(view, select: ids).0
     s.placing = placing
     s.camera = Camera(centre: MapPosition(x: 12, y: 12))
     return s
 }
 
-private struct EmptyMap: View {
+struct EmptyMap: View {
     var body: some View {
         ZStack {
             Color(red: 0.74, green: 0.80, blue: 0.62)

@@ -43,13 +43,12 @@ public struct Autosaves: Sendable {
     /// Every automatic save, newest first.
     public func entries() -> [Entry] {
         let urls = (try? FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil)) ?? []
-        let formatter = Self.formatter()
         return urls.compactMap { url -> Entry? in
             guard url.pathExtension == "json" else { return nil }
             let name = url.deletingPathExtension().lastPathComponent
             guard name.count > Self.stampLength + 1 else { return nil }
             let stampText = String(name.suffix(Self.stampLength))
-            guard let date = formatter.date(from: stampText) else { return nil }
+            guard let date = Self.formatter.date(from: stampText) else { return nil }
             return Entry(url: url, match: String(name.dropLast(Self.stampLength + 1)), date: date)
         }
         .sorted { ($0.date, $0.url.path) > ($1.date, $1.url.path) }
@@ -61,15 +60,12 @@ public struct Autosaves: Sendable {
     }
 
     private static let stampLength = 19
-    private static func stamp(_ date: Date) -> String { formatter().string(from: date) }
-    /// A new formatter for each use, rather than a shared one, which would need
-    /// marking as safe to share in SDKs where `DateFormatter` is not `Sendable`
-    /// and draws a warning in those where it is.
-    private static func formatter() -> DateFormatter {
+    private static func stamp(_ date: Date) -> String { formatter.string(from: date) }
+    private static let formatter: DateFormatter = {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.timeZone = TimeZone.current
         f.dateFormat = "yyyy-MM-dd HH.mm.ss"
         return f
-    }
+    }()
 }
