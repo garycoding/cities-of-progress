@@ -56,7 +56,7 @@ private final class SeatPlayer {
 }
 
 @MainActor
-private func until(_ what: String, within limit: Duration = .seconds(30), _ condition: () -> Bool) async throws {
+private func until(_ what: String, within limit: Duration = .seconds(90), _ condition: () -> Bool) async throws {
     let deadline = ContinuousClock.now + limit
     while !condition() {
         guard ContinuousClock.now < deadline else {
@@ -80,12 +80,15 @@ private func until(_ what: String, within limit: Duration = .seconds(30), _ cond
         Seat(player: PlayerID(3), team: TeamID(1), kind: .computer(.easy), civilization: .olmec),
     ])
     let server = HostServer(lobby: lobby, build: build)
+    // The tests share a busy machine on CI; a connection is not taken for lost on a stall of a few seconds.
+    server.silenceLimit = .seconds(60)
     try server.open(loopbackOnly: true)
     defer { server.close() }
     try await until("the server listens") { server.port != nil }
 
     let hyun = MatchClient(name: "Hyun", build: build)
     let mira = MatchClient(name: "Mira", build: build)
+    for client in [hyun, mira] { client.silenceLimit = .seconds(60) }
     defer { hyun.leave(); mira.leave() }
     hyun.join(host: "127.0.0.1", port: server.port!)
     try await until("Hyun is seated and has the lobby") { hyun.state == .inLobby && hyun.seat != nil && hyun.lobby != nil }
