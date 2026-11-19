@@ -89,7 +89,7 @@ extension IronOldBuildingsPainter {
         line([bell + P(-1.6, -4.2), bell + P(-2, -1)], width: 0.6, opacity: 0.6)
         svg.circle(bell + P(0, 0.9), 0.9, fill: .colour(I.ironDark))
         // The roof of red tile, and the pennant at its peak.
-        let peak = hippedRoof(-0.44, -0.44, 0.44, 0.44, eaves: eaves, rise: 13, overhang: 0.06)
+        let peak = hippedRoof(-0.44, -0.44, 0.44, 0.44, eaves: eaves, overhang: 0.06)
         pennant(at: iso(0, 0, peak), height: 14, length: 14)
     }
 

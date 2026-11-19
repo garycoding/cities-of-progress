@@ -186,49 +186,6 @@ extension IronOldBuildingsPainter {
         for one in pile.sorted(by: { ($0.y, $0.h) < ($1.y, $1.h) }) { log(x0, x1, one.y, on: one.h, radius: r) }
     }
 
-    /// A roof of reed thatch: its top given by four corners on the screen in
-    /// the order of `level` (back, right, front, left), `thickness` points deep
-    /// at its two front edges, with straw hatched over it running from the
-    /// back edges toward the front, and a ragged fringe of straw ends below.
-    mutating func thatch(_ c: [P], thickness: Double) {
-        typealias I = IronOldBuildingsInk
-        let edge = P(0, thickness)
-        colour([c[3], c[2], c[2] + edge, c[3] + edge], .colour(I.reedShade))
-        colour([c[2], c[1], c[1] + edge, c[2] + edge], .colour(I.reedShade))
-        colour(c, .colour(I.reed))
-        // Straw: short strokes in rows across the roof, each pointing to the front corner.
-        var d = PathData()
-        let rows = 7, columns = 8
-        for i in 0..<rows {
-            for j in 0..<columns {
-                let s = (Double(i) + 0.5 + (j % 2 == 0 ? 0 : 0.35)) / Double(rows), t = (Double(j) + 0.5) / Double(columns)
-                let a = c[0] + (c[1] - c[0]) * t, b = c[3] + (c[2] - c[3]) * t
-                let p = a + (b - a) * s
-                let toward = (c[2] - c[0]) * (1 / 14.0)
-                let length = 0.8 + Double((i * 7 + j * 3) % 4) * 0.12
-                d.move(p - toward * length)
-                d.line(p + toward * length)
-            }
-        }
-        svg.path(d, stroke: .colour(I.reedShade), width: 0.55)
-        line(c, closed: true, width: 0.9)
-        // The fringe: straw ends hanging below the two front edges.
-        var fringe = PathData()
-        for (a, b) in [(c[3], c[2]), (c[2], c[1])] {
-            let count = Int(((b - a).x.magnitude + (b - a).y.magnitude) / 2.2)
-            for k in 0...count {
-                let p = a + (b - a) * (Double(k) / Double(max(count, 1))) + edge
-                fringe.move(p)
-                fringe.line(p + P(k % 2 == 0 ? -0.3 : 0.3, k % 3 == 0 ? 2.2 : 1.5))
-            }
-        }
-        svg.path(fringe, stroke: .colour(I.line), width: 0.6)
-        line([c[3] + edge, c[2] + edge, c[1] + edge], width: 0.8)
-        line([c[3], c[3] + edge], width: 0.8)
-        line([c[2], c[2] + edge], width: 0.8)
-        line([c[1], c[1] + edge], width: 0.8)
-    }
-
     /// A basket of mortar standing at `at` on the screen.
     mutating func basket(at p: P, size s: Double = 1) {
         typealias I = IronOldBuildingsInk

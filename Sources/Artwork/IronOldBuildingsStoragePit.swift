@@ -21,13 +21,14 @@ extension IronOldBuildingsPainter {
 
     private mutating func store() {
         typealias I = IronOldBuildingsInk
-        let h0 = 1.5, rim = 5.0, floor = -9.0, e = 0.62
+        let h0 = 1.5, rim = 5.0, floor = -4.0, e = 0.62
         // The shelter at the back left: a roof of tile on four posts over amphorae.
         let (s0, s1, t0, t1) = (-0.98, -0.66, -0.98, -0.2)
-        for (x, y) in [(s0 + 0.03, t0 + 0.03), (s1, t0 + 0.03)] { pole(iso(x, y, h0), iso(x, y, h0 + 20), width: 1.4) }
-        for i in 0..<3 { amphora(at: iso(-0.84, -0.84 + Double(i) * 0.22, h0), size: 0.9, paint: i == 1 ? I.clayShade : I.clay) }
-        for (x, y) in [(s0 + 0.03, t1), (s1, t1)] { pole(iso(x, y, h0), iso(x, y, h0 + 20), width: 1.4) }
-        hippedRoof(s0, t0, s1, t1, eaves: h0 + 20, rise: 6, overhang: 0.04)
+        shadow(level(s0, t0, s1 + 0.1, t1 + 0.12, h0), opacity: 0.16)
+        for (x, y) in [(s0 + 0.03, t0 + 0.03), (s1, t0 + 0.03)] { pole(iso(x, y, h0), iso(x, y, h0 + 24), width: 1.4) }
+        for i in 0..<3 { amphora(at: iso(-0.84, -0.84 + Double(i) * 0.22, h0), size: 0.72, paint: i == 1 ? I.clayShade : I.clay) }
+        for (x, y) in [(s0 + 0.03, t1), (s1, t1)] { pole(iso(x, y, h0), iso(x, y, h0 + 24), width: 1.4) }
+        hippedRoof(s0, t0, s1, t1, eaves: h0 + 24, overhang: 0.04)
         // The crane's post at the back right, behind the pit.
         let foot = iso(0.8, -0.8, h0), head = foot - P(0, 40)
         pole(foot, head, width: 2.4, colour: I.timber)
@@ -40,9 +41,13 @@ extension IronOldBuildingsPainter {
             // In the pit, the farther first: bars of iron, dressed stone, and amphorae.
             p.ironBars(-0.28, -0.32, on: floor, count: 5)
             p.stones(0.2, -0.32, on: floor)
-            p.amphora(at: p.iso(-0.4, 0.12, floor), size: 1.1)
-            p.amphora(at: p.iso(-0.36, 0.36, floor), size: 1.0, paint: I.clayShade)
+            p.amphora(at: p.iso(-0.4, 0.1, floor), size: 0.9)
+            p.amphora(at: p.iso(-0.36, 0.3, floor), size: 0.85, paint: I.clayShade)
         }
+        // The yard in front of the kerb, over the pit's floor where it would show below the kerb's foot.
+        colour(level(-e, e, e, 0.99, h0), .colour(I.paving))
+        colour(level(e, -e, 0.99, 0.99, h0), .colour(I.paving))
+        line([iso(-e, e, h0), iso(e, e, h0), iso(e, -e, h0)], width: 1.2)
         // The kerb's band in the owner's colour, on its two outer faces.
         wall(.left, from: -e, e, at: h0) { p in p.paintedBand(0, 2 * e * 32, 1, 2.5) }
         wall(.right, from: e, e, at: h0) { p in p.paintedBand(0, 2 * e * 32, 1, 2.5) }

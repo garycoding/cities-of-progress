@@ -68,15 +68,19 @@ extension IronOldBuildingsPainter {
 
     /// A hipped roof of red tile over the block from (x0, y0) to (x1, y1),
     /// overhanging it by `overhang` tiles, its eaves at `h` points and its ridge
-    /// `rise` points above them; a square block takes a pyramid. Returns the
-    /// height of the ridge.
+    /// `rise` points above them; a square block takes a pyramid. Without a
+    /// `rise` the roof is pitched just steeply enough that its far slopes show
+    /// only as a sliver above the ridge, as a shallower roof would show them
+    /// as a second, flat-looking roof behind the first. Returns the height of the ridge.
     @discardableResult
-    mutating func hippedRoof(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double, eaves h: Double, rise: Double,
+    mutating func hippedRoof(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double, eaves h: Double, rise: Double? = nil,
                              overhang o: Double = 0.06) -> Double {
         typealias I = IronOldBuildingsInk
         let (a, b, c, d) = (x0 - o, y0 - o, x1 + o, y1 + o)
-        let lx = c - a, ly = d - b, top = h + rise
+        let lx = c - a, ly = d - b
         let k = min(lx, ly) / 2
+        // A far slope is edge-on at a rise of 32 points for each tile from its eave to the ridge.
+        let top = h + (rise ?? 30 * k)
         // The two slopes at the back first, which the nearer two hide but at the ridge.
         slope((c, b), along: (-1, 0), inward: (0, 1), length: lx, depth: k, hip0: k, hip1: k, from: h, to: top, I.tileLight,
               rows: false)
@@ -232,12 +236,23 @@ extension IronOldBuildingsPainter {
 
     // MARK: Team colour
 
-    /// A wreath of laurel in the light colour at `p`, open at its top.
+    /// A wreath of laurel in the light colour at `p`, open at its top: a ring
+    /// of leaves along a thin stem.
     mutating func wreath(at p: P, radius r: Double) {
         typealias I = IronOldBuildingsInk
-        let s = sin(0.45), c = cos(0.45)
+        let gap = 0.5
+        let s = sin(gap), c = cos(gap)
         let d = "M\(num(p.x + r * s)),\(num(p.y - r * c)) A\(num(r)),\(num(r)) 0 1 1 \(num(p.x - r * s)),\(num(p.y - r * c))"
-        svg.path(d, stroke: .colour(I.light), width: max(0.6, r * 0.42))
+        svg.path(d, stroke: .colour(I.light), width: max(0.4, r * 0.16))
+        // The leaves, in pairs either side of the stem.
+        for i in 0..<9 {
+            let a = gap + (2 * Double.pi - 2 * gap) * (Double(i) + 0.5) / 9
+            let centre = p + P(sin(a), -cos(a)) * r
+            for side in [-1.0, 1.0] {
+                let leaf = centre + P(sin(a), -cos(a)) * (side * r * 0.22)
+                svg.ellipse(leaf, r * 0.2, r * 0.12, fill: .colour(I.light))
+            }
+        }
     }
 
     /// The legion's oblong shield hung on a wall drawn with `wall`, centred on

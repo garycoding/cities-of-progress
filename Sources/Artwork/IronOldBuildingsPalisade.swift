@@ -3,8 +3,8 @@
 
 import Foundation
 
-// The Iron-age palisade: one tile of a wall of sharpened stakes, bound with two
-// bands of iron and shod with iron points, set in a footing of dressed stone
+// The Iron-age palisade: one tile of a wall of sharpened stakes, each bound
+// with two bands of iron, set in a footing of dressed stone
 // that carries a band of the owner's colour.
 // The key names no neighbours, so the tile joins its neighbours whichever way a
 // row runs: the bank fills the tile to its edges and is outlined only along the
@@ -61,7 +61,7 @@ extension IronOldBuildingsPainter {
         line([iso(-e, e, 0), iso(e, e, 0), iso(e, -e, 0)], width: 1.1)
     }
 
-    /// A stake as `stake` draws it, with two bands of iron and an iron point when `bound`.
+    /// A stake as `stake` draws it, with two bands of iron when `bound`.
     private mutating func stake(_ x: Double, _ y: Double, on h: Double, height: Double, radius r: Double, bound: Bool) {
         typealias I = IronOldBuildingsInk
         stake(x, y, on: h, height: height, radius: r)
@@ -70,8 +70,6 @@ extension IronOldBuildingsPainter {
                 let band = iso(x, y, h + v)
                 shape([band + P(-r, 0), band + P(r, 0), band + P(r, -1.5), band + P(-r, -1.5)], .colour(I.iron), width: 0.6)
             }
-            let tip = iso(x, y, h + height)
-            shape([tip, tip + P(r * 0.55, r * 1.0), tip + P(-r * 0.55, r * 1.0)], .colour(I.ironLight), width: 0.5)
         }
     }
 }

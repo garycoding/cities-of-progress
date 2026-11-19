@@ -201,38 +201,6 @@ struct IronOldBuildingsPainter {
         line([iso(x0, y1, h1), iso(x1, y1, h1), iso(x1, y0, h1)], width: width)
     }
 
-    /// A coping of rounded scallops along an edge from `a` to `b` on the
-    /// screen, `count` of them rising `rise` points, filled with `paint`.
-    mutating func scallops(_ a: P, _ b: P, count: Int, rise: Double, _ paint: Paint) {
-        func trace(_ o: P) -> PathData {
-            var d = PathData()
-            d.move(a + o)
-            for i in 0..<count {
-                let s = a + (b - a) * (Double(i) / Double(count)), e = a + (b - a) * (Double(i + 1) / Double(count))
-                d.quad((s + e) * 0.5 + P(0, -2 * rise) + o, e + o)
-            }
-            return d
-        }
-        colour(paint) { d, o in
-            d = trace(o)
-            d.close()
-        }
-        line(width: 0.9) { d in d = trace(P(0, 0)) }
-    }
-
-    /// Stepped merlons along a wall drawn with `wall`, standing on `v`, from `u0` to `u1`.
-    mutating func merlons(_ u0: Double, _ u1: Double, on v: Double, size s: Double = 1, _ paint: Paint) {
-        let pitch = 6.4 * s
-        var u = u0 + 0.6 * s
-        while u + 4.6 * s <= u1 + 0.01 {
-            let w = 4.6 * s
-            shape([uv(u, v), uv(u, v + 3 * s), uv(u + 1.1 * s, v + 3 * s), uv(u + 1.1 * s, v + 4.8 * s),
-                   uv(u + w - 1.1 * s, v + 4.8 * s), uv(u + w - 1.1 * s, v + 3 * s), uv(u + w, v + 3 * s), uv(u + w, v)],
-                  paint, width: 0.8)
-            u += pitch
-        }
-    }
-
     /// A sharpened stake of timber standing at (x, y) on `h`, `height` points
     /// tall to its point and `radius` points thick.
     mutating func stake(_ x: Double, _ y: Double, on h: Double, height: Double, radius r: Double) {
@@ -303,18 +271,6 @@ struct IronOldBuildingsPainter {
             row += 1
         }
         svg.path(d, stroke: .colour(IronOldBuildingsInk.line), width: 0.45, opacity: opacity)
-    }
-
-    /// A zigzag along a wall from `u0` to `u1`, between `v0` and `v1`, its teeth `pitch` apart.
-    mutating func zigzag(_ u0: Double, _ u1: Double, _ v0: Double, _ v1: Double, pitch: Double, width: Double = 0.9) {
-        var points: [P] = []
-        var u = u0, up = false
-        while u <= u1 + 0.01 {
-            points.append(uv(u, up ? v1 : v0))
-            u += pitch / 2
-            up.toggle()
-        }
-        line(points, width: width)
     }
 
     /// A flight of stone steps climbing toward −y between `x0` and `x1`: its foot

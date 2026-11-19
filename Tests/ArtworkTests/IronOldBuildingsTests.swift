@@ -231,7 +231,9 @@ private enum IronOldBuildingsPreview {
                 field(context, rect, colour: isBronze ? "#d9b46c" : "#6fa39a", joints: isBronze ? "#cba55e" : "#64978e")
                 if let sprite = source.sprite(key) {
                     let image = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: TeamColour.of(civilization))
-                    Preview.place(image, anchor: sprite.anchor, at: CGPoint(x: rect.midX, y: rect.minY + 70), in: context)
+                    let f = Catalogue.standard.stats(kind).footprint
+                    Preview.place(image, anchor: sprite.anchor, at: CGPoint(x: rect.midX, y: rect.minY + 14 + Double(f.x + f.y) * 16),
+                                  in: context)
                 }
                 let text = "\(kind.name), \(isBronze ? "Bronze" : "Iron, \(civilization)"), \(complete ? "complete" : "under construction")"
                 Preview.label(text, in: context, at: CGPoint(x: Double(column * cellW + 10), y: Double(top - label + 6)), size: 17)
@@ -255,7 +257,7 @@ private enum IronOldBuildingsPreview {
         }
         for y in 0..<size {
             for x in 0..<size {
-                let path = (x == 8 && y >= 10) || (y == 8 && x >= 10) || (x + y == 7 && x <= 7)
+                let path = y == 9 || (x == 9 && y >= 4)
                 let kind: Terrain = path ? .dirt : .grass
                 if let tile = terrain.sprite(SpriteKey(.terrain(kind, variant: (x * 7 + y * 3) % 4), .complete)) {
                     Preview.place(tile.base, anchor: tile.anchor, at: screen(Double(x) + 0.5, Double(y) + 0.5), in: context)
@@ -275,7 +277,7 @@ private enum IronOldBuildingsPreview {
             Placed(kind: .watchTower, x: 13, y: 8, complete: true, civilization: .sumer),
         ]
         for y in 2..<8 { placed.append(Placed(kind: .palisade, x: 13, y: y, complete: true, civilization: .sumer)) }
-        for x in 9..<13 { placed.append(Placed(kind: .palisade, x: x, y: 2, complete: true, civilization: .sumer)) }
+        for x in 9..<12 { placed.append(Placed(kind: .palisade, x: x, y: 2, complete: true, civilization: .sumer)) }
         placed.append(Placed(kind: .palisade, x: 12, y: 2, complete: false, civilization: .sumer))
         func depth(_ p: Placed) -> Double {
             let f = Catalogue.standard.stats(p.kind).footprint

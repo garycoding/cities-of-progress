@@ -110,10 +110,11 @@ extension IronOldBuildingsPainter {
     private mutating func shelter() {
         let (x0, y0, x1, y1) = (-1.3, -1.3, -0.38, -0.56)
         let eaves = 21.0
+        shadow(level(x0, y0, x1 + 0.12, y1 + 0.14, 1.5), opacity: 0.14)
         heap(at: iso(-0.95, -1.0, 1.5), width: 22, height: 10)
         for (x, y) in [(x0 + 0.04, y0 + 0.04), (x1, y0 + 0.04)] { pole(iso(x, y, 1.5), iso(x, y, eaves), width: 1.4) }
         for (x, y) in [(x0 + 0.04, y1), (x1, y1)] { pole(iso(x, y, 1.5), iso(x, y, eaves), width: 1.4) }
-        hippedRoof(x0, y0, x1, y1, eaves: eaves, rise: 7, overhang: 0.05)
+        hippedRoof(x0, y0, x1, y1, eaves: eaves, overhang: 0.05)
     }
 
     /// A trough of stone holding water, along the back right side.

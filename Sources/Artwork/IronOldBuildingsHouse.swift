@@ -61,14 +61,14 @@ extension IronOldBuildingsPainter {
         // The shade under the eaves.
         shadow([iso(x0, y1, h1 - 2.2), iso(x1, y1, h1 - 2.2), iso(x1, y1, h1), iso(x0, y1, h1)], opacity: 0.12)
         shadow([iso(x1, y1, h1 - 2.2), iso(x1, y0, h1 - 2.2), iso(x1, y0, h1), iso(x1, y1, h1)], opacity: 0.12)
-        hippedRoof(x0, y0, x1, y1, eaves: h1, rise: 15, overhang: 0.07)
+        hippedRoof(x0, y0, x1, y1, eaves: h1, overhang: 0.07)
         // The porch: two columns and a roof of its own over the door.
         let (p0, p1, depth) = (-0.48, -0.1, y1 + 0.26)
         shadow([iso(p0, y1, h0), iso(p1, y1, h0), iso(p1, depth, h0), iso(p0, depth, h0)], opacity: 0.1)
         for x in [p0, p1] { column(at: iso(x, depth - 0.03, h0), height: 18.5, radius: 1.7) }
         block(p0 - 0.04, y1, p1 + 0.04, depth + 0.01, h0 + 18.5, h0 + 21, top: nil, left: .colour(I.light),
               right: .colour(I.plasterShade), width: 0.9)
-        hippedRoof(p0 - 0.04, y1 + 0.02, p1 + 0.04, depth + 0.01, eaves: h0 + 21, rise: 5, overhang: 0.03)
+        hippedRoof(p0 - 0.04, y1 + 0.02, p1 + 0.04, depth + 0.01, eaves: h0 + 21, overhang: 0.03)
         // Amphorae and a jar in the yard.
         amphora(at: iso(-0.75, 0.72, h0), size: 0.95)
         amphora(at: iso(-0.55, 0.82, h0), size: 0.85, paint: I.clayShade)

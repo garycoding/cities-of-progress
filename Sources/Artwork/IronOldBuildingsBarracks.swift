@@ -44,7 +44,7 @@ extension IronOldBuildingsPainter {
         }
         shadow([iso(x0, y1, h1 - 2.2), iso(x1, y1, h1 - 2.2), iso(x1, y1, h1), iso(x0, y1, h1)], opacity: 0.12)
         shadow([iso(x1, y1, h1 - 2.2), iso(x1, y0, h1 - 2.2), iso(x1, y0, h1), iso(x1, y1, h1)], opacity: 0.12)
-        hippedRoof(x0, y0, x1, y1, eaves: h1, rise: 15, overhang: 0.07)
+        hippedRoof(x0, y0, x1, y1, eaves: h1, overhang: 0.07)
         // The towers either side of the gateway, standing out from the wall.
         for tower in Self.towers { gateTower(tower.x0, y1, tower.x1, Self.towerFront, from: h0) }
         rackOfSpears(-1.12, 0.92)
