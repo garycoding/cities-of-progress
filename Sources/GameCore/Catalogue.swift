@@ -273,8 +273,18 @@ public struct Catalogue: Hashable, Codable, Sendable {
             UnitStats(kind: .catapult, age: .iron, cost: cost([.wood: 150, .iron: 40]), trainTime: s(30), health: 120, armour: 1,
                       speed: 0.6, sight: 8, attack: Attack(damage: 20, range: 9, interval: s(5), area: 1.5), trainedAt: [.siegeWorkshop],
                       population: 3),
+            // The Alchemy age's warfighters. Their figures are provisional until the Alchemy age's rules are built.
+            UnitStats(kind: .knight, age: .alchemy, cost: cost([.food: 100, .gold: 60]), trainTime: s(20), health: 130, armour: 3,
+                      speed: 2.0, sight: 7, attack: Attack(damage: 10, range: 1, interval: s(1.5)), trainedAt: [.stable, .castle],
+                      population: 2),
+            UnitStats(kind: .musketeer, age: .alchemy, cost: cost([.food: 60, .gunpowder: 30]), trainTime: s(16), health: 60,
+                      armour: 1, speed: 1.0, sight: 7, attack: Attack(damage: 12, range: 6, interval: s(3)),
+                      trainedAt: [.barracks, .castle]),
+            UnitStats(kind: .cannon, age: .alchemy, cost: cost([.wood: 120, .iron: 80, .gunpowder: 60]), trainTime: s(35),
+                      health: 160, armour: 2, speed: 0.6, sight: 9, attack: Attack(damage: 30, range: 10, interval: s(5), area: 1.5),
+                      trainedAt: [.siegeWorkshop, .castle], population: 3),
         ]
-        let allStone: [Resource] = [.food, .wood, .stone, .bronze, .gold, .iron]
+        let allStone: [Resource] = [.food, .wood, .stone, .bronze, .gold, .iron, .gunpowder]
         let buildings: [BuildingStats] = [
             BuildingStats(kind: .townCentre, age: .stone, cost: cost([.wood: 200, .stone: 100]), buildTime: s(120), health: 1200,
                           armour: 2, footprint: GridPoint(3, 3), sight: 8, attack: Attack(damage: 3, range: 6, interval: s(2)),
@@ -287,7 +297,7 @@ public struct Catalogue: Hashable, Codable, Sendable {
             BuildingStats(kind: .stockPen, age: .bronze, cost: cost([.wood: 60]), buildTime: s(25), health: 250, armour: 0,
                           footprint: GridPoint(3, 3), sight: 3, accepts: [.food]),
             BuildingStats(kind: .barracks, age: .bronze, cost: cost([.wood: 100]), buildTime: s(40), health: 500, armour: 1,
-                          footprint: GridPoint(3, 3), sight: 4, trains: [.clubman, .slinger, .spearman, .archer, .chariot, .swordsman],
+                          footprint: GridPoint(3, 3), sight: 4, trains: [.clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .musketeer],
                           researches: [.bronzeWeapons, .shields, .ironWeapons, .mail]),
             BuildingStats(kind: .watchTower, age: .bronze, cost: cost([.stone: 80, .wood: 20]), buildTime: s(40), health: 400,
                           armour: 2, footprint: GridPoint(1, 1), sight: 9, attack: Attack(damage: 4, range: 7, interval: s(2))),
@@ -297,11 +307,17 @@ public struct Catalogue: Hashable, Codable, Sendable {
             BuildingStats(kind: .farm, age: .iron, cost: cost([.wood: 60]), buildTime: s(20), health: 150, armour: 0,
                           footprint: GridPoint(3, 3), sight: 2, researches: [.plough]),
             BuildingStats(kind: .stable, age: .iron, cost: cost([.wood: 120]), buildTime: s(45), health: 500, armour: 1,
-                          footprint: GridPoint(3, 3), sight: 4, trains: [.horseman]),
+                          footprint: GridPoint(3, 3), sight: 4, trains: [.horseman, .knight]),
             BuildingStats(kind: .siegeWorkshop, age: .iron, cost: cost([.wood: 150, .stone: 50]), buildTime: s(50), health: 600,
-                          armour: 1, footprint: GridPoint(3, 3), sight: 4, trains: [.catapult]),
+                          armour: 1, footprint: GridPoint(3, 3), sight: 4, trains: [.catapult, .cannon]),
             BuildingStats(kind: .stoneWall, age: .iron, cost: cost([.stone: 5]), buildTime: s(6), health: 400, armour: 3,
                           footprint: GridPoint(1, 1), sight: 1),
+            // The Alchemy age's buildings. Their figures are provisional until the Alchemy age's rules are built.
+            BuildingStats(kind: .castle, age: .alchemy, cost: cost([.stone: 600, .wood: 200]), buildTime: s(150), health: 3000,
+                          armour: 4, footprint: GridPoint(4, 4), sight: 10, attack: Attack(damage: 8, range: 8, interval: s(2)),
+                          trains: [.knight, .musketeer, .cannon]),
+            BuildingStats(kind: .alchemistsWorkshop, age: .alchemy, cost: cost([.wood: 150, .stone: 100, .gold: 50]),
+                          buildTime: s(50), health: 600, armour: 1, footprint: GridPoint(3, 3), sight: 4),
         ]
         let improvements: [ImprovementStats] = [
             ImprovementStats(improvement: .betterTools, age: .stone, cost: cost([.food: 80, .wood: 60]), work: s(40),

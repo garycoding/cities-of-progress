@@ -14,6 +14,7 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
     case clubman, slinger
     case spearman, archer, chariot
     case swordsman, horseman, catapult
+    case knight, musketeer, cannon
 
     public var sector: Sector? {
         switch self {
@@ -22,7 +23,8 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .engineer: .engineers
         case .merchant: .merchants
         case .founder: nil
-        case .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult: .warfighters
+        case .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon:
+            .warfighters
         }
     }
 
@@ -31,10 +33,10 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
     /// The name of this kind at the owner's age, for the interface.
     public func stageName(at age: Age) -> String {
         switch self {
-        case .worker: age >= .iron ? "Farmer" : age >= .bronze ? "Herder" : "Hunter"
-        case .scholar: age >= .iron ? "Philosopher" : age >= .bronze ? "Scribe" : "Elder"
-        case .engineer: age >= .iron ? "Siege engineer" : age >= .bronze ? "Mason" : "Builder"
-        case .merchant: age >= .iron ? "Caravan trader" : "Trader"
+        case .worker: age >= .alchemy ? "Craftsman" : age >= .iron ? "Farmer" : age >= .bronze ? "Herder" : "Hunter"
+        case .scholar: age >= .alchemy ? "Alchemist" : age >= .iron ? "Philosopher" : age >= .bronze ? "Scribe" : "Elder"
+        case .engineer: age >= .alchemy ? "Gunsmith" : age >= .iron ? "Siege engineer" : age >= .bronze ? "Mason" : "Builder"
+        case .merchant: age >= .alchemy ? "Banker" : age >= .iron ? "Caravan trader" : "Trader"
         case .founder: "Founder"
         case .clubman: "Clubman"
         case .slinger: "Slinger"
@@ -44,6 +46,9 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .swordsman: "Swordsman"
         case .horseman: "Horseman"
         case .catapult: "Catapult"
+        case .knight: "Knight"
+        case .musketeer: "Musketeer"
+        case .cannon: "Cannon"
         }
     }
 }
@@ -54,6 +59,7 @@ public enum BuildingKind: Int, CaseIterable, Codable, Sendable, Hashable {
     case townCentre, house, storagePit
     case stockPen, barracks, watchTower, palisade
     case farm, stable, siegeWorkshop, stoneWall
+    case castle, alchemistsWorkshop
 
     public var name: String {
         switch self {
@@ -68,6 +74,8 @@ public enum BuildingKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .stable: "Stable"
         case .siegeWorkshop: "Siege workshop"
         case .stoneWall: "Stone wall"
+        case .castle: "Castle"
+        case .alchemistsWorkshop: "Alchemist's workshop"
         }
     }
 }
