@@ -36,7 +36,7 @@ private func lobby() -> Lobby {
         .hello(protocolVersion: NetMessage.protocolVersion, build: "abc1234", name: "Hyun", rejoining: nil, viewsReceived: nil),
         .hello(protocolVersion: 2, build: "abc1234", name: "Hyun", rejoining: PlayerID(1), viewsReceived: 412),
         .chooseCivilization(.harappa), .order(.stop(units: [EntityID(3)])), .setSpeed(1.5), .ping(7),
-        .welcome(seat: PlayerID(1)), .turnedAway(reason: "Another version"), .lobby(lobby()), .start(start),
+        .welcome(seat: PlayerID(1), run: 7), .turnedAway(reason: "Another version"), .lobby(lobby()), .start(start),
         .view(view.withoutTerrain), .notice(.dropped(player: PlayerID(1), name: "Hyun")), .notice(.hostLeaving), .pong(7),
     ]
     for message in messages {

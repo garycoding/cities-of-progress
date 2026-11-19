@@ -49,10 +49,11 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
     public var isPaused: Bool { simulation.isPaused || !dropped.isEmpty }
 
     /// An order from a person at this Mac (or, in a later milestone, another Mac).
-    /// While a dropped person's seat holds the match, a request to resume is refused.
+    /// While a dropped person's seat holds the match, it is paused for everyone:
+    /// every order is refused but a request to pause.
     @discardableResult
     public mutating func apply(_ order: Order, from player: PlayerID) -> OrderResult {
-        if case .setPaused(false) = order, !dropped.isEmpty { return .refused(.notNow) }
+        if !dropped.isEmpty, order != .setPaused(true) { return .refused(.notNow) }
         return simulation.apply(order, from: player)
     }
 

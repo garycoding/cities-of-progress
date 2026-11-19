@@ -275,6 +275,7 @@ extension LANTests {
     @Test func aMatchThatCannotBeReachedIsReported() async throws {
         let client = MatchClient(name: "Hyun", build: testBuild)
         client.connectLimit = .milliseconds(300)
+        client.firstConnectLimit = .milliseconds(300)
         client.join(host: "127.0.0.1", port: 9)
         try await until("it gives up") { client.state.isFinal }
         #expect(client.state == .gaveUp(reason: "The host could not be reached."))
@@ -322,5 +323,37 @@ extension LANTests {
         let last = lan.match!.host.tick
         try await until("every event is delivered") { received.ticks.last == last }
         #expect(received.ticks == Array(received.ticks[0]...last))
+    }
+}
+
+extension LANTests {
+    @Test func inAResumedMatchEachPersonIsGivenTheirOwnSeatBack() async throws {
+        var lobby = eveningLobby()
+        lobby.seats[1].formerHolder = "Mira"
+        lobby.seats[2].formerHolder = "Hyun"
+        let lan = try Loopback(lobby: lobby)
+        defer { lan.stop() }
+        // Hyun comes first, but is given the seat he held, not the first open one.
+        let hyun = try await lan.join("Hyun")
+        try await until("Hyun is seated") { hyun.state == .inLobby && hyun.seat != nil }
+        #expect(hyun.seat == PlayerID(2))
+        // Someone new is kept from a seat whose person may yet come, whilst another is open.
+        let ana = try await lan.join("Ana")
+        try await until("Ana is seated") { ana.state == .inLobby && ana.seat != nil }
+        #expect(ana.seat == PlayerID(1), "the only seat left")
+    }
+
+    @Test func whilstTheMatchHoldsForADroppedPersonEveryOrderButAPauseIsRefused() async throws {
+        let (lan, hyun, mira) = try await Loopback.playing()
+        defer { lan.stop() }
+        hyun.leave()
+        try await until("the match holds") { lan.server.dropped == [PlayerID(1)] }
+        let goes = MapPosition(x: 11.5, y: 3.5)
+        let move = Order.move(units: [StubSimulation.mark(of: PlayerID(2))], to: goes)
+        mira.session?.issue(move)
+        try await until("Mira sees the refusal") { mira.session?.lastRefusal == .notNow }
+        #expect(!lan.simulation.orders[2].contains(move))
+        #expect(lan.server.issue(.move(units: [StubSimulation.mark(of: PlayerID(0))], to: goes)) == .refused(.notNow))
+        #expect(lan.server.issue(.setPaused(true)) == .accepted)
     }
 }

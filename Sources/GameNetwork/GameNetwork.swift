@@ -83,4 +83,10 @@ public protocol HostedMatch: AnyObject {
     func rejoin(_ player: PlayerID)
     /// `MatchHost.handToComputer(_:difficulty:)`.
     func handToComputer(_ player: PlayerID, difficulty: Difficulty)
+    /// The match has an outcome; a person who leaves then is not waited for.
+    var isOver: Bool { get }
+}
+
+extension HostedMatch {
+    public var isOver: Bool { false }
 }

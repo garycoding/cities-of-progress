@@ -58,6 +58,8 @@ public final class HostServer {
     @ObservationIgnored private var nextGuest = 0
     /// Events of views that never went out, for the seat's next view.
     @ObservationIgnored private var carried: [PlayerID: [GameEvent]] = [:]
+    /// Identifies this opening of the match, sent in `welcome`.
+    let run = UInt64.random(in: 1...UInt64.max)
     /// For each seat, how many views have gone out to it, and the events of the
     /// latest of them, numbered, kept so that those lost at a break can be sent again.
     @ObservationIgnored private var viewsSent: [PlayerID: Int] = [:]
@@ -323,10 +325,14 @@ public final class HostServer {
     private func admit(_ guest: Guest, name: String, asking: PlayerID?) {
         let seats = lobby.seats.indices.filter { lobby.seats[$0].kind == .person }
         var index = seats.first { lobby.seats[$0].holder == name }
+        // In a resumed match, the seat the person held before.
+        if index == nil { index = seats.first { lobby.seats[$0].formerHolder == name && lobby.seats[$0].holder == nil } }
         if let index, let old = holder(of: lobby.seats[index].player) { replace(old) }
         if index == nil, let asking {
             index = seats.first { lobby.seats[$0].player == asking && lobby.seats[$0].holder == nil }
         }
+        // Else an open seat, keeping those of people expected back to the last.
+        if index == nil { index = seats.first { lobby.seats[$0].holder == nil && lobby.seats[$0].formerHolder == nil } }
         if index == nil { index = seats.first { lobby.seats[$0].holder == nil } }
         guard let index else { return turnAway(guest, "The match \(lobby.name) has no open seat.") }
         lobby.seats[index].holder = name
@@ -357,7 +363,7 @@ public final class HostServer {
     private func seat(_ guest: Guest, at seat: PlayerID, name: String) {
         guest.seat = seat
         guest.name = name
-        guest.link.send(.welcome(seat: seat))
+        guest.link.send(.welcome(seat: seat, run: run))
     }
 
     /// Another connection has come under the same name. The old one, whose
@@ -390,7 +396,8 @@ public final class HostServer {
             if !lobby.seats[i].civilizationFixed { lobby.seats[i].civilization = nil }
             sendLobby()
         case .playing:
-            drop(seat, name: name)
+            // Once the match has ended there is nothing to hold for.
+            if match?.isOver != true { drop(seat, name: name) }
         case .closed:
             break
         }
@@ -416,14 +423,14 @@ public final class HostServer {
         guard let match else { return .refused(.notNow) }
         let held = !dropped.isEmpty
         let result = match.apply(order, from: seat)
-        guard case .setPaused(let paused) = order else { return result }
-        if result == .accepted {
-            publish(paused ? .paused(by: name) : .resumed(by: name))
-        } else if !paused, held, result == .refused(.notNow), seat != hostSeat {
-            // `MatchHost` refuses a resume while it holds for a dropped person
+        if held, result == .refused(.notNow), seat != hostSeat {
+            // `MatchHost` refuses orders while it holds for a dropped person
             // without the simulation's knowing, so no event reports it; the
-            // person's next view does.
+            // person's next view does. The host's own session takes the result directly.
             carried[seat, default: []].append(.refused(.notNow))
+        }
+        if case .setPaused(let paused) = order, result == .accepted {
+            publish(paused ? .paused(by: name) : .resumed(by: name))
         }
         return result
     }
