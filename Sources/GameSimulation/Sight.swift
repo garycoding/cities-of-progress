@@ -137,6 +137,7 @@ extension Simulation {
             return .working
         case .carrying:
             if let cargo = e.cargo { return .carrying(cargo.kind.yield, cargo.amount) }
+            if case .carry(let resource, _) = e.task, let goods = e.goods, goods > 0 { return .carrying(resource, goods) }
             return .moving
         case .working: return .working
         case .constructing: return .constructing

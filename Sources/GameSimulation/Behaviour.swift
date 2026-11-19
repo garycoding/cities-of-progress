@@ -18,10 +18,13 @@ extension Simulation {
         case .work(let building): workTask(i, at: building)
         case .demolish(let building): demolishTask(i, building)
         case .attack(let target): attackTask(i, target: target)
+        case .trade(let building, let give, let take): tradeTask(i, at: building, give: give, take: take)
+        case .carry(let resource, let target): carryTask(i, resource, to: target)
         }
     }
 
     mutating func setIdle(_ i: Int) {
+        returnCarried(i)
         entities[i].task = .idle
         entities[i].doing = .idle
         entities[i].route = Route()
@@ -29,6 +32,7 @@ extension Simulation {
 
     /// Give a person a new task, forgetting its route.
     mutating func assign(_ i: Int, _ task: Task) {
+        if entities[i].task != task { returnCarried(i) }
         entities[i].task = task
         entities[i].route = Route()
         entities[i].dropOff = nil

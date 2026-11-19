@@ -32,6 +32,8 @@ extension Simulation {
         case .move(let units, let to): return move(units, to: to, player: player)
         case .gather(let units, let site): return gather(units, at: site, player: player)
         case .work(let units, let at): return work(units, at: at, player: player)
+        case .exchange(let merchants, let give, let take): return exchange(merchants, give: give, take: take, player: player)
+        case .carry(let merchants, let resource, let to): return carry(merchants, resource, to: to, player: player)
         case .demolish(let engineers, let building): return demolish(engineers, building, player: player)
         case .construct(let engineers, let building, let at): return construct(engineers, building, at: at, player: player)
         case .attack(let units, let target): return attack(units, target: target, player: player)

@@ -104,6 +104,10 @@ enum Task: Codable, Sendable, Hashable {
     case work(EntityID)
     case demolish(EntityID)
     case attack(EntityID)
+    /// A merchant trading at an own town centre.
+    case trade(at: EntityID, give: Resource, take: Resource)
+    /// A merchant carrying a resource from home to an ally's building, again and again.
+    case carry(Resource, to: EntityID)
 }
 
 /// The way a person is following toward its goal.
@@ -152,6 +156,8 @@ struct Entity: Codable, Sendable, Hashable {
     var doing: Doing = .idle
     var route = Route()
     var cargo: Cargo?
+    /// What a merchant carries to an ally; optional so that older saves open.
+    var goods: Int?
     /// The building a worker is carrying its load to.
     var dropOff: EntityID?
     /// Part of a unit gathered or herded, carried over between ticks.

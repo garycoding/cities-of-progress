@@ -52,6 +52,14 @@ public enum Order: Hashable, Codable, Sendable {
     /// Pause or resume the match for everyone (docs/requirements.md, "The match").
     /// Accepted from any human player, and accepted whilst paused.
     case setPaused(Bool)
+    /// Merchants trade at the nearest own town centre, turning the stock of
+    /// `give` into `take` at `MerchantStats.exchangeRate`, until `give` runs out
+    /// or they are given other work (requirement 15).
+    case exchange(merchants: [EntityID], give: Resource, take: Resource)
+    /// Merchants carry `resource` from the player's stock to an ally's building
+    /// that accepts it, a load at a time, until the stock runs out or they are
+    /// given other work (requirement 15).
+    case carry(merchants: [EntityID], resource: Resource, to: EntityID)
     /// Stop whatever the units are doing.
     case stop(units: [EntityID])
     /// The player's own people leave the match at once, freeing their places;

@@ -146,6 +146,19 @@ public struct GatheringStats: Hashable, Codable, Sendable {
     public func amount(_ kind: SiteKind) -> Int { amountBySite[kind.rawValue] }
 }
 
+/// How merchants trade: at a town centre a merchant takes `exchangePerSecond`
+/// of one resource from the stock each second and adds `exchangeRate` as much
+/// of another; carrying to an ally, a merchant takes `load` at a time.
+public struct MerchantStats: Hashable, Codable, Sendable {
+    public var exchangePerSecond: Double
+    public var exchangeRate: Double
+    public var load: Int
+
+    public init(exchangePerSecond: Double, exchangeRate: Double, load: Int) {
+        self.exchangePerSecond = exchangePerSecond; self.exchangeRate = exchangeRate; self.load = load
+    }
+}
+
 /// A damage multiplier when one kind strikes another.
 public struct Bonus: Hashable, Codable, Sendable {
     public var attacker: UnitKind
@@ -189,10 +202,14 @@ public struct Catalogue: Hashable, Codable, Sendable {
     /// People that come with a town centre built by a founder: one engineer,
     /// so that a house can be built, and the rest workers (requirement 26).
     public var founderPeople: Int
+    /// What merchants do (requirement 15, "Sectors"); optional so that saves
+    /// made before merchants traded still open, and then they cannot.
+    public var merchants: MerchantStats?
 
     public init(units: [UnitStats], buildings: [BuildingStats], improvements: [ImprovementStats],
                 advances: [AdvanceStats], gathering: GatheringStats, bonuses: [Bonus], upgrades: [UpgradeStats],
-                startingResources: ResourceAmounts, startingPeople: Int, populationMaximum: Int, founderPeople: Int) {
+                startingResources: ResourceAmounts, startingPeople: Int, populationMaximum: Int, founderPeople: Int, merchants: MerchantStats? = nil) {
+        self.merchants = merchants
         self.units = units; self.buildings = buildings; self.improvements = improvements; self.advances = advances
         self.gathering = gathering; self.bonuses = bonuses; self.upgrades = upgrades
         self.startingResources = startingResources; self.startingPeople = startingPeople
@@ -332,6 +349,7 @@ public struct Catalogue: Hashable, Codable, Sendable {
         return Catalogue(units: units, buildings: buildings, improvements: improvements, advances: advances,
                          gathering: gathering, bonuses: bonuses, upgrades: upgrades,
                          startingResources: cost([.food: 200, .wood: 200, .stone: 50]),
-                         startingPeople: 3, populationMaximum: 200, founderPeople: 6)
+                         startingPeople: 3, populationMaximum: 200, founderPeople: 6,
+                         merchants: MerchantStats(exchangePerSecond: 1, exchangeRate: 2.0 / 3.0, load: 20))
     }()
 }
