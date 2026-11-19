@@ -21,12 +21,14 @@ import Testing
             #expect(centres.first?.activity == .idle)
             let footprint = Goal.tiles(match.map.starts[i], catalogue.stats(.townCentre).footprint, reach: 0)
             let workers = mine.filter { $0.kind == .unit(.worker) }
-            #expect(workers.count == catalogue.startingWorkers)
-            for w in workers {
+            let engineers = mine.filter { $0.kind == .unit(.engineer) }
+            #expect(workers.count == catalogue.startingPeople - 1)
+            #expect(engineers.count == 1)
+            for w in workers + engineers {
                 #expect(footprint.distance(to: w.position) <= 1.5)
                 #expect(sim.open(w.tile))
             }
-            #expect(view.population == catalogue.startingWorkers)
+            #expect(view.population == catalogue.startingPeople)
             #expect(view.populationLimit == catalogue.stats(.townCentre).housing)
         }
     }
