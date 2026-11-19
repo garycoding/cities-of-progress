@@ -181,7 +181,6 @@ struct EntityIcon: View {
                     if let mask = image.teamMask, let team {
                         Image(decorative: mask, scale: 2).resizable().scaledToFit()
                             .colorMultiply(Color(red: team.red, green: team.green, blue: team.blue))
-                            .blendMode(.multiply)
                     }
                 }
             } else {

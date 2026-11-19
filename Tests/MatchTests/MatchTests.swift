@@ -59,12 +59,12 @@ func reportHowEqualsPlay() {
         while host.outcome == nil && host.tick < matchLimit {
             host.advance()
             if host.tick % 200 == 0 {
-                for p in host.view(for: PlayerID(0)).players where p.age == .bronze && bronzeAt[p.id.rawValue] == nil {
+                for p in host.peek(for: PlayerID(0)).players where p.age == .bronze && bronzeAt[p.id.rawValue] == nil {
                     bronzeAt[p.id.rawValue] = host.tick / Tick.rate
                 }
             }
         }
-        let v = host.view(for: PlayerID(0))
+        let v = host.peek(for: PlayerID(0))
         let own = v.entities.filter { $0.owner == PlayerID(0) }
         print("seed \(seed): tick \(host.tick / Tick.rate / 60) min, outcome \(String(describing: host.outcome)), bronze at s \(bronzeAt), p0 entities \(own.count), p0 resources \(v.resources)")
     }

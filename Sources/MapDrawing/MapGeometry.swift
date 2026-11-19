@@ -131,6 +131,19 @@ public enum MapHitTesting {
         return low <= high && point.y >= low && point.y <= high + height
     }
 
+    /// Whether `point` lies above the bottom edge of a convex quadrilateral, within
+    /// its width, and no higher than `top`.
+    static func contains(_ quad: [CGPoint], upTo top: Double, _ point: CGPoint) -> Bool {
+        var low = Double.infinity
+        for i in 0..<quad.count {
+            let a = quad[i], b = quad[(i + 1) % quad.count]
+            let lo = min(a.x, b.x), hi = max(a.x, b.x)
+            guard point.x >= lo, point.x <= hi, hi > lo else { continue }
+            low = min(low, a.y + (b.y - a.y) * (point.x - a.x) / (b.x - a.x))
+        }
+        return low.isFinite && point.y >= low && point.y <= top
+    }
+
     /// The entity drawn under `point`. A person wins over a building where both
     /// are under it; among people, the one whose feet are nearest the point; among
     /// buildings, the nearest to the viewer.
@@ -155,8 +168,12 @@ public enum MapHitTesting {
             case .building(let kind):
                 let size = catalogue.stats(kind).footprint
                 let quad = footprintCorners(origin: entity.tile, size: size, geometry: geometry)
-                let height = max(Stature.building(kind), drawnHeight(entity) ?? 0)
-                guard contains(quad, liftedBy: height * zoom, point) else { continue }
+                // The block of `Stature`, or else up to the drawing's top, which is
+                // measured from the anchor (the footprint's centre), not from its back edge.
+                let anchor = geometry.scenePoint(for: entity.position)
+                let top = drawnHeight(entity).map { anchor.y + $0 * zoom }
+                guard contains(quad, liftedBy: Stature.building(kind) * zoom, point)
+                        || (top.map { contains(quad, upTo: $0, point) } ?? false) else { continue }
                 let depth = Projection.depth(entity.position)
                 if depth > buildingDepth { building = entity; buildingDepth = depth }
             }

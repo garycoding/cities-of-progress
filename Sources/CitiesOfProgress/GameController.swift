@@ -66,7 +66,11 @@ final class Match {
     func stop() {
         clock?.invalidate()
         clock = nil
+        // The time stopped is not owed: the match resumes where it stood.
+        lastTime = nil
     }
+
+    var isOver: Bool { host.outcome != nil }
 
     fileprivate func apply(_ order: Order) {
         host.apply(order, from: player)
@@ -120,33 +124,56 @@ final class GameController {
 
     /// Leave the match and show the new-match screen.
     func endMatch() {
+        guard mayLeaveMatch(to: "start a new match") else { return }
         match?.stop()
         match = nil
     }
 
+    /// Whether the person agrees to leave a match still in play; the match is
+    /// stopped while the question is open.
+    private func mayLeaveMatch(to what: String) -> Bool {
+        guard let match, !match.isOver else { return true }
+        match.stop()
+        let alert = NSAlert()
+        alert.messageText = "Leave this match?"
+        alert.informativeText = "To \(what), this match will be closed. Save it first if you want to come back to it."
+        alert.addButton(withTitle: "Leave Match")
+        alert.addButton(withTitle: "Keep Playing")
+        let leave = alert.runModal() == .alertFirstButtonReturn
+        if !leave { match.start() }
+        return leave
+    }
+
     func save() {
         guard let match else { return }
+        // The match is saved as it stood when the person asked, and waits while they name the file.
+        let snapshot = match.saved
+        match.stop()
+        defer { match.start() }
         let panel = NSSavePanel()
         panel.nameFieldStringValue = "Match.json"
         panel.allowedContentTypes = [.json]
         guard panel.runModal() == .OK, let url = panel.url else { return }
         do {
-            try JSONEncoder().encode(match.saved).write(to: url, options: .atomic)
+            try JSONEncoder().encode(snapshot).write(to: url, options: .atomic)
         } catch {
             problem = "The match could not be saved: \(error.localizedDescription)"
         }
     }
 
     func open() {
+        guard mayLeaveMatch(to: "open a saved match") else { return }
+        match?.stop()
         let panel = NSOpenPanel()
         panel.allowedContentTypes = [.json]
         panel.allowsMultipleSelection = false
-        guard panel.runModal() == .OK, let url = panel.url else { return }
+        guard panel.runModal() == .OK, let url = panel.url else { match?.start(); return }
         do {
             let saved = try JSONDecoder().decode(Match.Saved.self, from: Data(contentsOf: url))
             begin(Match(host: saved.host, player: saved.player, camera: saved.camera))
         } catch {
             problem = "That file is not a saved match."
+            match?.start()
         }
     }
 }

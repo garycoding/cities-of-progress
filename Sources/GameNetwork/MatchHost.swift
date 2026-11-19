@@ -47,6 +47,13 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
         simulation.apply(order, from: player)
     }
 
+    /// The match as a spectator sees one player's side, without taking that
+    /// player's events (for reports and tests).
+    public func peek(for player: PlayerID) -> PlayerView {
+        var copy = simulation
+        return copy.view(for: player)
+    }
+
     /// One tick: each computer player whose turn it is decides from its own view,
     /// its orders are applied, and the simulation steps. The computer players'
     /// turns are spread across the interval so that no tick carries them all.
@@ -57,7 +64,8 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
             let player = computerPlayers[k]
             let view = simulation.view(for: player)
             for order in computers[k].decide(view: view, catalogue: catalogue) {
-                simulation.apply(order, from: player)
+                // A refused order reaches the computer player as an event in its next view.
+                _ = simulation.apply(order, from: player)
             }
         }
         simulation.step()

@@ -120,7 +120,9 @@ final class EntityNode: SKNode {
         body.size = sprite.size
         body.anchorPoint = sprite.anchor
         drawnHeight = sprite.drawnHeight ?? 0
-        if let height = sprite.drawnHeight { barHeight = height + 8 }
+        if let height = sprite.drawnHeight, case .building(let kind) = entity.kind {
+            barHeight = max(height + 8, Stature.building(kind) + 10)
+        }
         if let maskTexture = sprite.mask {
             let node: SKSpriteNode
             if let existing = mask { node = existing } else {
