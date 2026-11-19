@@ -26,7 +26,8 @@ extension Simulation {
         while entities[i].fraction >= 1 && players[p].resources[give] > 0 {
             entities[i].fraction -= 1
             players[p].resources[give] -= 1
-            entities[i].healthCredit += Int((rates.exchangeRate * 1000).rounded())
+            // Rounded down, so that the exchange never makes more than its rate gives.
+            entities[i].healthCredit += Int((rates.exchangeRate * 1000).rounded(.down))
             while entities[i].healthCredit >= 1000 {
                 entities[i].healthCredit -= 1000
                 players[p].resources[take] += 1

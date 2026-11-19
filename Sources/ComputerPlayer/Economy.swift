@@ -123,7 +123,7 @@ extension Turn {
             (.worker, w, tuning.workers(at: view.age)),
             (.scholar, s, w < tuning.workersBeforeScholars ? 0 : studying ? tuning.scholars : researchable.isEmpty ? 0 : 2),
             (.engineer, e, tuning.engineers(at: view.age)),
-            (.merchant, merchants.count + training[UnitKind.merchant.rawValue], view.age >= .bronze && w >= 12 ? 1 : 0),
+            (.merchant, merchants.count + training[UnitKind.merchant.rawValue], catalogue.merchants != nil && view.age >= .bronze && w >= 12 ? 1 : 0),
         ]
         var best: UnitKind?
         var bestGap = 0.0
@@ -348,26 +348,53 @@ extension Turn {
     /// Idle scholars study at the town centre.
     func employScholars() {
         guard let centre = Turn.nearest(completeBuildings(.townCentre), to: base) else { return }
-        // Two scholars work where research is under way; the rest study at the town centre.
+        var researchers = (memory.researchers ?? []).filter { r in scholars.contains { $0.id == r.scholar } }
         var free = scholars.filter { isFree($0) && ($0.activity == .idle || $0.activity == .working) }
+        // Scholars whose research is done, or whose building is gone, go back to study at the town centre.
+        var back: [EntityID] = []
+        researchers.removeAll { r in
+            let researching: Bool = {
+                guard let b = view.entity(r.building), case .researching = b.activity else { return false }
+                return true
+            }()
+            if researching { return false }
+            if free.contains(where: { $0.id == r.scholar }) { back.append(r.scholar) }
+            return true
+        }
+        // Two scholars, counted from those sent whether still walking or at work, where research is under way.
         for building in buildings where building.id != centre.id {
             guard case .researching = building.activity else { continue }
-            let there = scholars.filter { $0.activity == .working && $0.position.distance(to: building.position) <= 3 }.count
+            let there = researchers.filter { $0.building == building.id }.count
             for _ in 0..<max(0, 2 - there) {
-                guard let scholar = Turn.nearest(free, to: building.position) else { break }
+                let candidates = free.filter { s in !researchers.contains { $0.scholar == s.id } && !back.contains(s.id) }
+                guard let scholar = Turn.nearest(candidates, to: building.position) else { break }
                 free.removeAll { $0.id == scholar.id }
+                researchers.append(Researcher(scholar: scholar.id, building: building.id))
                 give(.work(units: [scholar.id], at: building.id), to: [scholar.id])
             }
         }
-        let idle = free.filter { $0.activity == .idle }.map(\.id)
-        if !idle.isEmpty { give(.work(units: idle, at: centre.id), to: idle) }
+        memory.researchers = researchers
+        let idle = free.filter { s in s.activity == .idle && !researchers.contains { $0.scholar == s.id } }.map(\.id)
+        let toCentre = Array(Set(idle + back)).sorted()
+        if !toCentre.isEmpty { give(.work(units: toCentre, at: centre.id), to: toCentre) }
     }
 
     /// An idle merchant trades the largest surplus for the resource the player
     /// most lacks of those it is saving for, or else of bronze, gold and iron.
     func employMerchants() {
+        guard catalogue.merchants != nil, !completeBuildings(.townCentre).isEmpty else { return }
+        // A trade under way stops once what it gives falls to 300 or what it takes is no longer short.
+        if let trade = memory.trade {
+            if view.resources[trade.give] < 300 || view.resources[trade.take] >= 400 {
+                let trading = merchants.filter { isFree($0) && $0.activity == .working }.map(\.id)
+                if !trading.isEmpty { give(.stop(units: trading), to: trading) }
+                memory.trade = nil
+            }
+            return
+        }
         let idle = merchants.filter { isFree($0) && $0.activity == .idle }.map(\.id)
         guard !idle.isEmpty else { return }
+
         let shown = view.shownResources.filter { $0 != .food || view.age >= .bronze }
         guard let surplus = shown.max(by: { view.resources[$0] < view.resources[$1] }), view.resources[surplus] >= 600 else { return }
         let wanted = shown.filter { $0 != surplus && view.resources[$0] < 150 }
@@ -375,6 +402,7 @@ extension Turn {
             ?? [Resource.iron, .gold, .bronze].first { shown.contains($0) && $0 != surplus && view.resources[$0] < 300 }
         guard let take = short else { return }
         give(.exchange(merchants: idle, give: surplus, take: take), to: idle)
+        memory.trade = Trade(give: surplus, take: take)
     }
 
     /// The improvements the player's age offers that it lacks, at its complete

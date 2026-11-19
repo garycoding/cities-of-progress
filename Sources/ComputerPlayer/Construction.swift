@@ -138,7 +138,8 @@ extension Turn {
             let spot = MapPosition(x: middle.x + across.x * Double(k), y: middle.y + across.y * Double(k))
             let taken = walls.contains { $0.position.distance(to: spot) < 1 }
                 || memory.plans.contains { $0.origin.centre.distance(to: spot) < 1 }
-            if !taken { return [(kind, spot, 0...0)] }
+            // A spot that cannot hold the wall (water, a rock, a site) is passed over for the next.
+            if !taken, site(for: kind, near: spot, rings: 0...0) != nil { return [(kind, spot, 0...0)] }
         }
         return []
     }

@@ -22,9 +22,9 @@ import Testing
         #expect(sim.apply(.exchange(merchants: [merchant], give: .wood, take: .iron), from: me) == .refused(.invalidTarget))
         sim.apply(.exchange(merchants: [merchant], give: .wood, take: .gold), from: me)
         sim.run(90 * Tick.rate)
-        // All 60 wood is traded, at two thirds, and then the merchant stops.
+        // All 60 wood is traded, at two thirds rounded down, and then the merchant stops.
         #expect(sim.resources(me)[.wood] == 0)
-        #expect(sim.resources(me)[.gold] == 40)
+        #expect(sim.resources(me)[.gold] == 39)
         #expect(sim.living(merchant).task == .idle)
     }
 
@@ -50,6 +50,16 @@ import Testing
         sim.run(until: { ($0.living(merchant).goods ?? 0) > 0 }, limit: 60 * Tick.rate)
         #expect(sim.resources(me)[.wood] == 30)
         #expect(sim.apply(.stop(units: [merchant]), from: me) == .accepted)
+        #expect(sim.resources(me)[.wood] == 50)
+    }
+
+    @Test func aDismissedMerchantsGoodsGoBackToTheStock() {
+        var sim = Self.allies()
+        let merchant = sim.add(.merchant, me, 4.5, 6.5)
+        sim.players[0].resources = ResourceAmounts([.wood: 50])
+        sim.apply(.carry(merchants: [merchant], resource: .wood, to: sim.townCentre(PlayerID(2))), from: me)
+        sim.run(until: { ($0.living(merchant).goods ?? 0) > 0 }, limit: 60 * Tick.rate)
+        #expect(sim.apply(.dismiss(units: [merchant]), from: me) == .accepted)
         #expect(sim.resources(me)[.wood] == 50)
     }
 }

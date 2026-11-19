@@ -292,9 +292,14 @@ public struct PanelModel: Sendable {
         let merchantIDs = own.filter { $0.kind == .unit(.merchant) }.map(\.id).sorted()
         if !merchantIDs.isEmpty, catalogue.merchants != nil {
             let shown = view.shownResources
+            let hasCentre = view.entities.contains {
+                $0.owner == view.player && $0.kind == .building(.townCentre) && !Self.isUnderConstruction($0)
+            }
             for take in shown {
                 let give = shown.filter { $0 != take }.max { view.resources[$0] < view.resources[$1] }
-                let why: Unavailability? = gate ?? ((give.map { view.resources[$0] } ?? 0) > 0 ? nil
+                let why: Unavailability? = gate
+                    ?? (hasCentre ? nil : Unavailability(.invalidTarget, "Needs a town centre"))
+                    ?? ((give.map { view.resources[$0] } ?? 0) > 0 ? nil
                     : Unavailability(.notEnough(ResourceAmounts()), "Nothing to trade"))
                 trade.append(ActionOffer(
                     id: "trade-\(take)", section: .trade, title: take.name,

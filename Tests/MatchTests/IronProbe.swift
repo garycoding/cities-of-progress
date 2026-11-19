@@ -35,3 +35,16 @@ func ironProbe() {
         }
     }
 }
+
+@Test(.disabled(if: ProcessInfo.processInfo.environment["IRON_SEEDS"] == nil))
+func whichSeedsReachIron() {
+    for seed: UInt64 in 1...10 {
+        var host = Host(setup: computerMatch(seed: seed, size: 64, difficulties: [.hard, .hard]))
+        var at: Int?
+        while host.outcome == nil && host.tick < matchLimit {
+            host.advance()
+            if at == nil, host.tick % 100 == 0, host.peek(for: PlayerID(0)).players.contains(where: { $0.age == .iron }) { at = host.tick }
+        }
+        print("seed \(seed): iron at \(at.map { "\($0 / Tick.rate / 60) min" } ?? "never"), outcome \(String(describing: host.outcome)) at \(host.tick / Tick.rate / 60) min")
+    }
+}

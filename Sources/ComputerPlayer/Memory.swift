@@ -142,6 +142,10 @@ struct Memory: Codable, Sendable, Hashable {
     /// Where opponents' people were last seen, newest last, for an army hunting
     /// the last of them; optional so that older saves open.
     var lastSeenPeople: [MapPosition]?
+    /// Scholars sent to research away from the town centre, and where; optional so that older saves open.
+    var researchers: [Researcher]?
+    /// The trade its merchants are carrying on, if any; optional so that older saves open.
+    var trade: Trade?
 
     /// Takes in a view: its events, the opponents' buildings in sight, and what
     /// has become of the player's plans, assignments and scout.
@@ -265,4 +269,16 @@ struct Memory: Codable, Sendable, Hashable {
         }
         return out
     }
+}
+
+/// A scholar sent to research at a building.
+struct Researcher: Codable, Sendable, Hashable {
+    var scholar: EntityID
+    var building: EntityID
+}
+
+/// What the merchants are trading: `give` for `take`.
+struct Trade: Codable, Sendable, Hashable {
+    var give: Resource
+    var take: Resource
 }

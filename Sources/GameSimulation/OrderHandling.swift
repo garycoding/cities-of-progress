@@ -196,7 +196,11 @@ extension Simulation {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
         let leaving = people.filter { !entities[$0].isFounder }
         guard !leaving.isEmpty else { return .refused(.invalidTarget) }
-        for i in leaving { kill(i) }
+        for i in leaving {
+            // What a merchant carries goes back to the stock: the person leaves, not the goods.
+            returnCarried(i)
+            kill(i)
+        }
         return .accepted
     }
 
