@@ -217,12 +217,12 @@ struct PersonGlyph: View {
             context.fill(head, with: .color(Color(red: 0.93, green: 0.78, blue: 0.62)))
             var mark = Path()
             switch kind {
-            case .clubman, .spearman:
+            case .clubman, .spearman, .swordsman:
                 mark.move(to: CGPoint(x: mid + u * 0.34, y: u * 0.96)); mark.addLine(to: CGPoint(x: mid + u * 0.34, y: u * 0.12))
             case .slinger, .archer:
                 mark.addArc(center: CGPoint(x: mid + u * 0.30, y: u * 0.62), radius: u * 0.26,
                             startAngle: .degrees(-70), endAngle: .degrees(70), clockwise: false)
-            case .chariot:
+            case .chariot, .horseman, .catapult:
                 mark.addEllipse(in: CGRect(x: mid - u * 0.46, y: u * 0.76, width: u * 0.24, height: u * 0.24))
                 mark.addEllipse(in: CGRect(x: mid + u * 0.22, y: u * 0.76, width: u * 0.24, height: u * 0.24))
             case .engineer:
@@ -271,6 +271,14 @@ struct BuildingGlyph: View {
                 parts = [(rect(0.06, 0.45, 0.88, 0.45), wall), (roof(0.02, 0.22, 0.96, 0.26), Palette.teal), (rect(0.44, 0.04, 0.05, 0.22), Palette.ink), (rect(0.49, 0.04, 0.2, 0.1), roofColour)]
             case .watchTower:
                 parts = [(rect(0.34, 0.3, 0.32, 0.62), wall), (rect(0.24, 0.14, 0.52, 0.2), Color(red: 0.55, green: 0.38, blue: 0.24))]
+            case .farm:
+                parts = [(rect(0.06, 0.5, 0.88, 0.4), Color(red: 0.76, green: 0.66, blue: 0.36))]
+            case .stable:
+                parts = [(rect(0.06, 0.45, 0.88, 0.45), wall), (roof(0.02, 0.22, 0.96, 0.26), Color(red: 0.55, green: 0.38, blue: 0.24))]
+            case .siegeWorkshop:
+                parts = [(rect(0.06, 0.4, 0.88, 0.5), wall), (roof(0.02, 0.16, 0.96, 0.28), Palette.inkSoft)]
+            case .stoneWall:
+                parts = [(rect(0.08, 0.3, 0.84, 0.6), Color(red: 0.62, green: 0.6, blue: 0.56))]
             case .palisade:
                 parts = [(rect(0.12, 0.3, 0.14, 0.6), Color(red: 0.55, green: 0.38, blue: 0.24)), (rect(0.43, 0.24, 0.14, 0.66), Color(red: 0.55, green: 0.38, blue: 0.24)), (rect(0.74, 0.3, 0.14, 0.6), Color(red: 0.55, green: 0.38, blue: 0.24))]
             }
