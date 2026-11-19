@@ -91,5 +91,30 @@ public enum InterfaceText {
         }
     }
 
+    public static func name(of difficulty: Difficulty) -> String {
+        switch difficulty {
+        case .easy: "Easy"
+        case .standard: "Standard"
+        case .hard: "Hard"
+        }
+    }
+
+    /// The civilization of a seat whose person has not chosen yet.
+    public static let choosing = "choosing\u{2026}"
+
+    /// A speed as "2×" or "1.5×".
+    public static func speed(_ speed: Double) -> String {
+        let rounded = (speed * 100).rounded() / 100
+        let digits = rounded == rounded.rounded() ? String(Int(rounded)) : String(rounded)
+        return "\(digits)\u{00D7}"
+    }
+
+    /// Names as "Ana", "Ana and Ben", or "Ana, Ben and Cy".
+    public static func list(_ names: [String]) -> String {
+        guard let last = names.last else { return "" }
+        if names.count == 1 { return last }
+        return names.dropLast().joined(separator: ", ") + " and " + last
+    }
+
     static func clamp(_ x: Double) -> Double { min(1, max(0, x)) }
 }
