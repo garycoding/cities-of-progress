@@ -24,6 +24,10 @@ public final class GameSprites: SpriteSource {
             IronNewBuildingSprites(),
             IronPeopleSprites(catalogue: catalogue),
             IronWarriorSprites(catalogue: catalogue),
+            AlchemyOldBuildingSprites(),
+            AlchemyNewBuildingSprites(),
+            AlchemyPeopleSprites(catalogue: catalogue),
+            AlchemyWarriorSprites(catalogue: catalogue),
         ]
     }
 

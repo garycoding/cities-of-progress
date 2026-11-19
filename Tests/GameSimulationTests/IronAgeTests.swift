@@ -6,7 +6,7 @@ import Testing
 @testable import GameSimulation
 
 @Suite struct IronAge {
-    @Test func theBronzeAgeLeadsToTheIronAgeAndNoFurther() {
+    @Test func theBronzeAgeLeadsToTheIronAge() {
         var sim = duel()
         sim.players[0].age = .bronze
         let advance = Catalogue.standard.advance(from: .bronze)!
@@ -14,8 +14,7 @@ import Testing
         sim.give(me, [.food: 1000, .bronze: 1000, .gold: 1000])
         #expect(sim.apply(.advanceAge, from: me) == .accepted)
         #expect(sim.players[0].age == .iron)
-        #expect(Catalogue.standard.lastAge == .iron)
-        #expect(sim.apply(.advanceAge, from: me) != .accepted)
+        #expect(Catalogue.standard.advance(from: .iron) != nil)
     }
 
     @Test func aFarmFeedsOneWorkerForeverAndThePloughRaisesItsYield() {

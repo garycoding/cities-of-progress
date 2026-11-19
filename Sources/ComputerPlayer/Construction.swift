@@ -15,7 +15,7 @@ extension Turn {
             + memory.plans.filter { $0.kind != .house }.count
         for (kind, anchor, rings) in wanted() {
             guard underway < tuning.builds else { return }
-            let builders = kind == .barracks || kind == .townCentre ? 2 : 1
+            let builders = kind == .barracks || kind == .townCentre ? 2 : kind == .castle ? 3 : 1
             if construct(kind, near: anchor, rings: rings, builders: builders) { underway += 1 }
         }
     }
@@ -51,7 +51,7 @@ extension Turn {
             for want in first where count(want.0) == 0 { out.append(want) }
             if count(.watchTower) == 0 { out.append((.watchTower, Turn.toward(base, front, by: 5), 0...6)) }
             if count(.barracks) < tuning.barracks && !completeBuildings(.barracks).isEmpty { out.append(barracks) }
-            let herders = workers.filter { $0.activity == .working }.count
+            let herders = herders
             let pens = count(.stockPen)
             if pens > 0 && pens < 3 && herders >= 6 * pens { out.append(pen) }
         }
@@ -59,7 +59,7 @@ extension Turn {
             // Farms, which never run out, as the herds and prey thin; then the stable and the siege workshop.
             // A farm is wanted once the pens are full and no prey is near, at most a quarter of the workers.
             let farms = count(.farm), wantedFarms = tuning.workers(at: view.age) / 4
-            let herders = workers.filter { $0.activity == .working }.count
+            let herders = herders
             let full = herders >= 6 * count(.stockPen) + completeBuildings(.farm).count
             if farms < wantedFarms && full && !surroundings().preyNear && memory.plans.allSatisfy({ $0.kind != .farm }) {
                 out.append((.farm, homeSide(by: 6), 0...10))
@@ -67,6 +67,13 @@ extension Turn {
             if count(.stable) == 0 { out.append((.stable, Turn.toward(base, front, by: 7), 0...8)) }
             if count(.siegeWorkshop) == 0 && count(.stable) > 0 {
                 out.append((.siegeWorkshop, Turn.toward(base, front, by: 6), 0...8))
+            }
+        }
+        if view.age >= .alchemy {
+            // The alchemist's workshop first, for the gunpowder every Alchemy warfighter needs; then the castle.
+            if count(.alchemistsWorkshop) == 0 { out.append((.alchemistsWorkshop, homeSide(by: 6), 0...10)) }
+            if count(.castle) == 0 && count(.alchemistsWorkshop) > 0 {
+                out.append((.castle, Turn.toward(base, front, by: 7), 0...10))
             }
         }
         if count(.storagePit) < 4, let cluster = distantCluster() { out.append((.storagePit, cluster, 0...5)) }

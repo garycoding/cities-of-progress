@@ -406,6 +406,10 @@ public struct PanelModel: Sendable {
         case .ironWeapons: "y"
         case .mail: "v"
         case .plough: "o"
+        case .betterPowder: "p"
+        case .plateArmour: "a"
+        case .guilds: "g"
+        case .banking: "b"
         }
     }
 

@@ -195,6 +195,18 @@ extension Simulation {
         let p = entities[i].owner.rawValue
         let stats = tables.building(buildingKind)
         switch kind {
+        case .worker where buildingKind == .alchemistsWorkshop:
+            // A craftsman makes gunpowder from the stock's wood (ruled 2026-11-19); with no wood he waits.
+            guard let workshop = catalogue.workshop else { setIdle(i); return }
+            entities[i].doing = .working
+            let rate = workshop.perSecond * players[p].improvements.reduce(1.0) { $0 * (catalogue.stats($1).productionMultiplier ?? 1) }
+            entities[i].fraction += rate / Double(Tick.rate)
+            while entities[i].fraction >= 1 && players[p].resources[.wood] >= workshop.woodPerUnit {
+                entities[i].fraction -= 1
+                players[p].resources[.wood] -= workshop.woodPerUnit
+                players[p].resources[.gunpowder] += 1
+            }
+            if players[p].resources[.wood] < workshop.woodPerUnit { entities[i].fraction = min(entities[i].fraction, 1) }
         case .worker:
             entities[i].doing = .working
             let perSecond = buildingKind == .farm ? farmingRate(player: p) : catalogue.gathering.herdingPerSecond
@@ -269,6 +281,14 @@ extension Simulation {
         return (catalogue.gathering.farmingPerSecond ?? 0) * plough
     }
 
+    /// How many workers, other than `besides`, work at a building.
+    func crafters(at b: Int, besides: Int?) -> Int {
+        let id = entities[b].id
+        return entities.indices.filter { j in
+            j != besides && entities[j].alive && entities[j].unitKind == .worker && entities[j].task == .work(id)
+        }.count
+    }
+
     /// The worker tending a farm, other than `besides`, if any.
     func farmer(of farm: Int, besides: Int?) -> Int? {
         let id = entities[farm].id
@@ -288,6 +308,10 @@ extension Simulation {
             if buildingKind == .stockPen { return true }
             // A farm is tended by one worker at a time.
             if buildingKind == .farm { return farmer(of: b, besides: person) == nil }
+            // A workshop takes up to `WorkshopStats.workers` craftsmen.
+            if buildingKind == .alchemistsWorkshop, let workshop = catalogue.workshop {
+                return crafters(at: b, besides: person) < workshop.workers
+            }
             return false
         case .engineer: return !e.complete || e.health < e.maxHealth
         case .scholar: return e.complete && (buildingKind == .townCentre || !tables.building(buildingKind).researches.isEmpty)
