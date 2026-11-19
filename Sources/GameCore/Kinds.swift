@@ -13,6 +13,7 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
     case founder
     case clubman, slinger
     case spearman, archer, chariot
+    case swordsman, horseman, catapult
 
     public var sector: Sector? {
         switch self {
@@ -21,7 +22,7 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .engineer: .engineers
         case .merchant: .merchants
         case .founder: nil
-        case .clubman, .slinger, .spearman, .archer, .chariot: .warfighters
+        case .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult: .warfighters
         }
     }
 
@@ -30,16 +31,19 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
     /// The name of this kind at the owner's age, for the interface.
     public func stageName(at age: Age) -> String {
         switch self {
-        case .worker: age >= .bronze ? "Herder" : "Hunter"
-        case .scholar: age >= .bronze ? "Scribe" : "Elder"
-        case .engineer: age >= .bronze ? "Mason" : "Builder"
-        case .merchant: "Trader"
+        case .worker: age >= .iron ? "Farmer" : age >= .bronze ? "Herder" : "Hunter"
+        case .scholar: age >= .iron ? "Philosopher" : age >= .bronze ? "Scribe" : "Elder"
+        case .engineer: age >= .iron ? "Siege engineer" : age >= .bronze ? "Mason" : "Builder"
+        case .merchant: age >= .iron ? "Caravan trader" : "Trader"
         case .founder: "Founder"
         case .clubman: "Clubman"
         case .slinger: "Slinger"
         case .spearman: "Spearman"
         case .archer: "Archer"
         case .chariot: "Chariot"
+        case .swordsman: "Swordsman"
+        case .horseman: "Horseman"
+        case .catapult: "Catapult"
         }
     }
 }
@@ -49,6 +53,7 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
 public enum BuildingKind: Int, CaseIterable, Codable, Sendable, Hashable {
     case townCentre, house, storagePit
     case stockPen, barracks, watchTower, palisade
+    case farm, stable, siegeWorkshop, stoneWall
 
     public var name: String {
         switch self {
@@ -59,6 +64,10 @@ public enum BuildingKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .barracks: "Barracks"
         case .watchTower: "Watch tower"
         case .palisade: "Palisade"
+        case .farm: "Farm"
+        case .stable: "Stable"
+        case .siegeWorkshop: "Siege workshop"
+        case .stoneWall: "Stone wall"
         }
     }
 }

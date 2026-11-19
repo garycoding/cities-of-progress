@@ -243,7 +243,7 @@ enum Placeholders {
             c.strokePath()
             line(c, CGPoint(x: h.x - 2 + 11 * cos(-1.1), y: h.y + 6 + 11 * sin(-1.1)),
                  CGPoint(x: h.x - 2 + 11 * cos(1.1), y: h.y + 6 + 11 * sin(1.1)), colour(0.9, 0.9, 0.85), width: 1)
-        case .chariot:
+        case .chariot, .swordsman, .horseman, .catapult:
             break
         }
     }
@@ -404,7 +404,7 @@ enum Placeholders {
                 line(c, onRightFace(u, 0.05), onRightFace(u, 1), colour(0.2, 0.12, 0.05, 0.7), width: 1)
                 line(c, onLeftFace(u, 0.05), onLeftFace(u, 1), colour(0.2, 0.12, 0.05, 0.7), width: 1)
             }
-        case .storagePit, .stockPen:
+        case .storagePit, .stockPen, .farm, .stable, .siegeWorkshop, .stoneWall:
             break
         }
     }

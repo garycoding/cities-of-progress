@@ -193,6 +193,15 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public func stats(_ improvement: Improvement) -> ImprovementStats { improvements.first { $0.improvement == improvement }! }
     public func advance(from age: Age) -> AdvanceStats? { advances.first { $0.from == age } }
 
+    /// The last age a player can reach with these tables: the interface offers
+    /// nothing of a later age, whose units and buildings may be listed before
+    /// the rules that bring them are built.
+    public var lastAge: Age {
+        var age = Age.stone
+        while advance(from: age) != nil, let next = Age(rawValue: age.rawValue + 1) { age = next }
+        return age
+    }
+
     /// The damage multiplier when `attacker` strikes `defender`.
     public func bonus(_ attacker: UnitKind, against defender: UnitKind) -> Double {
         bonuses.first { $0.attacker == attacker && $0.defender == defender }?.multiplier ?? 1
@@ -227,6 +236,15 @@ public struct Catalogue: Hashable, Codable, Sendable {
             UnitStats(kind: .chariot, age: .bronze, cost: cost([.food: 60, .wood: 60, .bronze: 20]), trainTime: s(20), health: 100,
                       armour: 1, speed: 2.0, sight: 6, attack: Attack(damage: 6, range: 1, interval: s(1.5)), trainedAt: [.barracks],
                       population: 2),
+            // The Iron age's warfighters. Their figures are provisional until the Iron age's rules are built.
+            UnitStats(kind: .swordsman, age: .iron, cost: cost([.food: 60, .iron: 25]), trainTime: s(14), health: 70, armour: 2,
+                      speed: 1.0, sight: 5, attack: Attack(damage: 7, range: 1, interval: s(1.5)), trainedAt: [.barracks]),
+            UnitStats(kind: .horseman, age: .iron, cost: cost([.food: 80, .iron: 20]), trainTime: s(18), health: 90, armour: 1,
+                      speed: 2.2, sight: 7, attack: Attack(damage: 7, range: 1, interval: s(1.4)), trainedAt: [.stable],
+                      population: 2),
+            UnitStats(kind: .catapult, age: .iron, cost: cost([.wood: 150, .iron: 40]), trainTime: s(30), health: 120, armour: 1,
+                      speed: 0.6, sight: 8, attack: Attack(damage: 20, range: 9, interval: s(5)), trainedAt: [.siegeWorkshop],
+                      population: 3),
         ]
         let allStone: [Resource] = [.food, .wood, .stone, .bronze, .gold, .iron]
         let buildings: [BuildingStats] = [
@@ -241,11 +259,20 @@ public struct Catalogue: Hashable, Codable, Sendable {
             BuildingStats(kind: .stockPen, age: .bronze, cost: cost([.wood: 60]), buildTime: s(25), health: 250, armour: 0,
                           footprint: GridPoint(3, 3), sight: 3, accepts: [.food]),
             BuildingStats(kind: .barracks, age: .bronze, cost: cost([.wood: 100]), buildTime: s(40), health: 500, armour: 1,
-                          footprint: GridPoint(3, 3), sight: 4, trains: [.clubman, .slinger, .spearman, .archer, .chariot],
+                          footprint: GridPoint(3, 3), sight: 4, trains: [.clubman, .slinger, .spearman, .archer, .chariot, .swordsman],
                           researches: [.bronzeWeapons, .shields]),
             BuildingStats(kind: .watchTower, age: .bronze, cost: cost([.stone: 80, .wood: 20]), buildTime: s(40), health: 400,
                           armour: 2, footprint: GridPoint(1, 1), sight: 9, attack: Attack(damage: 4, range: 7, interval: s(2))),
             BuildingStats(kind: .palisade, age: .bronze, cost: cost([.wood: 3]), buildTime: s(4), health: 150, armour: 1,
+                          footprint: GridPoint(1, 1), sight: 1),
+            // The Iron age's buildings. Their figures are provisional until the Iron age's rules are built.
+            BuildingStats(kind: .farm, age: .iron, cost: cost([.wood: 60]), buildTime: s(20), health: 150, armour: 0,
+                          footprint: GridPoint(3, 3), sight: 2),
+            BuildingStats(kind: .stable, age: .iron, cost: cost([.wood: 120]), buildTime: s(45), health: 500, armour: 1,
+                          footprint: GridPoint(3, 3), sight: 4, trains: [.horseman]),
+            BuildingStats(kind: .siegeWorkshop, age: .iron, cost: cost([.wood: 150, .stone: 50]), buildTime: s(50), health: 600,
+                          armour: 1, footprint: GridPoint(3, 3), sight: 4, trains: [.catapult]),
+            BuildingStats(kind: .stoneWall, age: .iron, cost: cost([.stone: 5]), buildTime: s(6), health: 400, armour: 3,
                           footprint: GridPoint(1, 1), sight: 1),
         ]
         let improvements: [ImprovementStats] = [

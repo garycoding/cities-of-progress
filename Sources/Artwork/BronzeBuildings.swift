@@ -65,6 +65,8 @@ enum BronzeBuildingsArt {
         case .barracks: 96
         case .watchTower: 120
         case .palisade: 58
+        // Iron-age buildings are drawn by their own batch.
+        case .farm, .stable, .siegeWorkshop, .stoneWall: 80
         }
     }
 
@@ -91,6 +93,8 @@ extension BronzeBuildingsPainter {
         case .barracks: barracks(complete: complete)
         case .watchTower: watchTower(complete: complete)
         case .palisade: palisade(complete: complete)
+        // Iron-age buildings are drawn by their own batch.
+        case .farm, .stable, .siegeWorkshop, .stoneWall: break
         }
     }
 }

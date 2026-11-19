@@ -91,6 +91,10 @@ enum Stature {
         case .barracks: 32
         case .watchTower: 58
         case .palisade: 20
+        case .farm: 3
+        case .stable: 28
+        case .siegeWorkshop: 32
+        case .stoneWall: 24
         }
     }
 
