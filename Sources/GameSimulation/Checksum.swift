@@ -72,6 +72,8 @@ extension Simulation {
         case .work(let b): d.add(3); d.add(b.rawValue)
         case .attack(let t): d.add(4); d.add(t.rawValue)
         case .demolish(let b): d.add(5); d.add(b.rawValue)
+        case .trade(let b, let give, let take): d.add(6); d.add(b.rawValue); d.add(give.rawValue); d.add(take.rawValue)
+        case .carry(let r, let t): d.add(7); d.add(r.rawValue); d.add(t.rawValue)
         }
         d.add(Int(e.doing.rawValue))
         let r = e.route
@@ -81,6 +83,8 @@ extension Simulation {
         d.add(r.plannedAt); d.add(r.stuck)
         if let c = e.cargo { d.add(c.kind.rawValue); d.add(c.amount) } else { d.add(-1) }
         d.add(e.dropOff?.rawValue ?? -1)
+        // A merchant's goods; nothing is added for others, so that matches without merchants keep their checksums.
+        if let goods = e.goods { d.add(goods) }
         d.add(e.fraction)
         if let u = e.upgrade { d.add(u.to.rawValue); d.add(u.remaining) } else { d.add(-1) }
         d.add(e.built); d.add(e.complete); d.add(e.healthCredit); d.add(e.demolished)

@@ -158,7 +158,7 @@ enum Script {
 @Suite struct Determinism {
     /// The checksum at the end of the scripted match. A second process must
     /// reproduce it; a change to the rules that changes the match changes it.
-    static let storedChecksum: UInt64 = 0x762F_4E84_235B_2BB3
+    static let storedChecksum: UInt64 = 0x4A61_DA14_3E5D_73A4
 
     @Test func theScriptedMatchEndsWithTheStoredChecksum() {
         var sim = Simulation(setup: Samples.twoPlayerSetup(seed: 7))
@@ -173,7 +173,7 @@ enum Script {
         #expect(log.ages >= 1 && sim.players[0].age == .bronze)
         #expect(log.researched >= 1)
         #expect(log.destroyed >= 1)
-        #expect(sim.checksum() == Self.storedChecksum)
+        #expect(sim.checksum() == Self.storedChecksum, "\(String(sim.checksum(), radix: 16))")
     }
 
     @Test func aSavedMatchResumesExactly() throws {

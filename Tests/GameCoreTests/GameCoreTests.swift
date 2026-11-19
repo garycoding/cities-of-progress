@@ -142,7 +142,7 @@ private func roundTrip<T: Codable & Equatable>(_ value: T) throws -> T {
     #expect(sum.value == EncodingFixture.expected, "update EncodingFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
 }
 
-enum EncodingFixture { static let expected: UInt64 = 0x0167_BDD5_16A1_B303 }
+enum EncodingFixture { static let expected: UInt64 = 0x5435_ECCF_CA1B_F373 }
 
 @Test func samplesAreConsistent() {
     for view in [Samples.stoneAgeOpening(), Samples.bronzeAgeSkirmish()] {

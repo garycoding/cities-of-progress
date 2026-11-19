@@ -32,6 +32,8 @@ extension Simulation {
         case .move(let units, let to): return move(units, to: to, player: player)
         case .gather(let units, let site): return gather(units, at: site, player: player)
         case .work(let units, let at): return work(units, at: at, player: player)
+        case .exchange(let merchants, let give, let take): return exchange(merchants, give: give, take: take, player: player)
+        case .carry(let merchants, let resource, let to): return carry(merchants, resource, to: to, player: player)
         case .demolish(let engineers, let building): return demolish(engineers, building, player: player)
         case .construct(let engineers, let building, let at): return construct(engineers, building, at: at, player: player)
         case .attack(let units, let target): return attack(units, target: target, player: player)
@@ -123,7 +125,11 @@ extension Simulation {
         let able = people.filter { [.worker, .engineer, .scholar].contains(entities[$0].unitKind) }
         guard !able.isEmpty else { return .refused(.notYours) }
         guard let b = ownBuilding(building, player) else { return .refused(.invalidTarget) }
-        let busy = able.filter { hasWork(entities[$0].unitKind ?? .worker, at: b) }
+        var busy = able.filter { hasWork(entities[$0].unitKind ?? .worker, at: b, person: $0) }
+        if entities[b].buildingKind == .farm, let first = busy.first(where: { entities[$0].unitKind == .worker }) {
+            // One worker tends a farm; the others selected are left as they were.
+            busy.removeAll { entities[$0].unitKind == .worker && $0 != first }
+        }
         guard !busy.isEmpty else { return .refused(.invalidTarget) }
         for i in busy {
             entities[i].fraction = 0
@@ -190,7 +196,11 @@ extension Simulation {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
         let leaving = people.filter { !entities[$0].isFounder }
         guard !leaving.isEmpty else { return .refused(.invalidTarget) }
-        for i in leaving { kill(i) }
+        for i in leaving {
+            // What a merchant carries goes back to the stock: the person leaves, not the goods.
+            returnCarried(i)
+            kill(i)
+        }
         return .accepted
     }
 

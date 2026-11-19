@@ -310,7 +310,7 @@ private func moves(_ orders: [Order]) -> [(units: [EntityID], to: MapPosition)] 
             "update OrderFixture.expected only for a deliberate change: \(String(sum.value, radix: 16))")
 }
 
-enum OrderFixture { static let expected: UInt64 = 0xA1F5_25B1_3C8F_62B2 }
+enum OrderFixture { static let expected: UInt64 = 0xB1BD_1677_C669_4364 }
 
 @Test func aSavedPlayerResumesWithTheSameDecisions() throws {
     let views = TestViews.sequence()

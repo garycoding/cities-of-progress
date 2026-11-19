@@ -55,7 +55,22 @@ extension Turn {
             let pens = count(.stockPen)
             if pens > 0 && pens < 3 && herders >= 6 * pens { out.append(pen) }
         }
+        if view.age >= .iron {
+            // Farms, which never run out, as the herds and prey thin; then the stable and the siege workshop.
+            // A farm is wanted once the pens are full and no prey is near, at most a quarter of the workers.
+            let farms = count(.farm), wantedFarms = tuning.workers(at: view.age) / 4
+            let herders = workers.filter { $0.activity == .working }.count
+            let full = herders >= 6 * count(.stockPen) + completeBuildings(.farm).count
+            if farms < wantedFarms && full && !surroundings().preyNear && memory.plans.allSatisfy({ $0.kind != .farm }) {
+                out.append((.farm, homeSide(by: 6), 0...10))
+            }
+            if count(.stable) == 0 { out.append((.stable, Turn.toward(base, front, by: 7), 0...8)) }
+            if count(.siegeWorkshop) == 0 && count(.stable) > 0 {
+                out.append((.siegeWorkshop, Turn.toward(base, front, by: 6), 0...8))
+            }
+        }
         if count(.storagePit) < 4, let cluster = distantCluster() { out.append((.storagePit, cluster, 0...5)) }
+        out += wall()
         return out
     }
 
@@ -107,6 +122,28 @@ extension Turn {
 
     /// The side of the base away from its resources, so that houses and pens do
     /// not stand between workers and their work.
+    /// Once the barracks stands, a short wall across the side facing the
+    /// opponents, nine tiles out: a palisade in the Bronze age, stone in the
+    /// Iron age. One tile is wanted at a time, the nearest gap first.
+    private func wall() -> [(BuildingKind, MapPosition, ClosedRange<Int>)] {
+        guard view.age >= .bronze, !completeBuildings(.barracks).isEmpty, !threatened else { return [] }
+        let kind: BuildingKind = view.age >= .iron ? .stoneWall : .palisade
+        let middle = Turn.toward(base, front, by: 9)
+        let dx = middle.x - base.x, dy = middle.y - base.y
+        let length = max(0.001, (dx * dx + dy * dy).squareRoot())
+        // Across the line to the front, a tile apart.
+        let across = MapPosition(x: -dy / length, y: dx / length)
+        let walls = buildings.filter { $0.kind == .building(.palisade) || $0.kind == .building(.stoneWall) }
+        for k in [0, 1, -1, 2, -2, 3, -3] {
+            let spot = MapPosition(x: middle.x + across.x * Double(k), y: middle.y + across.y * Double(k))
+            let taken = walls.contains { $0.position.distance(to: spot) < 1 }
+                || memory.plans.contains { $0.origin.centre.distance(to: spot) < 1 }
+            // A spot that cannot hold the wall (water, a rock, a site) is passed over for the next.
+            if !taken, site(for: kind, near: spot, rings: 0...0) != nil { return [(kind, spot, 0...0)] }
+        }
+        return []
+    }
+
     private func homeSide(by distance: Double) -> MapPosition {
         let resources = surroundings().resources ?? front
         return Turn.toward(base, MapPosition(x: 2 * base.x - resources.x, y: 2 * base.y - resources.y), by: distance)

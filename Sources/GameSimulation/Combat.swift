@@ -8,8 +8,9 @@ import GameCore
 // the defender's armour (plus shields for a warfighter), and never less than 1.
 // A blow at or within `Attack.range` lands at once: melee and ranged differ only
 // in reach. Allies never harm one another (requirement 6), and founders can
-// neither strike nor be harmed (requirement 27). These ages have no area damage;
-// when it comes it must spare allies.
+// neither strike nor be harmed (requirement 27). A blow with an area (the
+// catapult's stone) also harms every opponent within that many tiles of the
+// target, and never an ally (requirements, "Military").
 
 extension Simulation {
     /// Whether people of a player may strike an entity.
@@ -78,6 +79,19 @@ extension Simulation {
     }
 
     mutating func strike(from attacker: Int, at target: Int, attack: Attack) {
+        guard canStrike(entities[attacker].owner, target) else { return }
+        if let area = attack.area, area > 0 {
+            let centre = entities[target].position, owner = entities[attacker].owner
+            let around = entities.indices.filter { j in
+                j != target && j != attacker && canStrike(owner, j) && entities[j].position.distance(to: centre) <= area
+            }
+            for j in around { hit(from: attacker, at: j, attack: attack) }
+        }
+        hit(from: attacker, at: target, attack: attack)
+    }
+
+    /// One blow on one entity: harm, death, the warning and the reply.
+    private mutating func hit(from attacker: Int, at target: Int, attack: Attack) {
         guard canStrike(entities[attacker].owner, target) else { return }
         entities[target].health -= harm(from: attacker, to: target, attack: attack)
         let owner = entities[target].owner.rawValue

@@ -21,7 +21,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     let view = Samples.stoneAgeOpening()
     let m = model(view, [view.id(of: .building(.townCentre))])
     #expect(m.train.map(\.id) == ["train-worker", "train-scholar", "train-engineer", "train-merchant", "train-clubman", "train-slinger"])
-    #expect(m.research.map(\.id) == ["research-betterTools"])
+    #expect(m.research.map(\.id) == ["research-betterTools", "research-ironTools"])
     #expect(m.build.isEmpty && m.upgrade.isEmpty)
     #expect(offer(m, "train-worker").title == "Hunter")
     #expect(offer(m, "train-engineer").title == "Builder")
@@ -105,16 +105,17 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     let view = Samples.bronzeAgeSkirmish()   // 15 of 15
     let barracks = view.id(of: .building(.barracks))
     let m = model(view, [barracks])
-    #expect(m.train.map(\.id) == ["train-clubman", "train-slinger", "train-spearman", "train-archer", "train-chariot"])
-    for o in m.train {
+    #expect(m.train.map(\.id) == ["train-clubman", "train-slinger", "train-spearman", "train-archer", "train-chariot", "train-swordsman"])
+    for o in m.train where o.id != "train-swordsman" {
         #expect(o.unavailable?.refusal == .populationLimit, "\(o.id)")
         #expect(o.unavailable?.explanation == "Population full (15 of 15); build a house")
     }
     // Resources are not the cause: 420 food, 310 wood, 85 bronze, 60 gold.
     #expect(view.resources.covers(catalogue.stats(.chariot).cost))
     // Research does not need a place.
-    #expect(m.research.map(\.id) == ["research-bronzeWeapons", "research-shields"])
-    #expect(m.research.allSatisfy { $0.isAvailable })
+    #expect(m.research.map(\.id) == ["research-bronzeWeapons", "research-shields", "research-ironWeapons", "research-mail"])
+    #expect(m.research.prefix(2).allSatisfy { $0.isAvailable })
+    #expect(m.research.suffix(2).allSatisfy { !$0.isAvailable })   // the Iron age is not reached
     #expect(offer(m, "train-spearman").title == "Spearman")
 }
 
@@ -136,7 +137,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
 @Test func bronzeTownCentreResearchOmitsWhatIsKnown() {
     let view = Samples.bronzeAgeSkirmish()   // better tools is known
     let m = model(view, [view.id(of: .building(.townCentre))])
-    #expect(m.research.isEmpty)
+    #expect(m.research.map(\.id) == ["research-ironTools"])   // the Iron age's, not yet reached
     #expect(offer(m, "train-merchant").unavailable?.refusal == .populationLimit)   // the age is reached
 }
 
@@ -164,7 +165,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     let view = Samples.bronzeAgeSkirmish()
     let army = view.ids(ofUnits: [.clubman, .slinger, .spearman, .archer, .chariot])
     let m = model(view, army)
-    #expect(m.upgrade.map(\.id) == ["upgrade-clubman", "upgrade-slinger"])
+    #expect(m.upgrade.map(\.id) == ["upgrade-clubman", "upgrade-slinger", "upgrade-spearman", "upgrade-chariot"])
     let barracks = view.id(of: .building(.barracks))
     #expect(m.upgrade[0].action == .upgrade(units: [view.id(of: .unit(.clubman))], to: .spearman, at: barracks))
     #expect(m.upgrade[0].isAvailable)

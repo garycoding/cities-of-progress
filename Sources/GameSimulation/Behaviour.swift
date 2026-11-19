@@ -18,10 +18,13 @@ extension Simulation {
         case .work(let building): workTask(i, at: building)
         case .demolish(let building): demolishTask(i, building)
         case .attack(let target): attackTask(i, target: target)
+        case .trade(let building, let give, let take): tradeTask(i, at: building, give: give, take: take)
+        case .carry(let resource, let target): carryTask(i, resource, to: target)
         }
     }
 
     mutating func setIdle(_ i: Int) {
+        returnCarried(i)
         entities[i].task = .idle
         entities[i].doing = .idle
         entities[i].route = Route()
@@ -29,6 +32,7 @@ extension Simulation {
 
     /// Give a person a new task, forgetting its route.
     mutating func assign(_ i: Int, _ task: Task) {
+        if entities[i].task != task { returnCarried(i) }
         entities[i].task = task
         entities[i].route = Route()
         entities[i].dropOff = nil
@@ -181,7 +185,7 @@ extension Simulation {
     mutating func workTask(_ i: Int, at building: EntityID) {
         guard let b = index(of: building), entities[b].owner == entities[i].owner,
               let buildingKind = entities[b].buildingKind, let kind = entities[i].unitKind,
-              hasWork(kind, at: b) else { setIdle(i); return }
+              hasWork(kind, at: b, person: i) else { setIdle(i); return }
         switch approach(i, .tiles(entities[b].origin, entities[b].size, reach: Rule.besideReach)) {
         case .moving: entities[i].doing = .moving; return
         case .unreachable: setIdle(i); return
@@ -193,7 +197,8 @@ extension Simulation {
         switch kind {
         case .worker:
             entities[i].doing = .working
-            let earned = entities[i].fraction + catalogue.gathering.herdingPerSecond / Double(Tick.rate)
+            let perSecond = buildingKind == .farm ? farmingRate(player: p) : catalogue.gathering.herdingPerSecond
+            let earned = entities[i].fraction + perSecond / Double(Tick.rate)
             let whole = Int(earned.rounded(.down))
             entities[i].fraction = earned - Double(whole)
             players[p].resources[.food] += whole
@@ -257,12 +262,33 @@ extension Simulation {
         kill(b)
     }
 
+    /// Food per second a worker earns at a farm: farms never run out (ruled
+    /// 2026-11-18), and the plough makes them yield more.
+    func farmingRate(player: Int) -> Double {
+        let plough = players[player].improvements.reduce(1.0) { $0 * (catalogue.stats($1).farmingMultiplier ?? 1) }
+        return (catalogue.gathering.farmingPerSecond ?? 0) * plough
+    }
+
+    /// The worker tending a farm, other than `besides`, if any.
+    func farmer(of farm: Int, besides: Int?) -> Int? {
+        let id = entities[farm].id
+        return entities.indices.first { j in
+            j != besides && entities[j].alive && entities[j].unitKind == .worker && entities[j].task == .work(id)
+        }
+    }
+
     /// Whether a person of this kind has anything to do at a building.
-    func hasWork(_ kind: UnitKind, at b: Int) -> Bool {
+    /// `person` is the one asking, who does not count as another farm's tender.
+    func hasWork(_ kind: UnitKind, at b: Int, person: Int? = nil) -> Bool {
         let e = entities[b]
         guard let buildingKind = e.buildingKind else { return false }
         switch kind {
-        case .worker: return e.complete && buildingKind == .stockPen
+        case .worker:
+            guard e.complete else { return false }
+            if buildingKind == .stockPen { return true }
+            // A farm is tended by one worker at a time.
+            if buildingKind == .farm { return farmer(of: b, besides: person) == nil }
+            return false
         case .engineer: return !e.complete || e.health < e.maxHealth
         case .scholar: return e.complete && (buildingKind == .townCentre || !tables.building(buildingKind).researches.isEmpty)
         default: return false

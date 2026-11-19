@@ -13,7 +13,22 @@ extension Turn {
         for enemy in enemyUnits {
             if let kind = Turn.unitKind(enemy), kind.isWarfighter { now[kind.rawValue] += 1 }
         }
-        for i in memory.seen.indices { memory.seen[i] = max(memory.seen[i] * tuning.recall, Double(now[i])) }
+        for i in memory.seen.indices where i < now.count { memory.seen[i] = max(memory.seen[i] * tuning.recall, Double(now[i])) }
+        var places = memory.lastSeenPeople ?? []
+        for enemy in enemyUnits {
+            places.removeAll { $0.distance(to: enemy.position) < 6 }
+            places.append(enemy.position)
+        }
+        // A place looked at again and found empty is forgotten.
+        places.removeAll { place in view.visibility(at: place.tile) == .visible && !enemyUnits.contains { $0.position.distance(to: place) < 6 } }
+        memory.lastSeenPeople = Array(places.suffix(8))
+    }
+
+    /// Where an army with no building to attack goes: the nearest place an
+    /// opponent's person was last seen, else ground not seen or not in sight.
+    func huntingGround(from point: MapPosition) -> MapPosition? {
+        if let place = (memory.lastSeenPeople ?? []).min(by: { $0.distance(to: point) < $1.distance(to: point) }) { return place }
+        return frontier(from: point, orFog: true)
     }
 
     // MARK: Defence
@@ -111,12 +126,21 @@ extension Turn {
     }
 
     /// The kind of the newest age trainable at a building whose share of the
-    /// army is furthest below the share `mix` gives it, of those that can be paid for.
+    /// army is furthest below the share `mix` gives it, of those that can be
+    /// paid for; when none of the newest age can be, those of the age before
+    /// (a new age's warfighters may cost a resource not yet mined).
     private func nextWarfighter(at building: EntityView) -> UnitKind? {
         guard case .building(let kind) = building.kind else { return nil }
         let trainable = catalogue.stats(kind).trains.filter { $0.isWarfighter && catalogue.stats($0).age <= view.age }
-        guard let newest = trainable.map({ catalogue.stats($0).age }).max() else { return nil }
-        let kinds = trainable.filter { catalogue.stats($0).age == newest }
+        let ages = Set(trainable.map { catalogue.stats($0).age }).sorted(by: >)
+        for age in ages.prefix(view.age >= .iron ? 2 : 1) {
+            if let kind = nextWarfighter(of: trainable.filter { catalogue.stats($0).age == age }) { return kind }
+        }
+        return nil
+    }
+
+    private func nextWarfighter(of kinds: [UnitKind]) -> UnitKind? {
+        guard !kinds.isEmpty else { return nil }
         let weights = Turn.mix(kinds, seen: memory.seen, counters: tuning.counters, catalogue: catalogue)
         let total = weights.reduce(0, +)
         let have = kinds.map { kind in warfighters.filter { $0.kind == .unit(kind) }.count + training[kind.rawValue] }
@@ -197,8 +221,8 @@ extension Turn {
                 current.target = next.id
                 current.destination = next.position
                 retarget = true
-            } else if current.target != nil || army.allSatisfy({ $0.activity == .idle }) {
-                guard let destination = frontier(from: centre) else {
+            } else if current.target != nil || army.filter({ $0.activity == .idle }).count * 2 >= army.count {
+                guard let destination = huntingGround(from: centre) else {
                     withdraw(army)
                     return
                 }
@@ -207,8 +231,9 @@ extension Turn {
                 retarget = true
             }
         }
+        // With no building of the opponents' left to find, any of their people in reach is fought.
         let contact = enemyUnits.filter {
-            (Turn.unitKind($0)?.isWarfighter ?? false) && $0.position.distance(to: centre) <= 8
+            ((Turn.unitKind($0)?.isWarfighter ?? false) || memory.enemies.isEmpty) && $0.position.distance(to: centre) <= 8
         }
         let visible = current.target.map { view.entity($0) != nil } ?? false
         let stance: Campaign.Stance = !contact.isEmpty ? .engaging : (visible ? .attacking : .marching)
@@ -230,7 +255,7 @@ extension Turn {
             return
         }
         let target = joint ?? nearestEnemyBuilding(to: base)
-        guard let destination = target?.position ?? frontier(from: Turn.mean(army.map(\.position)) ?? base) else {
+        guard let destination = target?.position ?? huntingGround(from: Turn.mean(army.map(\.position)) ?? base) else {
             rally(army)
             return
         }
@@ -336,7 +361,13 @@ extension Turn {
     /// An unexplored point to explore: of the centres of six-tile cells not yet
     /// explored nor already given to a scout, one of the three nearest to `point`
     /// and farthest from the base, chosen at random.
-    func frontier(from point: MapPosition) -> MapPosition? {
+    func frontier(from point: MapPosition, orFog: Bool = false) -> MapPosition? {
+        if let found = frontier(from: point, seeking: .unexplored) { return found }
+        // Every tile seen: an army hunting the last of an opponent sweeps the ground out of sight.
+        return orFog ? frontier(from: point, seeking: .explored) : nil
+    }
+
+    private func frontier(from point: MapPosition, seeking wanted: TileVisibility) -> MapPosition? {
         let step = 6
         var best: [(score: Double, point: MapPosition)] = []
         var y = step / 2
@@ -345,7 +376,7 @@ extension Turn {
             while x < view.mapWidth {
                 let tile = GridPoint(x, y)
                 x += step
-                guard view.visibility(at: tile) == .unexplored else { continue }
+                guard view.visibility(at: tile) == wanted else { continue }
                 let candidate = tile.centre
                 guard !memory.scouted.contains(where: { $0.distance(to: candidate) < 4 }) else { continue }
                 let score = point.distance(to: candidate) - 0.5 * base.distance(to: candidate)

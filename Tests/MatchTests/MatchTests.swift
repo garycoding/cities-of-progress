@@ -117,3 +117,16 @@ func reportHowEqualsPlay() {
     let reopened = try! JSONDecoder().decode(Host.self, from: JSONEncoder().encode(host))
     #expect(reopened.dropped.isEmpty)
 }
+
+/// Two hard computer players on seed 3: one reaches the Iron age, and the match
+/// ends with a winner (plan step 4 of the Iron age).
+@Test func twoHardComputerPlayersReachTheIronAgeAndFinish() {
+    var host = Host(setup: computerMatch(seed: 3, size: 64, difficulties: [.hard, .hard]))
+    var reached = false
+    while host.outcome == nil && host.tick < matchLimit {
+        host.advance()
+        if !reached, host.tick % 100 == 0 { reached = host.peek(for: PlayerID(0)).players.contains { $0.age == .iron } }
+    }
+    #expect(reached, "no one reached the Iron age")
+    #expect(host.outcome != nil, "no winner after \(host.tick) ticks")
+}

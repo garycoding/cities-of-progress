@@ -63,6 +63,10 @@ enum OrderCheck {
                 if to.x < 0 || to.y < 0 || to.x > Double(view.mapWidth) || to.y > Double(view.mapHeight) {
                     problems.append("move: \(to) is off the map")
                 }
+            case .exchange(let units, _, _):
+                command(units, "exchange") { $0 == .merchant }
+            case .carry(let units, _, _):
+                command(units, "carry") { $0 == .merchant }
             case .gather(let units, let site):
                 command(units, "gather") { $0 == .worker }
                 if !view.sites.contains(where: { $0.id == site && $0.remaining > 0 }) {
@@ -77,7 +81,7 @@ enum OrderCheck {
                 let researching: Bool = { if case .researching = place.entity.activity { return true }; return false }()
                 command(units, "work at \(place.kind)") { kind in
                     switch kind {
-                    case .worker: place.kind == .stockPen && isComplete(place.entity)
+                    case .worker: (place.kind == .stockPen || place.kind == .farm) && isComplete(place.entity)
                     case .engineer: true
                     case .scholar: place.kind == .townCentre || researching
                     default: false
@@ -144,7 +148,17 @@ enum OrderCheck {
                 if !Placement.canPlace(.townCentre, at: at, in: view, catalogue: catalogue) {
                     problems.append("found: a town centre cannot stand at \(at)")
                 }
-            case .cancelTraining, .research, .setPaused, .stop:
+            case .research(let at, let improvement):
+                guard let place = building(at), isComplete(place.entity),
+                      catalogue.stats(place.kind).researches.contains(improvement) else {
+                    problems.append("research: \(improvement) cannot be researched at \(at)")
+                    break
+                }
+                if catalogue.stats(improvement).age > view.age { problems.append("research: \(improvement) is of a later age") }
+                if view.improvements.contains(improvement) { problems.append("research: \(improvement) is known") }
+                if case .researching = place.entity.activity { problems.append("research: \(at) is already researching") }
+                spent = spent + catalogue.stats(improvement).cost
+            case .cancelTraining, .setPaused, .stop:
                 problems.append("unexpected order \(order)")
             }
         }

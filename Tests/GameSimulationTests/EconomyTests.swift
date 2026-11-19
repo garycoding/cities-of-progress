@@ -380,8 +380,8 @@ private let load = Catalogue.standard.gathering.load
         let worker = view.entities.first { $0.kind == .unit(.worker) && $0.owner == me }!
         #expect(SpriteSubject.of(worker, ownerAge: view.age) == .unit(.worker, .bronze))
         #expect(UnitKind.worker.stageName(at: view.age) == "Herder")
-        // No advance is catalogued beyond the Bronze age.
-        #expect(sim.apply(.advanceAge, from: me) == .refused(.invalidTarget))
+        // The Iron age is next, and its study starts again from nothing.
+        #expect(sim.apply(.advanceAge, from: me) == .refused(.studyIncomplete))
     }
 
     @Test func advancingIsRefusedWithoutTheCost() {

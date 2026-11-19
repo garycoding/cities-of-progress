@@ -19,7 +19,7 @@ public struct Unavailability: Hashable, Sendable {
 /// (`perform(in:)`), and its tooltip and refusal line say why.
 public struct ActionOffer: Identifiable, Hashable, Sendable {
     public enum Section: Int, Hashable, Sendable {
-        case train, research, build, upgrade, age, demolish, dismiss
+        case train, research, build, upgrade, age, demolish, dismiss, trade, carry
 
         public var heading: String {
             switch self {
@@ -30,6 +30,8 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
             case .age: "Advance"
             case .demolish: "Demolish"
             case .dismiss: "Dismiss"
+            case .trade: "Trade for"
+            case .carry: "Send to"
             }
         }
     }
@@ -43,6 +45,8 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case advanceAge
         case demolish(engineers: [EntityID], building: EntityID)
         case dismiss(units: [EntityID])
+        case exchange(merchants: [EntityID], give: Resource, take: Resource)
+        case carry(merchants: [EntityID], resource: Resource, to: EntityID)
     }
 
     public var id: String
@@ -72,6 +76,8 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case .advanceAge: .advanceAge
         case .demolish(let engineers, let building): .demolish(engineers: engineers, building: building)
         case .dismiss(let units): .dismiss(units: units)
+        case .exchange(let merchants, let give, let take): .exchange(merchants: merchants, give: give, take: take)
+        case .carry(let merchants, let resource, let building): .carry(merchants: merchants, resource: resource, to: building)
         }
     }
 
@@ -79,6 +85,8 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
     public var costLine: String {
         if case .demolish = action, let back = refund { return "Returns \(InterfaceText.cost(back))" }
         if case .dismiss(let units) = action { return units.count == 1 ? "Frees 1 place" : "Frees \(units.count) places" }
+        if case .exchange(_, let give, _) = action { return "Gives \(give.name), 3 for 2" }
+        if case .carry(_, let resource, _) = action { return "Your \(resource.name), a load at a time" }
         return InterfaceText.cost(cost)
     }
 
@@ -147,12 +155,14 @@ public struct PanelModel: Sendable {
     public var upgrade: [ActionOffer] = []
     public var demolish: [ActionOffer] = []
     public var dismiss: [ActionOffer] = []
+    public var trade: [ActionOffer] = []
+    public var carry: [ActionOffer] = []
     /// A building the player is placing, for the panel's hint.
     public var placing: BuildingKind?
 
-    public var actions: [ActionOffer] { train + research + build + upgrade + demolish + dismiss }
+    public var actions: [ActionOffer] { train + research + build + upgrade + trade + carry + demolish + dismiss }
     public var sections: [(section: ActionOffer.Section, offers: [ActionOffer])] {
-        [(.train, train), (.research, research), (.build, build), (.upgrade, upgrade), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
+        [(.train, train), (.research, research), (.build, build), (.upgrade, upgrade), (.trade, trade), (.carry, carry), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
     }
 
     /// The offer that a key press does, if any.
@@ -277,6 +287,43 @@ public struct PanelModel: Sendable {
                 shortcut: Self.deleteKey, icon: nil, iconSubject: nil)]
         }
 
+        // Merchants trade the player's largest stock for another resource, and
+        // carry resources to an ally's town centre (requirement 15).
+        let merchantIDs = own.filter { $0.kind == .unit(.merchant) }.map(\.id).sorted()
+        if !merchantIDs.isEmpty, catalogue.merchants != nil {
+            let shown = view.shownResources
+            let hasCentre = view.entities.contains {
+                $0.owner == view.player && $0.kind == .building(.townCentre) && !Self.isUnderConstruction($0)
+            }
+            for take in shown {
+                let give = shown.filter { $0 != take }.max { view.resources[$0] < view.resources[$1] }
+                let why: Unavailability? = gate
+                    ?? (hasCentre ? nil : Unavailability(.invalidTarget, "Needs a town centre"))
+                    ?? ((give.map { view.resources[$0] } ?? 0) > 0 ? nil
+                    : Unavailability(.notEnough(ResourceAmounts()), "Nothing to trade"))
+                trade.append(ActionOffer(
+                    id: "trade-\(take)", section: .trade, title: take.name,
+                    detail: "Merchants at the town centre trade your \(give?.name ?? "stock") for \(take.name) until it runs out.",
+                    cost: ResourceAmounts(), action: .exchange(merchants: merchantIDs, give: give ?? take, take: take),
+                    unavailable: why, shortcut: nil, icon: nil, iconSubject: nil))
+            }
+            let me = view.players.first { $0.id == view.player }
+            let allies = view.players.filter { $0.id != view.player && $0.team == me?.team && !$0.isDefeated }
+            for ally in allies {
+                guard let centre = view.entities.first(where: {
+                    $0.owner == ally.id && $0.kind == .building(.townCentre) && !Self.isUnderConstruction($0)
+                }) else { continue }
+                for resource in shown where view.resources[resource] > 0 {
+                    carry.append(ActionOffer(
+                        id: "carry-\(ally.id.rawValue)-\(resource)", section: .carry,
+                        title: "\(ally.civilization.name): \(resource.name)",
+                        detail: "Merchants carry your \(resource.name) to \(ally.civilization.name)'s town centre, a load at a time, until it runs out.",
+                        cost: ResourceAmounts(), action: .carry(merchants: merchantIDs, resource: resource, to: centre.id),
+                        unavailable: gate, shortcut: nil, icon: nil, iconSubject: nil))
+                }
+            }
+        }
+
         // Upgrades for warfighters where the catalogue has one.
         var keyGiven = false
         let warfighters = Dictionary(grouping: own.filter { $0.kind.isWarfighterKind }, by: { $0.kind })
@@ -350,6 +397,10 @@ public struct PanelModel: Sendable {
         case .betterTools: "t"
         case .bronzeWeapons: "b"
         case .shields: "d"
+        case .ironTools: "i"
+        case .ironWeapons: "y"
+        case .mail: "v"
+        case .plough: "o"
         }
     }
 

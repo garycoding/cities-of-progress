@@ -12,6 +12,10 @@ public enum InterfaceText {
         case .betterTools: "Better tools"
         case .bronzeWeapons: "Bronze weapons"
         case .shields: "Shields"
+        case .ironTools: "Iron tools"
+        case .ironWeapons: "Iron weapons"
+        case .mail: "Mail"
+        case .plough: "Plough"
         }
     }
 
@@ -21,6 +25,10 @@ public enum InterfaceText {
         case .betterTools: "Workers gather faster."
         case .bronzeWeapons: "Warfighters strike harder."
         case .shields: "Warfighters take less harm."
+        case .ironTools: "Workers gather faster still."
+        case .ironWeapons: "Warfighters strike harder still."
+        case .mail: "Warfighters take less harm still."
+        case .plough: "Farms yield more."
         }
     }
 

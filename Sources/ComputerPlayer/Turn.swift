@@ -190,11 +190,13 @@ final class Turn {
         trainAtTownCentre()
         upgrade()
         trainArmy()
+        research()
         campaign()
         scout()
         employWorkers()
         employScholars()
         employEngineers()
+        employMerchants()
     }
 
     // MARK: Spending and ordering

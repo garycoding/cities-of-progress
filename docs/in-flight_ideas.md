@@ -19,3 +19,7 @@ Engineers could turn a building into another kind in place, the player paying th
 ## Architecture of each civilization
 
 Raised 2026-11-19, when the Iron age's buildings were approved "for now": every civilization builds in the same style in an age (the Iron age's town centre is a temple with a columned porch, whether the player is Sumer, Egypt or Shang), and only the team colour tells them apart. The idea is to give each civilization its own architecture in each age, as history had it: Egypt's pylons and flat roofs, Harappa's baked brick, Shang's timber halls on rammed earth, and so on. It multiplies the buildings to draw by the number of civilizations (eleven), so it wants a plan of its own: whether every building or only the town centre and a few landmarks differ, and whether people's dress follows as well.
+
+## Engineers repairing siege engines
+
+Raised 2026-11-19 in the review of the Iron age: the requirements give engineers the work of operating "siege weapons and machines", and the siege engineer is the Iron age's stage of the engineer, yet engineers repair only buildings. A siege engineer could repair a damaged catapult in the field, as it repairs a wall. Not ruled; the catapult is trained like any warfighter (ruled 2026-11-18).
