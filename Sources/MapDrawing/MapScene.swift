@@ -307,7 +307,12 @@ public final class MapScene: SKScene {
     }
 
     private func pollPointer() {
-        guard let view, let window = view.window, window.isKeyWindow else { pointerIsLive = false; return }
+        guard let view, let window = view.window, window.isKeyWindow else {
+            // Without focus no key-up arrives, so nothing may stay held.
+            pointerIsLive = false
+            heldArrows.removeAll()
+            return
+        }
         let local = view.convert(window.mouseLocationOutsideOfEventStream, from: nil)
         guard view.bounds.contains(local) else { pointer = nil; pointerIsLive = false; return }
         pointer = convertPoint(fromView: local)
