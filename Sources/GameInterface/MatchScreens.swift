@@ -217,7 +217,21 @@ private struct SeatPanel: View {
                     Text(seat.isHost ? "You" : seat.isOpen ? "Open for a person" : "Computer player")
                         .font(Typeface.text(15, bold: true)).lineLimit(1)
                     Spacer()
-                    Text("Team \(seat.team + 1)").font(Typeface.text(11)).foregroundStyle(Palette.inkSoft)
+                    if seat.isOpen {
+                        // A seat open for a person follows the host's team (requirement 5).
+                        Text("Team \(seat.team + 1)").font(Typeface.text(11)).foregroundStyle(Palette.inkSoft)
+                    } else {
+                        Menu {
+                            ForEach(0..<max(2, model.seats.count), id: \.self) { team in
+                                Button("Team \(team + 1)") { model.setTeam(team, forSeat: seatID) }
+                            }
+                        } label: {
+                            Text("Team \(seat.team + 1)").font(Typeface.text(11, bold: true))
+                        }
+                        .menuStyle(.borderlessButton)
+                        .fixedSize()
+                        .accessibilityLabel("Team for this seat")
+                    }
                     if !seat.isHost && model.seats.count > 2 {
                         Button { model.removeSeat(seatID) } label: { Text("Remove").font(Typeface.text(11, bold: true)) }
                             .buttonStyle(.plain)
