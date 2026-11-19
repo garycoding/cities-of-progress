@@ -15,3 +15,7 @@ An HTML twin, if one is made, would wear the game's own look, which waits for th
 ## Renovation
 
 Engineers could turn a building into another kind in place, the player paying the new kind's cost less half the old one's, over the new kind's construction time. The question is footprints: most kinds differ in size, so a conversion would have to grow or shrink the building where it stands, which needs a placement rule of its own. Until then, demolition (requirement 28) and rebuilding reach the same result for half the old building's cost. Raised 2026-11-18.
+
+## Architecture of each civilization
+
+Raised 2026-11-19, when the Iron age's buildings were approved "for now": every civilization builds in the same style in an age (the Iron age's town centre is a temple with a columned porch, whether the player is Sumer, Egypt or Shang), and only the team colour tells them apart. The idea is to give each civilization its own architecture in each age, as history had it: Egypt's pylons and flat roofs, Harappa's baked brick, Shang's timber halls on rammed earth, and so on. It multiplies the buildings to draw by the number of civilizations (eleven), so it wants a plan of its own: whether every building or only the town centre and a few landmarks differ, and whether people's dress follows as well.
