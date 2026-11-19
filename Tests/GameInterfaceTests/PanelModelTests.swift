@@ -87,7 +87,8 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
 @Test func nonEngineersOfferNoBuildings() {
     let view = Samples.stoneAgeOpening()
     let m = model(view, view.ids(ofUnits: [.worker, .scholar]))
-    #expect(m.actions.isEmpty)
+    #expect(m.build.isEmpty)
+    #expect(m.actions.map(\.id) == ["dismiss"])
 }
 
 @Test func theAgeIsCheckedBeforeResourcesAndTheLimit() {
@@ -385,4 +386,16 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     })
     if let theirs { #expect(model(view, [theirs.id]).demolish.isEmpty) }
     #expect(model(view, view.ids(ofUnits: [.worker])).demolish.isEmpty)
+}
+
+// MARK: Dismissal
+
+@Test func ownPeopleOfferDismissalOnTheDeleteKey() {
+    let view = Samples.stoneAgeOpening()
+    let workers = view.ids(ofUnits: [.worker])
+    let d = offer(model(view, workers), "dismiss")
+    #expect(d.order == .dismiss(units: workers.sorted()))
+    #expect(d.shortcut == PanelModel.deleteKey)
+    #expect(d.costLine == "Frees \(workers.count) places")
+    #expect(model(view, [view.id(of: .building(.townCentre))]).dismiss.isEmpty)
 }

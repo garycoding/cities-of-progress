@@ -54,6 +54,9 @@ public enum Order: Hashable, Codable, Sendable {
     case setPaused(Bool)
     /// Stop whatever the units are doing.
     case stop(units: [EntityID])
+    /// The player's own people leave the match at once, freeing their places;
+    /// nothing is returned. A founder cannot be dismissed (requirement 30).
+    case dismiss(units: [EntityID])
 }
 
 /// Why an order was refused. The interface shows it to the player.
