@@ -241,3 +241,27 @@ final class SiteNode: SKSpriteNode {
         colorBlendFactor = visibility == .explored ? 0.45 : 0
     }
 }
+
+/// Plain rock on a deposit's tile that the player's age does not yet reveal.
+final class OutcropNode: SKSpriteNode {
+    var generation = 0
+    private var visibility: TileVisibility?
+
+    func place(at tile: GridPoint, cache: SpriteCache) {
+        let sprite = cache.spriteForOutcrop()
+        texture = sprite.texture
+        size = sprite.size
+        anchorPoint = sprite.anchor
+        let s = Projection.screen(tile.centre)
+        position = CGPoint(x: s.x, y: s.y)
+        zPosition = Projection.depth(tile.centre)
+    }
+
+    func apply(visibility: TileVisibility) {
+        guard self.visibility != visibility else { return }
+        self.visibility = visibility
+        isHidden = visibility == .unexplored
+        color = .black
+        colorBlendFactor = visibility == .explored ? 0.45 : 0
+    }
+}

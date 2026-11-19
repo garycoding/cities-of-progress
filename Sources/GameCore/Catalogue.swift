@@ -83,9 +83,19 @@ public struct ImprovementStats: Hashable, Codable, Sendable {
     public var cost: ResourceAmounts
     /// Scholar-ticks of work: one scholar takes this many ticks, two take half.
     public var work: Int
+    /// Workers take this many times as much from a site in the same time
+    /// (herding excepted); the effects of several improvements multiply.
+    public var gatheringMultiplier: Double
+    /// Added to the damage of each blow a warfighter strikes.
+    public var warfighterDamage: Int
+    /// Added to the armour of each warfighter.
+    public var warfighterArmour: Int
 
-    public init(improvement: Improvement, age: Age, cost: ResourceAmounts, work: Int) {
+    public init(improvement: Improvement, age: Age, cost: ResourceAmounts, work: Int,
+                gatheringMultiplier: Double = 1, warfighterDamage: Int = 0, warfighterArmour: Int = 0) {
         self.improvement = improvement; self.age = age; self.cost = cost; self.work = work
+        self.gatheringMultiplier = gatheringMultiplier; self.warfighterDamage = warfighterDamage
+        self.warfighterArmour = warfighterArmour
     }
 }
 
@@ -164,16 +174,17 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public var startingWorkers: Int
     /// The population limit can never exceed this, however many houses stand.
     public var populationMaximum: Int
-    /// Workers that come with a town centre built by a founder (requirement 26).
-    public var founderWorkers: Int
+    /// People that come with a town centre built by a founder: one engineer,
+    /// so that a house can be built, and the rest workers (requirement 26).
+    public var founderPeople: Int
 
     public init(units: [UnitStats], buildings: [BuildingStats], improvements: [ImprovementStats],
                 advances: [AdvanceStats], gathering: GatheringStats, bonuses: [Bonus], upgrades: [UpgradeStats],
-                startingResources: ResourceAmounts, startingWorkers: Int, populationMaximum: Int, founderWorkers: Int) {
+                startingResources: ResourceAmounts, startingWorkers: Int, populationMaximum: Int, founderPeople: Int) {
         self.units = units; self.buildings = buildings; self.improvements = improvements; self.advances = advances
         self.gathering = gathering; self.bonuses = bonuses; self.upgrades = upgrades
         self.startingResources = startingResources; self.startingWorkers = startingWorkers
-        self.populationMaximum = populationMaximum; self.founderWorkers = founderWorkers
+        self.populationMaximum = populationMaximum; self.founderPeople = founderPeople
     }
 
     public func stats(_ kind: UnitKind) -> UnitStats { units.first { $0.kind == kind }! }
@@ -237,9 +248,12 @@ public struct Catalogue: Hashable, Codable, Sendable {
                           footprint: GridPoint(1, 1), sight: 1),
         ]
         let improvements: [ImprovementStats] = [
-            ImprovementStats(improvement: .betterTools, age: .stone, cost: cost([.food: 80, .wood: 60]), work: s(40)),
-            ImprovementStats(improvement: .bronzeWeapons, age: .bronze, cost: cost([.food: 100, .bronze: 60]), work: s(60)),
-            ImprovementStats(improvement: .shields, age: .bronze, cost: cost([.wood: 80, .bronze: 40]), work: s(60)),
+            ImprovementStats(improvement: .betterTools, age: .stone, cost: cost([.food: 80, .wood: 60]), work: s(40),
+                             gatheringMultiplier: 1.2),
+            ImprovementStats(improvement: .bronzeWeapons, age: .bronze, cost: cost([.food: 100, .bronze: 60]), work: s(60),
+                             warfighterDamage: 1),
+            ImprovementStats(improvement: .shields, age: .bronze, cost: cost([.wood: 80, .bronze: 40]), work: s(60),
+                             warfighterArmour: 1),
         ]
         let advances: [AdvanceStats] = [
             AdvanceStats(from: .stone, cost: cost([.food: 300, .wood: 100]), study: s(4 * 90)),
@@ -263,6 +277,6 @@ public struct Catalogue: Hashable, Codable, Sendable {
         return Catalogue(units: units, buildings: buildings, improvements: improvements, advances: advances,
                          gathering: gathering, bonuses: bonuses, upgrades: upgrades,
                          startingResources: cost([.food: 200, .wood: 200, .stone: 50]),
-                         startingWorkers: 3, populationMaximum: 200, founderWorkers: 6)
+                         startingWorkers: 3, populationMaximum: 200, founderPeople: 6)
     }()
 }

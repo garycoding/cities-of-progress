@@ -19,7 +19,7 @@ public struct Unavailability: Hashable, Sendable {
 /// (`perform(in:)`), and its tooltip and refusal line say why.
 public struct ActionOffer: Identifiable, Hashable, Sendable {
     public enum Section: Int, Hashable, Sendable {
-        case train, research, build, upgrade, age
+        case train, research, build, upgrade, age, demolish
 
         public var heading: String {
             switch self {
@@ -28,6 +28,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
             case .build: "Build"
             case .upgrade: "Upgrade"
             case .age: "Advance"
+            case .demolish: "Demolish"
             }
         }
     }
@@ -39,6 +40,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         /// `at` is nil when no building of the player's trains the new kind.
         case upgrade(units: [EntityID], to: UnitKind, at: EntityID?)
         case advanceAge
+        case demolish(engineers: [EntityID], building: EntityID)
     }
 
     public var id: String
@@ -66,6 +68,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case .research(let building, let improvement): .research(at: building, improvement: improvement)
         case .upgrade(let units, let kind, let building): building.map { .upgrade(units: units, to: kind, at: $0) }
         case .advanceAge: .advanceAge
+        case .demolish(let engineers, let building): .demolish(engineers: engineers, building: building)
         }
     }
 
@@ -129,12 +132,13 @@ public struct PanelModel: Sendable {
     public var research: [ActionOffer] = []
     public var build: [ActionOffer] = []
     public var upgrade: [ActionOffer] = []
+    public var demolish: [ActionOffer] = []
     /// A building the player is placing, for the panel's hint.
     public var placing: BuildingKind?
 
-    public var actions: [ActionOffer] { train + research + build + upgrade }
+    public var actions: [ActionOffer] { train + research + build + upgrade + demolish }
     public var sections: [(section: ActionOffer.Section, offers: [ActionOffer])] {
-        [(.train, train), (.research, research), (.build, build), (.upgrade, upgrade)].filter { !$0.1.isEmpty }
+        [(.train, train), (.research, research), (.build, build), (.upgrade, upgrade), (.demolish, demolish)].filter { !$0.1.isEmpty }
     }
 
     /// The offer that a key press does, if any.
@@ -213,6 +217,27 @@ public struct PanelModel: Sendable {
                     action: .research(at: b.id, improvement: improvement), unavailable: why,
                     shortcut: Self.researchKey(improvement), icon: nil, iconSubject: nil)
             }
+        }
+
+        // Demolish a single own building (requirement 28): the player's idle
+        // engineers do it, or the nearest engineer where none is idle.
+        if selected.count == 1, let b = own.first, case .building(let kind) = b.kind {
+            let engineers = view.entities.filter { $0.owner == view.player && $0.kind == .unit(.engineer) }
+            let idle = engineers.filter { $0.activity == .idle }.map(\.id)
+            let nearest = engineers.min {
+                let a = ($0.position.x - b.position.x, $0.position.y - b.position.y)
+                let c = ($1.position.x - b.position.x, $1.position.y - b.position.y)
+                return (a.0 * a.0 + a.1 * a.1, $0.id) < (c.0 * c.0 + c.1 * c.1, $1.id)
+            }
+            let crew = idle.isEmpty ? nearest.map { [$0.id] } ?? [] : idle
+            var why = gate
+            if why == nil && crew.isEmpty { why = Unavailability(.notYours, "Needs an engineer") }
+            let back = catalogue.stats(kind).cost.halved
+            demolish = [ActionOffer(
+                id: "demolish", section: .demolish, title: kind.name,
+                detail: "Engineers pull it down and return half its cost (\(InterfaceText.cost(back))).",
+                cost: ResourceAmounts(), action: .demolish(engineers: crew, building: b.id), unavailable: why,
+                shortcut: "x", icon: nil, iconSubject: nil)]
         }
 
         // Buildings for engineers, of the ages reached.

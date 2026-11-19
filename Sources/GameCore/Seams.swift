@@ -55,7 +55,9 @@ public protocol GameSimulating: Codable, Sendable {
     mutating func view(for player: PlayerID) -> PlayerView
     /// A checksum of the whole state, the same in every process for the same
     /// state. Computed field by field from the simulation's own ordered arrays,
-    /// never by hashing an encoding that contains a dictionary.
+    /// never by hashing an encoding that contains a dictionary. It leaves out
+    /// the events waiting for each player's next view, since those depend on
+    /// when views are taken.
     func checksum() -> UInt64
 }
 
