@@ -134,8 +134,12 @@ public enum MapHitTesting {
     /// The entity drawn under `point`. A person wins over a building where both
     /// are under it; among people, the one whose feet are nearest the point; among
     /// buildings, the nearest to the viewer.
+    /// `drawnHeight` gives how far an entity's drawing rises above its anchor,
+    /// where the scene knows it; a building is then hit up to the top of its
+    /// drawing rather than the height in `Stature`.
     public static func entity(at point: CGPoint, in view: PlayerView, geometry: MapGeometry,
-                              catalogue: Catalogue = .standard) -> EntityView? {
+                              catalogue: Catalogue = .standard,
+                              drawnHeight: (EntityView) -> Double? = { _ in nil }) -> EntityView? {
         let zoom = geometry.camera.zoom
         var person: EntityView?, personDistance = Double.infinity
         var building: EntityView?, buildingDepth = -Double.infinity
@@ -151,7 +155,8 @@ public enum MapHitTesting {
             case .building(let kind):
                 let size = catalogue.stats(kind).footprint
                 let quad = footprintCorners(origin: entity.tile, size: size, geometry: geometry)
-                guard contains(quad, liftedBy: Stature.building(kind) * zoom, point) else { continue }
+                let height = max(Stature.building(kind), drawnHeight(entity) ?? 0)
+                guard contains(quad, liftedBy: height * zoom, point) else { continue }
                 let depth = Projection.depth(entity.position)
                 if depth > buildingDepth { building = entity; buildingDepth = depth }
             }
@@ -175,8 +180,10 @@ public enum MapHitTesting {
 
     /// What is under `point`: an entity, else a site, else the ground.
     public static func target(at point: CGPoint, in view: PlayerView, geometry: MapGeometry,
-                              catalogue: Catalogue = .standard) -> MapTarget {
-        if let entity = entity(at: point, in: view, geometry: geometry, catalogue: catalogue) { return .entity(entity) }
+                              catalogue: Catalogue = .standard,
+                              drawnHeight: (EntityView) -> Double? = { _ in nil }) -> MapTarget {
+        if let entity = entity(at: point, in: view, geometry: geometry, catalogue: catalogue,
+                               drawnHeight: drawnHeight) { return .entity(entity) }
         if let site = site(at: point, in: view, geometry: geometry) { return .site(site) }
         return .ground(geometry.mapPosition(for: point))
     }

@@ -14,6 +14,28 @@ struct ResolvedSprite {
     var size: CGSize
     var anchor: CGPoint
     var isPlaceholder: Bool
+    /// How far the drawing's topmost solid pixel rises above the anchor, in
+    /// points; known for the artwork's buildings, for hit-testing and the bars.
+    var drawnHeight: Double? = nil
+}
+
+/// The height above the anchor of an image's topmost pixel that is more than
+/// faintly opaque, in points (the image is at twice the size in points).
+func drawnHeight(of image: CGImage, anchorY: Double) -> Double? {
+    let width = image.width, height = image.height
+    guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width,
+                                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.alphaOnly.rawValue),
+          let data = context.data else { return nil }
+    context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+    let alpha = data.bindMemory(to: UInt8.self, capacity: width * height)
+    // Row 0 of the bitmap's memory is the image's top row.
+    for row in 0..<height {
+        for column in 0..<width where alpha[row * width + column] > 40 {
+            let fromBottom = Double(height - row)
+            return (fromBottom - anchorY * Double(height)) / 2
+        }
+    }
+    return nil
 }
 
 /// Turns the `SpriteSource`'s images into textures once, remembers what the
@@ -60,9 +82,10 @@ final class SpriteCache {
         }
         guard let image = source.sprite(key) else { artwork[key] = .missing; return nil }
         let size = CGSize(width: Double(image.base.width) / 2, height: Double(image.base.height) / 2)
-        let sprite = ResolvedSprite(texture: SKTexture(cgImage: image.base),
+        var sprite = ResolvedSprite(texture: SKTexture(cgImage: image.base),
                                     mask: image.teamMask.map { SKTexture(cgImage: $0) },
                                     size: size, anchor: CGPoint(x: image.anchor.x, y: image.anchor.y), isPlaceholder: false)
+        if case .building = key.subject { sprite.drawnHeight = drawnHeight(of: image.base, anchorY: image.anchor.y) }
         artwork[key] = .found(sprite)
         return sprite
     }

@@ -49,6 +49,9 @@ final class EntityNode: SKNode {
     private var isSelected = false
     private var relation = Relation.own
     private var barHeight = 58.0
+    /// How far the artwork's drawing rises above the entity's anchor, in points
+    /// at zoom 1; 0 where it is not known (people, placeholders).
+    private(set) var drawnHeight = 0.0
     private var barWidth = 30.0
     /// The view number in which this node was last updated; others are removed.
     var generation = 0
@@ -116,6 +119,8 @@ final class EntityNode: SKNode {
         body.texture = sprite.texture
         body.size = sprite.size
         body.anchorPoint = sprite.anchor
+        drawnHeight = sprite.drawnHeight ?? 0
+        if let height = sprite.drawnHeight { barHeight = height + 8 }
         if let maskTexture = sprite.mask {
             let node: SKSpriteNode
             if let existing = mask { node = existing } else {
@@ -141,7 +146,7 @@ final class EntityNode: SKNode {
         let size = context.cache.footprint(kind)
         let span = Double(size.x + size.y)
         barWidth = max(30, span * 14)
-        barHeight = Stature.building(kind) + span * 6 + 10
+        barHeight = max(barHeight, Stature.building(kind) + span * 6 + 10)
     }
 
     private func updateRing(entity: EntityView, context: DrawContext) {

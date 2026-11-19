@@ -45,7 +45,8 @@ extension MapScene {
             place(at: point, keepPlacing: additive)
             return
         }
-        let hit = MapHitTesting.entity(at: point, in: session.view, geometry: geometry, catalogue: session.catalogue)
+        let hit = MapHitTesting.entity(at: point, in: session.view, geometry: geometry, catalogue: session.catalogue,
+                                       drawnHeight: { [entityNodes] in entityNodes[$0.id]?.drawnHeight })
         session.selection = MapCommands.selection(afterClickOn: hit?.id, current: session.selection, additive: additive)
     }
 
@@ -85,7 +86,8 @@ extension MapScene {
             session.placing = nil
             return
         }
-        var target = MapHitTesting.target(at: point, in: session.view, geometry: geometry, catalogue: session.catalogue)
+        var target = MapHitTesting.target(at: point, in: session.view, geometry: geometry, catalogue: session.catalogue,
+                                          drawnHeight: { [entityNodes] in entityNodes[$0.id]?.drawnHeight })
         if case .ground(let position) = target {
             target = .ground(MapPosition(x: min(max(position.x, 0), Double(session.view.mapWidth)),
                                          y: min(max(position.y, 0), Double(session.view.mapHeight))))
