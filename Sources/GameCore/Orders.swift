@@ -41,7 +41,7 @@ public enum Order: Hashable, Codable, Sendable {
     /// the advance's cost (requirement 16).
     case advanceAge
     /// A founder builds a new town centre, free of cost, at `at`; it comes with
-    /// `Catalogue.founderWorkers` workers and the founder disappears (requirement 26).
+    /// `Catalogue.founderPeople` people, one an engineer and the rest workers, and the founder disappears (requirement 26).
     /// It takes effect when ordered; the founder need not walk there.
     case found(founder: EntityID, at: GridPoint)
     /// Pay to turn warfighters into the kind a later age brings, at a building
