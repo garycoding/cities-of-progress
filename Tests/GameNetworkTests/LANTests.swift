@@ -80,9 +80,8 @@ extension LANTests {
         let session = hyun.session
         let received = Received(hyun)
         try await until("ticks run") { lan.match!.host.tick > 10 && !received.ticks.isEmpty }
-        // The connection breaks once every event has reached Hyun. A view still
-        // on its way when a connection breaks is lost with its events: TCP
-        // delivers only whilst the connection lasts, and the host cannot know.
+        // The connection breaks once every event has reached Hyun (views lost
+        // on the way are the subject of `viewsLostWhenAConnectionBreaksHaveTheirEventsSentAgain`).
         lan.ticking = false
         let before = lan.match!.host.tick
         try await until("Hyun has every event") { received.ticks.last == before }
@@ -297,5 +296,31 @@ extension LANTests {
         #expect(Set(lan.server.lobby.taken).count == lan.server.lobby.seats.count)
         #expect(lan.server.lobby.isReady)
         try await until("Hyun sees the computer") { hyun.lobby?.seats[2].kind == .computer(.hard) }
+    }
+}
+
+extension LANTests {
+    @Test func viewsLostWhenAConnectionBreaksHaveTheirEventsSentAgain() async throws {
+        let (lan, hyun, mira) = try await Loopback.playing()
+        defer { lan.stop() }
+        hyun.reconnectDelays = [.milliseconds(200)]
+        let received = Received(hyun)
+        try await until("ticks run") { lan.match!.host.tick > 10 && !received.ticks.isEmpty }
+
+        // The views of the next forty ticks are lost on the way, and then the connection breaks.
+        hyun.losesViews = true
+        let from = lan.match!.host.tick
+        try await until("forty ticks pass") { lan.match!.host.tick > from + 40 }
+        hyun.breakConnection()
+        hyun.losesViews = false
+        try await until("Hyun is back") { hyun.state == .playing && lan.server.dropped.isEmpty }
+        try await until("Mira is told") { mira.notices.contains(.rejoined(player: PlayerID(1), name: "Hyun")) }
+
+        // Every event reaches Hyun once and in order, those of the lost views included.
+        try await until("play moves on") { lan.match!.host.tick > from + 80 }
+        lan.ticking = false
+        let last = lan.match!.host.tick
+        try await until("every event is delivered") { received.ticks.last == last }
+        #expect(received.ticks == Array(received.ticks[0]...last))
     }
 }

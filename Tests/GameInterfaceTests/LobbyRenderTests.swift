@@ -88,6 +88,7 @@ import Testing
     })
 }
 
+@MainActor
 private func layer(_ notices: MatchNotices) -> MatchNoticeLayer {
     MatchNoticeLayer(notices: notices, onBannerExpired: { _ in }, onHandToComputer: { _, _ in }, onLeave: {})
 }

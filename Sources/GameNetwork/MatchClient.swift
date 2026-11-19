@@ -62,6 +62,11 @@ public final class MatchClient {
     public private(set) var notices: [Notice] = []
     /// The time a ping took to the host and back, the latest measured.
     public private(set) var roundTrip: Duration?
+    /// How many views of the match in play have arrived, across reconnections;
+    /// sent in `hello` on coming back, so that the host can send again the events of any lost.
+    private(set) var viewsReceived = 0
+    /// For tests: views that arrive are dropped, as if lost when a connection breaks.
+    @ObservationIgnored var losesViews = false
     /// Called with each notice, after it has been added to `notices`.
     @ObservationIgnored public var onNotice: (@MainActor (Notice) -> Void)?
     /// Called with each view as it arrives, terrain restored, after the session
@@ -122,6 +127,7 @@ public final class MatchClient {
         lobby = nil
         start = nil
         session = nil
+        viewsReceived = 0
         notices = []
         welcomed = false
         attempt = 0
@@ -213,7 +219,8 @@ public final class MatchClient {
         connected = true
         connectDeadline = nil
         heard = .now
-        link.send(.hello(protocolVersion: NetMessage.protocolVersion, build: build, name: name, rejoining: seat))
+        link.send(.hello(protocolVersion: NetMessage.protocolVersion, build: build, name: name, rejoining: seat,
+                         viewsReceived: start == nil ? nil : viewsReceived))
         ping()
     }
 
@@ -284,11 +291,17 @@ public final class MatchClient {
         case .lobby(let lobby):
             self.lobby = lobby
         case .start(let start):
-            if session?.view.player != start.player { session = nil }
+            if session?.view.player != start.player {
+                session = nil
+                viewsReceived = 0
+            }
             self.start = start
             speed = start.speed
             state = .playing
         case .view(let view):
+            // For tests: a view that arrives is treated as lost on the way.
+            if losesViews { return }
+            viewsReceived += 1
             show(view)
         case .notice(let notice):
             notices.append(notice)

@@ -58,6 +58,12 @@ public final class HostServer {
     @ObservationIgnored private var nextGuest = 0
     /// Events of views that never went out, for the seat's next view.
     @ObservationIgnored private var carried: [PlayerID: [GameEvent]] = [:]
+    /// For each seat, how many views have gone out to it, and the events of the
+    /// latest of them, numbered, kept so that those lost at a break can be sent again.
+    @ObservationIgnored private var viewsSent: [PlayerID: Int] = [:]
+    @ObservationIgnored private var recent: [PlayerID: [(number: Int, events: [GameEvent])]] = [:]
+    /// How many views' events are kept for each seat: about ten seconds' worth.
+    static let viewsKept = 200
     @ObservationIgnored private var flushScheduled = false
     @ObservationIgnored private var housekeeping: Task<Void, Never>?
 
@@ -272,8 +278,8 @@ public final class HostServer {
         guard let guest = guests.first(where: { $0.id == id }) else { return }
         guest.heard = .now
         switch message {
-        case .hello(let version, let build, let name, let rejoining):
-            hello(guest, version: version, build: build, name: name, rejoining: rejoining)
+        case .hello(let version, let build, let name, let rejoining, let viewsReceived):
+            hello(guest, version: version, build: build, name: name, rejoining: rejoining, viewsReceived: viewsReceived)
         case .chooseCivilization(let civilization):
             guard let seat = guest.seat else { return }
             // A refusal changes nothing, so the person is sent the lobby as it stands.
@@ -293,7 +299,7 @@ public final class HostServer {
         }
     }
 
-    private func hello(_ guest: Guest, version: Int, build: String, name: String, rejoining: PlayerID?) {
+    private func hello(_ guest: Guest, version: Int, build: String, name: String, rejoining: PlayerID?, viewsReceived: Int?) {
         guard guest.seat == nil else { return }
         guard version == NetMessage.protocolVersion, build == self.build else {
             return turnAway(guest, "This Mac runs build \(build) (protocol \(version)) and the host runs build "
@@ -306,7 +312,7 @@ public final class HostServer {
         }
         switch phase {
         case .lobby: admit(guest, name: name, asking: rejoining)
-        case .playing: readmit(guest, name: name)
+        case .playing: readmit(guest, name: name, viewsReceived: viewsReceived)
         case .closed: turnAway(guest, "The match has closed.")
         }
     }
@@ -331,7 +337,7 @@ public final class HostServer {
     /// A person comes back to the match in play: they are given the seat held
     /// under their name, whether their Mac dropped out or a computer player
     /// took the seat meanwhile.
-    private func readmit(_ guest: Guest, name: String) {
+    private func readmit(_ guest: Guest, name: String, viewsReceived: Int?) {
         guard let seat = lobby.seats.first(where: { $0.kind == .person && $0.holder == name })?.player else {
             return turnAway(guest, "The match \(lobby.name) has started; only the people playing it can rejoin it.")
         }
@@ -340,6 +346,7 @@ public final class HostServer {
             drop(seat, name: name)
         }
         self.seat(guest, at: seat, name: name)
+        resendLost(to: seat, received: viewsReceived)
         guest.link.send(.lobby(lobby))
         match?.rejoin(seat)
         dropped.removeAll { $0 == seat }
@@ -472,10 +479,35 @@ public final class HostServer {
         guest.inFlight += 1
         guest.lastView = .now
         guest.wantsView = false
-        guest.link.send(.view(sent)) { [weak self, weak guest] wentOut in
-            guest?.inFlight -= 1
-            if !wentOut, !sent.events.isEmpty { self?.carried[seat, default: []].append(contentsOf: sent.events) }
+        keep(sent.events, for: seat)
+        // A view that does not go out is lost with its connection; when the person
+        // comes back, its events are sent again with the others they did not receive.
+        guest.link.send(.view(sent)) { [weak guest] _ in guest?.inFlight -= 1 }
+    }
+
+    /// Each view sent is numbered and its events kept for a while, as the
+    /// connection may break before it arrives.
+    private func keep(_ events: [GameEvent], for seat: PlayerID) {
+        let number = viewsSent[seat, default: 0] + 1
+        viewsSent[seat] = number
+        recent[seat, default: []].append((number, events))
+        if recent[seat]!.count > Self.viewsKept { recent[seat]!.removeFirst(recent[seat]!.count - Self.viewsKept) }
+    }
+
+    /// A person comes back having received `received` views of the match (`nil`
+    /// from a Mac that has none): the events of the views sent after those go
+    /// first into the next view, and the numbering carries on from theirs.
+    private func resendLost(to seat: PlayerID, received: Int?) {
+        guard let received else {
+            // A Mac that never saw this match (the app was started again) is not sent its past events.
+            recent[seat] = nil
+            viewsSent[seat] = 0
+            return
         }
+        let lost = (recent[seat] ?? []).filter { $0.number > received }.flatMap(\.events)
+        recent[seat]?.removeAll { $0.number > received }
+        viewsSent[seat] = received
+        if !lost.isEmpty { carried[seat] = lost + (carried[seat] ?? []) }
     }
 
     /// A person who gave orders is sent a view once the orders that arrived
