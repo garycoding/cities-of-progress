@@ -19,6 +19,12 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
     /// The player each computer controls, in the order of `computers`.
     public private(set) var computerPlayers: [PlayerID]
     public let catalogue: Catalogue
+    /// People whose Macs have left and whose seats are not yet handed on: while
+    /// any remain the match holds still (ruling of 2026-11-18). Not saved: a
+    /// reopened match has its own rule for absent people.
+    public private(set) var dropped: [PlayerID] = []
+
+    enum CodingKeys: String, CodingKey { case simulation, computers, computerPlayers, catalogue }
 
     /// Starts a match: one computer player for each player the setup gives to a computer.
     public init(setup: MatchSetup) {
@@ -39,12 +45,27 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
 
     public var tick: Int { simulation.tick }
     public var outcome: MatchOutcome? { simulation.outcome }
-    public var isPaused: Bool { simulation.isPaused }
+    /// Paused by a person, or held for a person who dropped out.
+    public var isPaused: Bool { simulation.isPaused || !dropped.isEmpty }
 
     /// An order from a person at this Mac (or, in a later milestone, another Mac).
+    /// While a dropped person's seat holds the match, a request to resume is refused.
     @discardableResult
     public mutating func apply(_ order: Order, from player: PlayerID) -> OrderResult {
-        simulation.apply(order, from: player)
+        if case .setPaused(false) = order, !dropped.isEmpty { return .refused(.notNow) }
+        return simulation.apply(order, from: player)
+    }
+
+    /// A person's Mac has left: the match holds still until they rejoin or the
+    /// seat is handed to a computer player.
+    public mutating func drop(_ player: PlayerID) {
+        if !dropped.contains(player) && !isComputer(player) { dropped.append(player) }
+    }
+
+    /// The person is back in their seat; a computer player that was playing it stops.
+    public mutating func rejoin(_ player: PlayerID) {
+        dropped.removeAll { $0 == player }
+        takeBack(player)
     }
 
     /// The match as a spectator sees one player's side, without taking that
@@ -74,7 +95,9 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
     /// What a person may know now. It takes the events since that player's last
     /// view, so call it once per update for each person.
     public mutating func view(for player: PlayerID) -> PlayerView {
-        simulation.view(for: player)
+        var view = simulation.view(for: player)
+        if !dropped.isEmpty { view.isPaused = true }
+        return view
     }
 
     public func checksum() -> UInt64 { simulation.checksum() }
@@ -87,6 +110,7 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
     /// memory, from a seed drawn from the match's state, so that it is the same
     /// on every run of the same match.
     public mutating func handToComputer(_ player: PlayerID, difficulty: Difficulty) {
+        dropped.removeAll { $0 == player }
         guard !isComputer(player) else { return }
         let seed = simulation.checksum() &* 0x9E37_79B9_7F4A_7C15 &+ UInt64(player.rawValue + 1)
         computers.append(Computer(player: player, difficulty: difficulty, seed: seed))

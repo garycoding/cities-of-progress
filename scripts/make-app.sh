@@ -16,6 +16,8 @@ BUNDLE_ID="io.github.garycoding.cities-of-progress"
 OUT="${1:-build}"
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="$(tr -d '[:space:]' < "$ROOT/VERSION.txt")"
+# The build stamp a hosting Mac compares with a joining one (NetMessage.hello).
+BUILD="$(git -C "$ROOT" rev-parse --short=12 HEAD 2>/dev/null || echo unknown)$(git -C "$ROOT" diff --quiet HEAD 2>/dev/null || echo -modified)"
 
 cd "$ROOT"
 swift build -c release --product "$EXE" >&2
@@ -35,6 +37,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>$VERSION</string>
   <key>CFBundleVersion</key><string>$VERSION</string>
+  <key>CitiesOfProgressBuild</key><string>$BUILD</string>
   <key>LSMinimumSystemVersion</key><string>15.0</string>
   <key>NSHighResolutionCapable</key><true/>
   <key>NSPrincipalClass</key><string>NSApplication</string>

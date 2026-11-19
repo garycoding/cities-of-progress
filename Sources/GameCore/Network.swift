@@ -28,11 +28,16 @@ public struct Seat: Hashable, Codable, Sendable, Identifiable {
     public var civilization: Civilization?
     /// The name of the person in the seat; `nil` for a computer or an open seat.
     public var holder: String?
+    /// The civilization cannot be changed: the seat belongs to a saved match
+    /// being resumed, in which its civilization was chosen long ago.
+    public var civilizationFixed: Bool
 
     public var id: PlayerID { player }
 
-    public init(player: PlayerID, team: TeamID, kind: SeatKind, civilization: Civilization? = nil, holder: String? = nil) {
+    public init(player: PlayerID, team: TeamID, kind: SeatKind, civilization: Civilization? = nil, holder: String? = nil,
+                civilizationFixed: Bool = false) {
         self.player = player; self.team = team; self.kind = kind; self.civilization = civilization; self.holder = holder
+        self.civilizationFixed = civilizationFixed
     }
 
     /// A person's seat that nobody holds yet, or whose holder has not chosen a civilization.
@@ -103,10 +108,16 @@ public enum Notice: Hashable, Codable, Sendable {
 
 /// One message between the host and a joining Mac.
 public enum NetMessage: Hashable, Codable, Sendable {
+    /// Raised whenever the shape of any message changes, so that two Macs that
+    /// would not understand each other say so instead.
+    public static let protocolVersion = 1
+
     // From a joining Mac.
-    /// The first message: the game's version, the person's name, and the seat
-    /// they held, if they are coming back to a match.
-    case hello(version: String, name: String, rejoining: PlayerID?)
+    /// The first message. The host turns a Mac away unless both `protocolVersion`
+    /// and `build` equal its own. A person coming back to a match is given back
+    /// the dropped seat whose holder has the same `name`; `rejoining` is the seat
+    /// they held, when their app still knows it, and only a hint.
+    case hello(protocolVersion: Int, build: String, name: String, rejoining: PlayerID?)
     case chooseCivilization(Civilization)
     case order(Order)
     case setSpeed(Double)
