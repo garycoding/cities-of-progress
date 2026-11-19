@@ -136,29 +136,29 @@ struct Elder: PersonLook {
         switch pose {
         case .standing:
             var r = Moves.standing(frame)
-            r.lean = 4; r.headTilt = 2; r.mouth = .hidden
+            r.lean = 4; r.headTilt = 2; r.mouth = .firm
             r.frontArm = Limb(22 + r.lift, 30)
             return r
         case .walking:
             var r = Moves.walking(frame, stride: 15, kneeLift: 30, armSwing: 12)
-            r.lean = 6; r.headTilt = 2; r.mouth = .hidden
+            r.lean = 6; r.headTilt = 2; r.mouth = .firm
             r.frontArm = Limb(22 + 8 * sin(Moves.phase(frame) * 2 * .pi), 30)
             return r
         case .working:
             var r = Moves.standing(frame)
-            r.lean = 3; r.mouth = .hidden
+            r.lean = 3; r.mouth = .firm
             r.backArm = Limb(-40, 10)
             r.frontArm = Limb(78, 44)
             if frame < 7 {
                 // Reading: the head bowed over the tablet, nodding along, murmuring.
                 r.headTilt = frame % 3 == 1 ? 9 : 7
                 r.eyes = .down
-                r.mouth = frame % 2 == 0 ? .murmur : .hidden
+                r.mouth = frame % 2 == 0 ? .murmur : .firm
             } else {
                 // The thought arrives: the head comes up, the eye widens, the mouth opens.
                 r.headTilt = -3
                 r.eyes = frame == 11 ? .open : .wide
-                r.mouth = frame == 11 ? .hidden : .open
+                r.mouth = frame == 11 ? .firm : .open
                 r.frontArm = Limb(72, 40)
             }
             return r
@@ -219,7 +219,7 @@ struct Elder: PersonLook {
                 d.svg.path("M-2.8,-52.6 C0.8,-49.4 6.6,-48.8 10.8,-52.4 C11.6,-46 8.8,-39.6 3.4,-35.6 C2.8,-40.4 0,-44.4 -2.8,-46.8 Z",
                            fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1.2)
                 d.svg.path("M-0.6,-45.8 q2.4,2.6 3.4,6.2 M3.8,-48.2 q2,3 2,6.4", stroke: .colour(Ink.line), width: 0.8, opacity: 0.6)
-                d.svg.path("M5.2,-52.6 q2.8,-1.8 6,-0.4 q-1.4,1.8 -3,1.2 q-1.6,0.8 -3,-0.8 Z",
+                d.svg.path("M5.2,-53.8 q2.8,-1.8 6,-0.4 q-1.4,1.8 -3,1.2 q-1.6,0.8 -3,-0.8 Z",
                            fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1)
             }, brow: { d in
                 d.svg.path("M0.2,-64 q4.4,-3.8 9,-1.2 q-4.4,-0.2 -9,1.2 Z", fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1.1)
@@ -239,13 +239,9 @@ struct Builder: PersonLook {
     func rig(_ pose: SpritePose, _ frame: Int) -> Rig? {
         switch pose {
         case .standing:
-            var r = Moves.standing(frame)
-            r.mouth = .hidden
-            return r
+            return Moves.standing(frame)
         case .walking:
-            var r = Moves.walking(frame)
-            r.mouth = .hidden
-            return r
+            return Moves.walking(frame)
         case .working:
             return work(frame)
         case .fighting:
@@ -256,7 +252,7 @@ struct Builder: PersonLook {
             r.backLeg = Limb(-18, 6)
             r.frontLeg = frame >= 6 && frame <= 9 ? Limb(22, 12) : Limb(12, 8)
             r.lean = frame < 6 ? -4 : (frame <= 9 ? 10 : 2)
-            r.mouth = .hidden
+            r.mouth = landing ? .shout : .firm
             r.eyes = landing ? .wide : .open
             return r
         default:
@@ -277,7 +273,7 @@ struct Builder: PersonLook {
         r.lean = 10
         r.frontArm = Limb(angle, -4)
         r.backArm = Limb(24, 30)
-        r.mouth = .hidden
+        r.mouth = .firm
         r.eyes = landing ? .closed : .down
         return r
     }
@@ -340,7 +336,7 @@ struct Builder: PersonLook {
                 d.svg.path("M-9.8,-60 C-10.6,-63 -9.6,-55 -7.6,-52.8 C-7,-55.4 -6.6,-57.8 -5.2,-59.6 Z", fill: .colour(Ink.line))
             }, features: { d in
                 // A bushy moustache.
-                d.svg.path("M4.4,-53 q3.4,-2.6 7.2,-0.6 q-1,2.4 -3.6,1.4 q-2,1.4 -3.6,-0.8 Z", fill: .colour(Ink.line))
+                d.svg.path("M4.4,-54 q3.4,-2.6 7.2,-0.6 q-1,2.4 -3.6,1.4 q-2,1.4 -3.6,-0.8 Z", fill: .colour(Ink.line))
             }, brow: { d in
                 d.svg.path("M1.6,-64 q3.4,-1.4 6.4,-0.2", stroke: .colour(Ink.line), width: 1.5)
             }, over: { d in

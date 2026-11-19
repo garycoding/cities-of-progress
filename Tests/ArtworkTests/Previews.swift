@@ -38,11 +38,12 @@ enum Preview {
     }
 
     /// A patch of the Stone age's ground: dusk lilac, sponged, with the faint
-    /// diamonds of the map's tiles, and the grain over all.
-    static func ground(width: Int, height: Int, tile: Double) -> CGImage {
+    /// diamonds of the map's tiles, and the grain over all unless `grained` is
+    /// false (an animation's ground is left without it, so that the GIF stays small).
+    static func ground(width: Int, height: Int, tile: Double, grained: Bool = true) -> CGImage {
         var svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"\(width)\" height=\"\(height)\" viewBox=\"0 0 \(width) \(height)\">"
         svg += "<rect width=\"\(width)\" height=\"\(height)\" fill=\"#a79aa6\"/>"
-        svg += "<g fill=\"none\" stroke=\"#968897\" stroke-width=\"\(tile / 40)\">"
+        svg += "<g fill=\"none\" stroke=\"#9a8c9a\" stroke-width=\"\(tile / 40)\">"
         let w = tile, h = tile / 2
         var y = -h
         var row = 0
@@ -76,7 +77,7 @@ enum Preview {
         if let image = ci.createCGImage(sponge, from: rect, format: .RGBA8, colorSpace: sRGB) {
             context.draw(image, in: rect)
         }
-        if let grain = Grain.image(width: width, height: height) { context.draw(grain, in: rect) }
+        if grained, let grain = Grain.image(width: width, height: height) { context.draw(grain, in: rect) }
         return context.makeImage()!
     }
 
