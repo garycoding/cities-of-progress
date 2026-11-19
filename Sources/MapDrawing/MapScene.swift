@@ -308,9 +308,9 @@ public final class MapScene: SKScene {
 
     private func pollPointer() {
         guard let view, let window = view.window, window.isKeyWindow else {
-            // Without focus no key-up arrives, so nothing may stay held.
             pointerIsLive = false
-            heldArrows.removeAll()
+            // A window that has lost focus gets no key-up, so nothing may stay held.
+            if view?.window != nil { heldArrows.removeAll() }
             return
         }
         let local = view.convert(window.mouseLocationOutsideOfEventStream, from: nil)
