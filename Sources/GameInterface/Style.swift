@@ -287,7 +287,7 @@ struct KeyBadge: View {
     let key: Character
 
     var body: some View {
-        Text(String(key).uppercased())
+        Text(key == "\u{8}" ? "\u{232B}" : String(key).uppercased())
             .font(Typeface.text(9, bold: true))
             .foregroundStyle(Palette.ink)
             .frame(width: 14, height: 14)

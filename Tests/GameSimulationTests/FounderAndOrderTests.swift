@@ -173,3 +173,25 @@ extension Simulation {
         #expect(sim.view(for: them).events == [.refused(.studyIncomplete)])
     }
 }
+
+@Suite struct Dismissal {
+    @Test func dismissedPeopleLeaveAtOnceAndFreeTheirPlaces() {
+        var sim = duel()
+        let workers = sim.people(me, .worker)
+        let before = sim.view(for: me).population
+        #expect(sim.apply(.dismiss(units: [workers[0]]), from: me) == .accepted)
+        sim.step()
+        #expect(sim.entity(workers[0]) == nil)
+        #expect(sim.view(for: me).population == before - 1)
+    }
+
+    @Test func onlyOwnPeopleAndNoFounderMayBeDismissed() {
+        var sim = duel()
+        let theirs = sim.people(them, .worker)[0]
+        #expect(sim.apply(.dismiss(units: [theirs]), from: me) == .refused(.notYours))
+        #expect(sim.apply(.dismiss(units: [sim.townCentre(me)]), from: me) == .refused(.notYours))
+        let founder = sim.add(.founder, me, 6.5, 6.5)
+        #expect(sim.apply(.dismiss(units: [founder]), from: me) == .refused(.invalidTarget))
+        #expect(sim.entity(founder) != nil)
+    }
+}

@@ -50,6 +50,7 @@ These come from the person for whom the game is made and are settled.
 27. A founder cannot be killed. A team whose players have only founders is defeated, and the match ends for it.
 28. A player may have engineers demolish one of the player's own buildings. Demolition takes half the building's construction time, and when the building comes down the player receives half its cost. Training or research under way there is cancelled and refunded in full. A demolished house lowers the population limit; nobody already living is lost, but no one is trained whilst the population exceeds the limit.
 29. A player can speed the match up, and slow it back down to its normal pace.
+30. A player may dismiss any of the player's own people, who leave the match at once and free their places in the population; nothing is returned. A founder cannot be dismissed.
 
 ## Consequences of the stated requirements
 

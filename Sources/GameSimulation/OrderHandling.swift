@@ -42,6 +42,7 @@ extension Simulation {
         case .found(let founder, let at): return found(founder, at: at, player: player)
         case .upgrade(let units, let to, let at): return upgrade(units, to: to, at: at, player: player)
         case .stop(let units): return stop(units, player: player)
+        case .dismiss(let units): return dismiss(units, player: player)
         case .setPaused: return .accepted
         }
     }
@@ -182,6 +183,14 @@ extension Simulation {
     mutating func stop(_ ids: [EntityID], player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
         for i in people { setIdle(i) }
+        return .accepted
+    }
+
+    mutating func dismiss(_ ids: [EntityID], player: PlayerID) -> OrderResult {
+        guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
+        let leaving = people.filter { !entities[$0].isFounder }
+        guard !leaving.isEmpty else { return .refused(.invalidTarget) }
+        for i in leaving { kill(i) }
         return .accepted
     }
 
