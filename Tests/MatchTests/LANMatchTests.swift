@@ -88,9 +88,9 @@ private func until(_ what: String, within limit: Duration = .seconds(30), _ cond
     let mira = MatchClient(name: "Mira", build: build)
     defer { hyun.leave(); mira.leave() }
     hyun.join(host: "127.0.0.1", port: server.port!)
-    try await until("Hyun is seated") { hyun.state == .inLobby && hyun.seat != nil }
+    try await until("Hyun is seated and has the lobby") { hyun.state == .inLobby && hyun.seat != nil && hyun.lobby != nil }
     mira.join(host: "127.0.0.1", port: server.port!)
-    try await until("Mira is seated") { mira.state == .inLobby && mira.seat != nil }
+    try await until("Mira is seated and has the lobby") { mira.state == .inLobby && mira.seat != nil && mira.lobby != nil }
     #expect(hyun.chooseCivilization(.harappa))
     try await until("Mira sees Harappa taken") { mira.lobby?.seats.contains { $0.civilization == .harappa } == true }
     #expect(mira.chooseCivilization(.shang))
