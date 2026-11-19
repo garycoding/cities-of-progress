@@ -12,6 +12,8 @@ public enum SpriteSubject: Hashable, Codable, Sendable {
     /// A building, in the style of the owner's age.
     case building(BuildingKind, Age)
     case site(SiteKind)
+    /// Plain rock on a deposit's tile, before the player reaches its age.
+    case outcrop
     /// A ground tile; `variant` gives variety between neighbouring tiles.
     case terrain(Terrain, variant: Int)
 
@@ -44,9 +46,14 @@ public struct SpritePose: RawRepresentable, Hashable, Codable, Sendable, Express
     public static let underConstruction: SpritePose = "under-construction"
 }
 
-/// One picture: a subject in a pose, and the frame of that pose (limited
-/// animation alternates a few frames).
+/// One picture: a subject in a pose, and the frame of that pose. A pose that
+/// moves has `framesPerPose` frames, shown in turn at `frameRate` a second.
 public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
+    /// The number of frames in a pose that moves (docs/art-style.md).
+    public static let framesPerPose = 12
+    /// Frames shown a second (docs/art-style.md).
+    public static let frameRate = 12.0
+
     public var subject: SpriteSubject
     public var pose: SpritePose
     public var frame: Int
@@ -94,6 +101,7 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
         for kind in SiteKind.allCases where kind.firstAge <= age {
             keys.append(SpriteKey(.site(kind), .complete))
         }
+        keys.append(SpriteKey(.outcrop, .complete))
         for terrain in Terrain.allCases { keys.append(SpriteKey(.terrain(terrain, variant: 0), .complete)) }
         return keys
     }

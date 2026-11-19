@@ -43,6 +43,7 @@ public final class MapScene: SKScene {
     private(set) var terrain: TerrainLayer?
     private(set) var entityNodes: [EntityID: EntityNode] = [:]
     private(set) var siteNodes: [SiteID: SiteNode] = [:]
+    private(set) var outcropNodes: [GridPoint: OutcropNode] = [:]
     private var generation = 0
     private var selectedIDs: Set<EntityID> = []
 
@@ -74,9 +75,6 @@ public final class MapScene: SKScene {
     static let scrollSpeed = 900.0
     /// The width of the band at the screen's edges that scrolls the map.
     static let edgeMargin = 6.0
-    /// Frames of limited animation a second.
-    static let animationRate = 4.0
-
     public init(session: PlayerSession, sprites: any SpriteSource, size: CGSize = CGSize(width: 1280, height: 800)) {
         self.session = session
         cache = SpriteCache(source: sprites, catalogue: session.catalogue)
@@ -217,6 +215,24 @@ public final class MapScene: SKScene {
             }
         }
 
+        for tile in view.outcrops {
+            let node: OutcropNode
+            if let existing = outcropNodes[tile] { node = existing } else {
+                node = OutcropNode()
+                node.place(at: tile, cache: cache)
+                world.addChild(node)
+                outcropNodes[tile] = node
+            }
+            node.generation = generation
+            node.apply(visibility: view.visibility(at: tile))
+        }
+        if outcropNodes.count != view.outcrops.count {
+            for (tile, node) in outcropNodes where node.generation != generation {
+                node.removeFromParent()
+                outcropNodes[tile] = nil
+            }
+        }
+
         let context = makeContext(view)
         selectedIDs = Set(session.selection)
         for entity in view.entities {
@@ -297,7 +313,7 @@ public final class MapScene: SKScene {
         lastTime = now
         pollPointer()
         scrollFromInput(elapsed: elapsed)
-        let frame = Int((now * Self.animationRate).rounded(.down)) % 2
+        let frame = Int((now * SpriteKey.frameRate).rounded(.down)) % SpriteKey.framesPerPose
         if frame != animationFrame {
             animationFrame = frame
             changes.mark(.view)
@@ -350,4 +366,5 @@ public final class MapScene: SKScene {
 
     var entityNodeCount: Int { entityNodes.count }
     var siteNodeCount: Int { siteNodes.count }
+    var outcropNodeCount: Int { outcropNodes.count }
 }
