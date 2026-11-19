@@ -323,9 +323,10 @@ enum OrderFixture { static let expected: UInt64 = 0xB1BD_1677_C669_4364 }
 }
 
 /// Two milliseconds in a release build, as the game runs; a debug build on a
-/// shared CI runner is several times slower, so it is allowed ten.
+/// shared CI runner is several times slower, and slower still when its other
+/// test targets run beside it (12.8 ms seen on 2026-11-19), so it is allowed twenty-five.
 #if DEBUG
-private let decisionLimit = Duration.milliseconds(10)
+private let decisionLimit = Duration.milliseconds(25)
 #else
 private let decisionLimit = Duration.milliseconds(2)
 #endif
