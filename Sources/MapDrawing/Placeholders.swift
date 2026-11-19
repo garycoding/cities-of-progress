@@ -415,6 +415,22 @@ enum Placeholders {
     static let siteGround = CGPoint(x: 32, y: 14)
 
     /// A site as a shape per kind, standing on its tile.
+    /// Plain rock on a deposit not yet revealed: darker and lower than a stone
+    /// site, so that it is not taken for stone to quarry.
+    static func outcrop() -> DrawnImage {
+        let gx = siteGround.x, gy = siteGround.y
+        let image = render(siteCanvas) { c in
+            ellipse(c, CGRect(x: gx - 17, y: gy - 6, width: 34, height: 12), fill: colour(0, 0, 0, 0.22), stroke: nil)
+            polygon(c, [CGPoint(x: gx - 18, y: gy), CGPoint(x: gx - 11, y: gy + 9), CGPoint(x: gx + 1, y: gy + 13),
+                        CGPoint(x: gx + 13, y: gy + 10), CGPoint(x: gx + 18, y: gy + 2), CGPoint(x: gx + 8, y: gy - 3)],
+                    fill: colour(0.42, 0.40, 0.37))
+            polygon(c, [CGPoint(x: gx + 1, y: gy + 13), CGPoint(x: gx + 13, y: gy + 10), CGPoint(x: gx + 18, y: gy + 2),
+                        CGPoint(x: gx + 3, y: gy + 3)], fill: colour(0, 0, 0, 0.2), stroke: nil)
+        }
+        return DrawnImage(image: image, size: siteCanvas,
+                          anchor: CGPoint(x: siteGround.x / siteCanvas.width, y: siteGround.y / siteCanvas.height))
+    }
+
     static func site(_ kind: SiteKind) -> DrawnImage {
         let gx = siteGround.x, gy = siteGround.y
         let rock = { (c: CGContext, base: CGColor) in
