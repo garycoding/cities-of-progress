@@ -117,8 +117,10 @@ public struct TeamColour: Hashable, Codable, Sendable {
     public static func of(_ civilization: Civilization) -> TeamColour {
         switch civilization {
         case .sumer: TeamColour(red: 0.78, green: 0.25, blue: 0.18)
-        case .egypt: TeamColour(red: 0.18, green: 0.42, blue: 0.42)
-        case .harappa: TeamColour(red: 0.84, green: 0.70, blue: 0.37)
+        // Cobalt: the Bronze age's verdigris was nearly Egypt's old teal.
+        case .egypt: TeamColour(red: 0.10, green: 0.35, blue: 0.80)
+        // Lime: the old ochre was nearly the Bronze age's ground.
+        case .harappa: TeamColour(red: 0.62, green: 0.80, blue: 0.20)
         case .shang: TeamColour(red: 0.25, green: 0.37, blue: 0.48)
         case .olmec: TeamColour(red: 0.55, green: 0.61, blue: 0.35)
         case .caral: TeamColour(red: 0.58, green: 0.33, blue: 0.55)

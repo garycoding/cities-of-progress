@@ -2,25 +2,31 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import GameCore
+import Synchronization
 
 /// All the game's artwork as one source: each approved batch answers the keys
 /// it draws, and the first answer wins. The drawing shows its placeholder for a
 /// key that no batch answers.
 public final class GameSprites: SpriteSource {
     private let batches: [any SpriteSource]
+    /// What each key gave, so that a batch that draws on every call (and the
+    /// panel's icons, asked for on every redraw) pays once.
+    private let cache = Mutex<[SpriteKey: SpriteImage?]>([:])
 
     public init(catalogue: Catalogue = .standard) {
         batches = [
             CartoonSprites(catalogue: catalogue),
             TerrainSprites(),
             StoneBuildingSprites(),
+            BronzeBuildingSprites(),
+            BronzePeopleSprites(catalogue: catalogue),
         ]
     }
 
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
-        for batch in batches {
-            if let sprite = batch.sprite(key) { return sprite }
-        }
-        return nil
+        if let known = cache.withLock({ $0[key] }) { return known }
+        let found = batches.lazy.compactMap { $0.sprite(key) }.first
+        cache.withLock { $0[key] = found }
+        return found
     }
 }
