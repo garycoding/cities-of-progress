@@ -43,6 +43,7 @@ public final class MapScene: SKScene {
     private(set) var terrain: TerrainLayer?
     private(set) var entityNodes: [EntityID: EntityNode] = [:]
     private(set) var siteNodes: [SiteID: SiteNode] = [:]
+    private(set) var outcropNodes: [GridPoint: OutcropNode] = [:]
     private var generation = 0
     private var selectedIDs: Set<EntityID> = []
 
@@ -214,6 +215,24 @@ public final class MapScene: SKScene {
             }
         }
 
+        for tile in view.outcrops {
+            let node: OutcropNode
+            if let existing = outcropNodes[tile] { node = existing } else {
+                node = OutcropNode()
+                node.place(at: tile, cache: cache)
+                world.addChild(node)
+                outcropNodes[tile] = node
+            }
+            node.generation = generation
+            node.apply(visibility: view.visibility(at: tile))
+        }
+        if outcropNodes.count != view.outcrops.count {
+            for (tile, node) in outcropNodes where node.generation != generation {
+                node.removeFromParent()
+                outcropNodes[tile] = nil
+            }
+        }
+
         let context = makeContext(view)
         selectedIDs = Set(session.selection)
         for entity in view.entities {
@@ -347,4 +366,5 @@ public final class MapScene: SKScene {
 
     var entityNodeCount: Int { entityNodes.count }
     var siteNodeCount: Int { siteNodes.count }
+    var outcropNodeCount: Int { outcropNodes.count }
 }

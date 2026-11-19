@@ -61,14 +61,14 @@ extension Simulation {
     func harm(from attacker: Int, to target: Int, attack: Attack) -> Int {
         let a = entities[attacker], t = entities[target]
         var damage = Double(attack.damage)
-        if let kind = a.unitKind, kind.isWarfighter, players[a.owner.rawValue].has(.bronzeWeapons) {
-            damage += Double(ImprovementEffect.bronzeWeaponsDamage)
+        if let kind = a.unitKind, kind.isWarfighter {
+            damage += Double(players[a.owner.rawValue].improvements.reduce(0) { $0 + catalogue.stats($1).warfighterDamage })
         }
         if let ak = a.unitKind, let tk = t.unitKind { damage *= tables.bonus(ak, against: tk) }
         var armour: Int
         if let tk = t.unitKind {
             armour = tables.unit(tk).armour
-            if tk.isWarfighter && players[t.owner.rawValue].has(.shields) { armour += ImprovementEffect.shieldsArmour }
+            if tk.isWarfighter { armour += players[t.owner.rawValue].improvements.reduce(0) { $0 + catalogue.stats($1).warfighterArmour } }
         } else if let tk = t.buildingKind {
             armour = tables.building(tk).armour
         } else {

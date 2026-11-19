@@ -3,18 +3,6 @@
 
 import GameCore
 
-/// The effects of the three improvements. The catalogue holds what each costs
-/// and how much work it takes, but not yet what it does, so the figures of the
-/// first milestone are kept here, in one place.
-enum ImprovementEffect {
-    /// betterTools: workers take this much more from a site in the same time.
-    static let betterToolsGathering = 1.2
-    /// bronzeWeapons: a warfighter's blow does this much more harm.
-    static let bronzeWeaponsDamage = 1
-    /// shields: a warfighter takes this much less harm from each blow.
-    static let shieldsArmour = 1
-}
-
 /// Constants of the rules that the catalogue does not hold: distances that mean
 /// "beside", and limits that keep a tick's work bounded.
 enum Rule {

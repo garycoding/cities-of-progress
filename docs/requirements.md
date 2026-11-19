@@ -39,7 +39,7 @@ These come from the person for whom the game is made and are settled.
 16. A player reaches the next age through the work of scholars; an age is not bought with resources alone.
 17. When a player reaches a new age, the warfighters already in play remain as they were. The player may pay to upgrade them to the kind the new age brings.
 18. Copper and tin are deposits, not resources a player holds. What workers mine from them becomes bronze at once, and bronze is made only whilst the player mines both.
-19. A deposit is hidden from a player until that player reaches the age in which its economy starts. It then appears wherever the player has explored.
+19. A deposit is hidden from a player until that player reaches the age in which its economy starts. It then appears wherever the player has explored. Before then, its explored tiles show as plain rock (an outcrop), which blocks building and movement as the deposit does, without naming what lies there.
 20. Each age brings the warfighters and new buildings in the table under "Buildings and ages". The table is accepted for now and may be revised.
 21. The drone of the AI age flies. No other unit flies.
 22. The computer players have three levels of difficulty: easy, standard and hard.
