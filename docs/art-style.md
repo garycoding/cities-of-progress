@@ -29,7 +29,7 @@ Not used: the upturned nose (D), and any large triangular nose.
 
 ## Palettes
 
-One palette for each age: the ground, two accents, a light, and the line. The line is the same dark brown (`#2a2420`) in every age, and the teams' colours (`TeamColour`) are fixed across ages.
+One palette for each age: the ground, two accents, a light, and the line. The line is the same dark brown (`#2a2420`) in every age, and the teams' colours (`TeamColour`) are fixed across ages. An age's accents keep clear of every team's colour, so that nothing reads as team colour; the Industrial age's second accent was a navy (`#3f5f7a`) until it was found to match Shang's colour, and is bottle green (ruled 2026-11-19).
 
 | Age | Ground | Accent | Accent | Light | Character |
 |---|---|---|---|---|---|
@@ -37,7 +37,7 @@ One palette for each age: the ground, two accents, a light, and the line. The li
 | Bronze | `#d9b46c` | `#c2683c` | `#2f6b6b` | `#efe0c2` | sand, terracotta, verdigris |
 | Iron | `#6fa39a` | `#b8b0a0` | `#c8402f` | `#efe0c2` | sea green, iron grey, legion red |
 | Alchemy | `#d6b25e` | `#2f5a5a` | `#7a3a5a` | `#efe0c2` | gilt, deep teal, wine |
-| Industrial | `#c2683c` | `#3f5f7a` | `#6b6258` | `#efe0c2` | brick, navy, soot |
+| Industrial | `#c2683c` | `#2f5a46` | `#6b6258` | `#efe0c2` | brick, bottle green, soot |
 | Silicon | `#93a0b4` | `#e8b84a` | `#d65a4a` | `#f4ecd8` | steel blue, mustard, signal red |
 | AI | `#c9d6d0` | `#5ab0a8` | `#e07a8a` | `#fbf7ee` | pale celadon, teal, coral |
 
