@@ -3,7 +3,7 @@
 
 import Foundation
 
-// The beasts about the older buildings in their Alchemy-age look: an ox and
+// The beasts about the older buildings in their Industrial-age look: an ox and
 // sheep in the stock pen, and horses looking out of the stable, drawn as the
 // Iron age's pen and stable draw them, so that the beasts stay the same from
 // one age to the next.

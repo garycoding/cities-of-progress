@@ -42,7 +42,7 @@ extension IndustrialOldBuildingsPainter {
     private mutating func stableRange() {
         typealias I = IndustrialOldBuildingsInk
         let (x0, y0, x1, y1) = Self.rangeBox
-        let h0 = 1.5, f = 5.5, eave = Self.rangeEave, ridge = 55.0
+        let h0 = 1.5, f = 5.5, eave = Self.rangeEave, ridge = 51.0
         let length = (x1 - x0) * 32, depth = (y1 - y0) * 32
         shadow([iso(x1, y0, h0), iso(x1 + 0.3, y0 + 0.16, h0), iso(x1 + 0.3, y1 + 0.12, h0), iso(x1, y1, h0)])
         rangeFootingStone(h0, f)

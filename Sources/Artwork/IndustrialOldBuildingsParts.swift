@@ -493,41 +493,6 @@ extension IndustrialOldBuildingsPainter {
         shape([uv(u - 1.4, v1), uv(u + 1.4, v1), uv(u + 0.8, v1 - 2), uv(u - 0.8, v1 - 2)], .colour(I.iron), width: 0.45)
     }
 
-    // MARK: Half-timbering
-
-    /// The frame of a half-timbered wall drawn with `wall`, `length` long from
-    /// `v0` to `v1`: a sill and a plate, posts at `posts`, a rail at `rail`
-    /// between them, and a brace rising from the sill to each post's head in
-    /// the bays named by `braces` (by the index of the post to their left,
-    /// and whether they lean right). Panels of plaster fill the rest.
-    mutating func framing(_ length: Double, from v0: Double, to v1: Double, posts: [Double], rail: Double? = nil,
-                          braces: [(Int, Bool)] = []) {
-        let t = 2.0
-        if let rail {
-            for (a, b) in zip(posts, posts.dropFirst()) { timber(uv(a, rail), uv(b, rail), width: t * 0.85) }
-        }
-        for (i, right) in braces where i + 1 < posts.count {
-            let a = posts[i], b = posts[i + 1]
-            let top = rail ?? v1
-            if right { timber(uv(a + 1, v0 + 0.6), uv(b - 0.6, top - 0.8), width: t * 0.85) } else {
-                timber(uv(b - 1, v0 + 0.6), uv(a + 0.6, top - 0.8), width: t * 0.85)
-            }
-        }
-        for u in posts { timber(uv(u, v0), uv(u, v1), width: t) }
-        timber(uv(0, v0 + t / 2), uv(length, v0 + t / 2), width: t)
-        timber(uv(0, v1 - t / 2), uv(length, v1 - t / 2), width: t)
-    }
-
-    /// Close studding: upright timbers every `step` from `u0` to `u1`, from
-    /// `v0` to `v1`, the plaster showing between them in narrow panels.
-    mutating func studs(_ u0: Double, _ u1: Double, from v0: Double, to v1: Double, step: Double = 4.2) {
-        var u = u0
-        while u <= u1 + 0.01 {
-            timber(uv(u, v0), uv(u, v1), width: 1.5)
-            u += step
-        }
-    }
-
     // MARK: Battlements
 
     /// A merlon of stone standing on the map at (x, y) on `h`, `s` tiles

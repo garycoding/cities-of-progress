@@ -128,14 +128,16 @@ struct IndustrialOldBuildingsLatePainter {
         }
     }
 
-    /// A block of dressed stone: `block` in the stone's colours, with its courses drawn on both faces.
+    /// A block of dressed stone, or of new brick when `fresh`: `block` in its colours, with its courses drawn on both faces.
     mutating func ashlar(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double, _ h0: Double, _ h1: Double,
                          course: Double = 4.4, stone: Double = 9, fresh: Bool = false, width: Double = 1.1) {
         typealias I = IndustrialOldBuildingsLateInk
-        block(x0, y0, x1, y1, h0, h1, top: .colour(fresh ? I.rawStoneTop : I.stoneTop), left: .colour(fresh ? I.rawStone : I.stone),
-              right: .colour(fresh ? I.rawStoneShade : I.stoneShade), width: width)
-        wall(.left, from: x0, y1, at: h0) { p in p.courses(0, (x1 - x0) * 32, 0, h1 - h0, course: course, brick: stone) }
-        wall(.right, from: x1, y1, at: h0) { p in p.courses(0, (y1 - y0) * 32, 0, h1 - h0, course: course, brick: stone) }
+        // Fresh work is the new brick of the refacing.
+        block(x0, y0, x1, y1, h0, h1, top: .colour(fresh ? I.brickTop : I.stoneTop), left: .colour(fresh ? I.rawBrick : I.stone),
+              right: .colour(fresh ? I.rawBrickShade : I.stoneShade), width: width)
+        let (c, b) = fresh ? (2.6, 6.0) : (course, stone)
+        wall(.left, from: x0, y1, at: h0) { p in p.courses(0, (x1 - x0) * 32, 0, h1 - h0, course: c, brick: b, opacity: fresh ? 0.35 : 0.5) }
+        wall(.right, from: x1, y1, at: h0) { p in p.courses(0, (y1 - y0) * 32, 0, h1 - h0, course: c, brick: b, opacity: fresh ? 0.35 : 0.5) }
     }
 
     /// Draws on a wall as on flat paper. `content` is given points written
@@ -413,7 +415,7 @@ struct IndustrialOldBuildingsLatePainter {
     }
 
     /// A cone of slate on a round tower: its eaves a circle of `r` tiles at
-    /// `h`, its point `rise` points above, and a gilt finial.
+    /// `h`, its point `rise` points above, and an iron finial.
     @discardableResult
     mutating func cone(_ cx: Double, _ cy: Double, _ r: Double, at h: Double, rise: Double) -> P {
         typealias I = IndustrialOldBuildingsLateInk
@@ -445,12 +447,12 @@ struct IndustrialOldBuildingsLatePainter {
         return apex
     }
 
-    /// A gilt finial: a ball and a spike.
+    /// An iron finial: a ball and a spear point.
     mutating func finial(at p: P, size s: Double = 1) {
         typealias I = IndustrialOldBuildingsLateInk
         line([p, p - P(0, 6 * s)], width: 1.1)
-        svg.circle(p - P(0, 2.4 * s), 1.5 * s, fill: .colour(I.brass), stroke: .colour(I.line), width: 0.5)
-        shape([p - P(0.8 * s, 4.6 * s), p - P(0, 7.6 * s), p - P(-0.8 * s, 4.6 * s)], .colour(I.brassLight), width: 0.5)
+        svg.circle(p - P(0, 2.4 * s), 1.4 * s, fill: .colour(I.iron), stroke: .colour(I.line), width: 0.5)
+        shape([p - P(0.8 * s, 4.6 * s), p - P(0, 7.6 * s), p - P(-0.8 * s, 4.6 * s)], .colour(I.iron), width: 0.5)
     }
 
     // MARK: Straight battlements
@@ -525,7 +527,7 @@ struct IndustrialOldBuildingsLatePainter {
         }
     }
 
-    /// Dressed stones stacked on the map from (x0, y0) to (x1, y1), from `h0`, `courses` high.
+    /// New bricks stacked on the map from (x0, y0) to (x1, y1), from `h0`, `courses` high.
     mutating func stones(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double, from h0: Double = 0, courses: Int) {
         let course = 3.6
         ashlar(x0, y0, x1, y1, h0, h0 + Double(courses) * course, course: course, stone: 7, fresh: true, width: 0.9)

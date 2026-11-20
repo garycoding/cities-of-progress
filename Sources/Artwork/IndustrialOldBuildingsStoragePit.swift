@@ -136,7 +136,7 @@ extension IndustrialOldBuildingsPainter {
         let (x0, y0, x1, y1) = Self.store
         let h0 = 1.5, top = 17.0
         let front = (x1 - x0) * 32, side = (y1 - y0) * 32
-        derrick(-0.6, -0.95, on: h0, height: 34, reach: -22, drop: 10)
+        derrick(-0.6, -0.95, on: h0, height: 28, reach: -20, drop: 8)
         shadow([iso(x1, y0, h0), iso(x1 + 0.18, y0 + 0.1, h0), iso(x1 + 0.18, y1 + 0.06, h0), iso(x1, y1, h0)])
         shell(x0, y0, x1, y1, from: h0, floor: h0, to: top, thickness: 0.07, lit: .colour(I.rawBrick),
               shade: .colour(I.rawBrickShade), top: .colour(I.brickTop), ground: .colour(I.pavingShade)) { p in

@@ -110,7 +110,7 @@ import Testing
         }
     }
 
-    /// The town hall is the largest building of the town, and the castle the tallest of the batch.
+    /// The town hall stands above the other buildings of the town, and the castle above every building of the batch.
     @Test func theTownHallAndTheCastleStandAboveTheRest() throws {
         func height(_ kind: BuildingKind) throws -> Int {
             let sprite = try #require(Self.source.sprite(SpriteKey(.building(kind, .industrial), .complete)))
@@ -119,6 +119,7 @@ import Testing
             return Int((1 - sprite.anchor.y) * Double(pixels.height)) - drawn.minY
         }
         let castle = try height(.castle), hall = try height(.townCentre)
+        #expect(castle > (try height(.alchemistsWorkshop)))
         for kind in Self.kinds where kind != .castle && kind != .alchemistsWorkshop {
             #expect(try height(kind) <= castle, "\(kind)")
             if kind != .townCentre { #expect(try height(kind) < hall, "\(kind)") }

@@ -131,7 +131,7 @@ extension IndustrialOldBuildingsLatePainter {
         neck.move(b + P(1.6, -5.2)); neck.quad(b + P(4, -8.6), b + P(7.4, -3.2))
         svg.path(neck, stroke: .colour(I.line), width: 1.6)
         svg.path(neck, stroke: .colour(I.glass), width: 0.7)
-        // Flasks: a tall one of teal liquor, and a squat one of wine.
+        // Flasks: a tall one of blue liquor, and a squat one of red.
         let f = uv(u + w - 2.6, v + 0.6)
         shape([f + P(-1.6, 0), f + P(1.6, 0), f + P(0.6, -3.6), f + P(0.6, -7), f + P(-0.6, -7), f + P(-0.6, -3.6)], .colour(I.glass),
               width: 0.55)
