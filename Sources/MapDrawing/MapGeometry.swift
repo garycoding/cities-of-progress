@@ -97,6 +97,9 @@ enum Stature {
         case .stoneWall: 24
         case .castle: 60
         case .alchemistsWorkshop: 30
+        case .factory: 40
+        case .railwayDepot: 28
+        case .oilWell: 34
         }
     }
 
