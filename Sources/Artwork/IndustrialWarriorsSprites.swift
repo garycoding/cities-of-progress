@@ -66,22 +66,24 @@ enum IndustrialWarriorsLooks {
     }
 }
 
-/// The colours of the Industrial age (brick, navy, soot and the light;
+/// The colours of the Industrial age (brick, bottle green, soot and the light;
 /// docs/art-style.md, "Palettes"), with the shades that webbing, brass, gun
 /// steel, rubber and smoke need. The line, the skin and the eye are the ones
 /// every age shares (`Ink`).
 ///
-/// Navy is nearly Shang's colour and brick is near Rome's red and Angkor's
-/// orange, so neither touches a part in the team's colour: the cap band sits
-/// on a soot cap between piping of the light, the shield's panel and the
-/// car's roundel are bordered in the light on grey steel.
+/// Brick is near Rome's red and Angkor's orange, and bottle green is a dark
+/// cousin of Olmec's olive, so neither touches a part in the team's colour:
+/// the cap band sits on a soot cap between piping of the light, the shield's
+/// panel and the car's roundel are bordered in the light on grey steel.
 enum IndustrialWarriorsInk {
     static let brick = "#c2683c"
     static let darkBrick = "#8f4626"
     static let paleBrick = "#d98a62"
-    static let navy = "#3f5f7a"
-    static let darkNavy = "#2b4257"
-    static let paleNavy = "#6a87a0"
+    /// Bottle green, which replaced the palette's navy (ruled 2026-11-19):
+    /// the navy was almost Shang's colour.
+    static let green = "#2f5a46"
+    static let darkGreen = "#1f3f31"
+    static let paleGreen = "#5d8572"
     static let soot = "#6b6258"
     static let darkSoot = "#4a433c"
     static let paleSoot = "#948a7e"

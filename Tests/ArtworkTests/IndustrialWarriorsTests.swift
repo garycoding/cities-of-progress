@@ -260,21 +260,22 @@ struct IndustrialWarriorsRenders {
         }
     }
 
-    /// Every kind side by side in two civilizations' colours (Rome's red and
-    /// Angkor's orange, which must stay distinct), each beside the Alchemy-age
+    /// Every kind side by side in four civilizations' colours (Rome's red and
+    /// Angkor's orange, which must stay distinct, and Shang's blue and Olmec's
+    /// olive, near the palette's old navy and its bottle green), each beside the Alchemy-age
     /// warfighter it follows on from: drawn large, and as the sprites at game
     /// size standing and fighting.
     @Test func contactSheet() throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let industrial = IndustrialWarriorSprites(), alchemy = AlchemyWarriorSprites()
-        let civilizations: [Civilization] = [.rome, .angkor]
+        let civilizations: [Civilization] = [.rome, .angkor, .shang, .olmec]
         let column = 600, width = column * 6
         let largeRow = 470, smallRow = 230
         let height = 100 + (largeRow + smallRow) * civilizations.count
         let context = Raster.bitmap(width: width, height: height)!
         context.draw(Preview.ground(width: width, height: height, tile: 256, grained: false), in: CGRect(x: 0, y: 0, width: width, height: height))
         Preview.label("The Industrial age's rifleman, field gun and armoured car beside the Alchemy age's musketeer, cannon and knight, "
-                      + "in the colours of Rome and Angkor", in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 26)
+                      + "in the colours of Rome, Angkor, Shang and Olmec", in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 26)
         let columns: [(UnitKind, Age)] = [(.musketeer, .alchemy), (.rifleman, .industrial), (.cannon, .alchemy), (.fieldGun, .industrial),
                                           (.knight, .alchemy), (.armouredCar, .industrial)]
         for (i, (kind, age)) in columns.enumerated() {

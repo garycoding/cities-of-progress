@@ -16,7 +16,7 @@ import GameCore
 /// painted panel of the team's colour bordered in the light; a dial sight on
 /// its bracket above the shield; a pole trail ending in a spade; twelve-spoked
 /// wheels shod with steel; and a box of ready rounds on the ground by the trail.
-/// The crew, in the rifleman's dress (navy tunics, brick trousers, puttees and
+/// The crew, in the rifleman's dress (bottle-green tunics, brick trousers, puttees and
 /// peaked caps with the team's band): the layer, on the gun's far side,
 /// clean-shaven with nose E, looks through the sight; the loader, beside the
 /// breech, with a bushy moustache and nose B.
@@ -464,7 +464,7 @@ struct IndustrialWarriorsFieldGun: PersonLook {
             if shirt {
                 shirtSleeve(&d, front: false)
             } else {
-                IndustrialWarriorsKit.sleeve(&d, front: false, colour: IndustrialWarriorsInk.darkNavy, cuff: IndustrialWarriorsInk.darkBrick)
+                IndustrialWarriorsKit.sleeve(&d, front: false, colour: IndustrialWarriorsInk.darkGreen, cuff: IndustrialWarriorsInk.darkBrick)
             }
             IndustrialWarriorsKit.legs(&d, trousers: IndustrialWarriorsInk.brick, darkTrousers: IndustrialWarriorsInk.darkBrick)
             if shirt {
@@ -491,7 +491,7 @@ struct IndustrialWarriorsFieldGun: PersonLook {
                                             fill: .colour(IndustrialWarriorsInk.linen), width: 0.9)
                 IndustrialWarriorsKit.belt(&d)
             } else {
-                IndustrialWarriorsKit.tunic(&d, colour: IndustrialWarriorsInk.navy, dark: IndustrialWarriorsInk.darkNavy, pale: IndustrialWarriorsInk.paleNavy,
+                IndustrialWarriorsKit.tunic(&d, colour: IndustrialWarriorsInk.green, dark: IndustrialWarriorsInk.darkGreen, pale: IndustrialWarriorsInk.paleGreen,
                                             collar: IndustrialWarriorsInk.brick, swing: swing)
                 IndustrialWarriorsKit.belt(&d)
             }
@@ -499,7 +499,7 @@ struct IndustrialWarriorsFieldGun: PersonLook {
             if shirt {
                 shirtSleeve(&d, front: true)
             } else {
-                IndustrialWarriorsKit.sleeve(&d, front: true, colour: IndustrialWarriorsInk.navy, cuff: IndustrialWarriorsInk.brick)
+                IndustrialWarriorsKit.sleeve(&d, front: true, colour: IndustrialWarriorsInk.green, cuff: IndustrialWarriorsInk.brick)
             }
             d.head(nose: nose, hair: hair, features: features, brow: brow, over: { d in IndustrialWarriorsKit.peakedCap(&d.svg) })
         }

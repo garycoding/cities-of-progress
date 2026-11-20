@@ -8,7 +8,7 @@ import GameCore
 
 /// A rifleman: a peaked cap of soot with a band of the team's colour between
 /// piping of the light, a brass badge and a black leather peak; short hair, a
-/// walrus moustache and nose A. A navy tunic with brass buttons, a brick
+/// walrus moustache and nose A. A bottle-green tunic with brass buttons, a brick
 /// collar and cuffs, brick trousers, soot puttees and boots; a buff belt with
 /// two cartridge pouches, and a canvas haversack on a strap from the shoulder.
 /// He carries a bolt-action rifle with a bayonet fixed and a sling beneath.
@@ -137,9 +137,9 @@ struct IndustrialWarriorsRifleman: PersonLook {
         let worldOpen = IndustrialWarriorsKit.worldOpen(d)
         let farHand = d.world(d.joints.backHand), nearHand = d.world(d.joints.frontHand)
         d.figure { d in
-            IndustrialWarriorsKit.sleeve(&d, front: false, colour: IndustrialWarriorsInk.darkNavy, cuff: IndustrialWarriorsInk.darkBrick)
+            IndustrialWarriorsKit.sleeve(&d, front: false, colour: IndustrialWarriorsInk.darkGreen, cuff: IndustrialWarriorsInk.darkBrick)
             IndustrialWarriorsKit.legs(&d, trousers: IndustrialWarriorsInk.brick, darkTrousers: IndustrialWarriorsInk.darkBrick)
-            IndustrialWarriorsKit.tunic(&d, colour: IndustrialWarriorsInk.navy, dark: IndustrialWarriorsInk.darkNavy, pale: IndustrialWarriorsInk.paleNavy,
+            IndustrialWarriorsKit.tunic(&d, colour: IndustrialWarriorsInk.green, dark: IndustrialWarriorsInk.darkGreen, pale: IndustrialWarriorsInk.paleGreen,
                                         collar: IndustrialWarriorsInk.brick, swing: sway)
             Self.kit(&d, pose: pose, frame: frame, sway: sway)
             // The rifle, placed in the picture.
@@ -157,7 +157,7 @@ struct IndustrialWarriorsRifleman: PersonLook {
                 }
             }
             d.svg.raw("</g>")
-            IndustrialWarriorsKit.sleeve(&d, front: true, colour: IndustrialWarriorsInk.navy, cuff: IndustrialWarriorsInk.brick)
+            IndustrialWarriorsKit.sleeve(&d, front: true, colour: IndustrialWarriorsInk.green, cuff: IndustrialWarriorsInk.brick)
             Self.head(&d)
         }
         if let s = fight { Self.shot(&d.svg, frame: frame, drill: s) }

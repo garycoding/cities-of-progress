@@ -9,7 +9,7 @@ import GameCore
 /// An early armoured car: a riveted hull of grey plate on a motor chassis, a
 /// long armoured bonnet with louvred doors over the radiator and a brass lamp,
 /// the driver's visor in the sloping front plate, mudguards and a running
-/// board, four spoked wheels of navy with solid rubber tyres, and an exhaust
+/// board, four spoked wheels of bottle green with solid rubber tyres, and an exhaust
 /// pipe at the tail. On the roof a small round turret carries a water-cooled
 /// machine gun, its fluted jacket ending in a muzzle cone; the commander,
 /// head and shoulders out of the hatch, wears a leather helmet with goggles
@@ -122,11 +122,11 @@ struct IndustrialWarriorsArmouredCar: PersonLook {
 
     // MARK: The parts
 
-    /// A wheel: ten navy spokes, a navy felloe, a solid rubber tyre and a brass hub cap.
+    /// A wheel: ten bottle-green spokes, a bottle-green felloe, a solid rubber tyre and a brass hub cap.
     static func wheel(_ svg: inout SVG, at c: P, degrees: Double, far: Bool) {
         IndustrialWarriorsKit.wheel(&svg, at: c, radius: wheelRadius, degrees: degrees, spokes: 10,
-                                    spoke: far ? IndustrialWarriorsInk.darkNavy : IndustrialWarriorsInk.navy,
-                                    felloe: far ? IndustrialWarriorsInk.darkNavy : IndustrialWarriorsInk.navy,
+                                    spoke: far ? IndustrialWarriorsInk.darkGreen : IndustrialWarriorsInk.green,
+                                    felloe: far ? IndustrialWarriorsInk.darkGreen : IndustrialWarriorsInk.green,
                                     tyre: IndustrialWarriorsInk.rubber, tyreWidth: 3, far: far)
     }
 
@@ -279,9 +279,9 @@ struct IndustrialWarriorsArmouredCar: PersonLook {
         man.svg.raw("<g transform=\"translate(0,\(num(man.bob))) rotate(\(num(rig.lean)) \(num(Drawing.hips.x)) \(num(Drawing.hips.y)))\">")
         do {
             var m = man
-            // His shoulders in a navy tunic, and the brick scarf at his throat.
+            // His shoulders in a bottle-green tunic, and the brick scarf at his throat.
             m.garment(colour: [P(-12.6, -46.4), P(9.6, -48.2), P(12, -36), P(-13, -36)],
-                      outline: [P(-9.2, -47.4), P(9.2, -47.4), P(11.4, -36.4), P(-12.4, -36.4)], fill: .colour(IndustrialWarriorsInk.navy))
+                      outline: [P(-9.2, -47.4), P(9.2, -47.4), P(11.4, -36.4), P(-12.4, -36.4)], fill: .colour(IndustrialWarriorsInk.green))
             IndustrialWarriorsKit.shape(&m.svg, [m.up(P(-7, -50)), m.up(P(9, -50.2)), m.up(P(9.6, -46.6)), m.up(P(6, -44.4)), m.up(P(-7.4, -46.4))],
                                         fill: .colour(IndustrialWarriorsInk.brick), width: 0.9)
             let flutter = pose == .walking ? 1.2 * BronzePeopleKit.wave(frame, times: 2) : 0.3 * BronzePeopleKit.wave(frame)
@@ -326,7 +326,7 @@ struct IndustrialWarriorsArmouredCar: PersonLook {
         svg.path("M-11.8,-62 C-6,-65 1,-66 6,-65.6", stroke: .colour(Ink.line), width: 1.6)
         for c in [P(4.8, -66.6), P(9.4, -65.4)] {
             svg.ellipse(c, 2.4, 2, fill: .colour(IndustrialWarriorsInk.brass), stroke: .colour(Ink.line), width: 0.7)
-            svg.ellipse(c + P(0.2, 0), 1.4, 1.1, fill: .colour(IndustrialWarriorsInk.paleNavy))
+            svg.ellipse(c + P(0.2, 0), 1.4, 1.1, fill: .colour(IndustrialWarriorsInk.paleGreen))
             svg.circle(c + P(-0.3, -0.4), 0.4, fill: .colour(IndustrialWarriorsInk.light))
         }
     }
