@@ -3,16 +3,20 @@
 
 import Foundation
 
-// The Alchemy-age castle, the strongest building in the game: a curtain wall
-// of dressed stone with a battlement along its top, a round tower at each
-// corner (those at the back and the sides under cones of slate, the one at
-// the front crowned with merlons), and in the front wall a gatehouse between
-// two round towers, its arch closed by a portcullis of iron half raised. A
-// square keep rises behind, its crown on corbels with a turret at its front
-// corner, flying the great banner of the owner's colour; a long banner of the
-// owner's colour hangs on the keep, another over the gate, and pennants fly
-// from the side towers and the gate. Its footprint is four tiles square: x and
-// y run from -2 to 2, and the walls stand on the line of ±1.5.
+// The Industrial-age castle, still the strongest building in the game: the
+// Alchemy age's fortress refaced in red brick over its old footings of stone
+// and pierced for guns. Its curtain wall keeps its battlement of stone, with a
+// string course under it, and its front stretches open in embrasures dressed
+// in stone, the muzzle of a gun in each; a round tower stands at each corner
+// (those at the back and the sides under cones of slate, the one at the front
+// crowned with merlons), and in the front wall the gatehouse of stone stands
+// between two round towers, its arch closed by a portcullis of iron half
+// raised, gas lamps either side of the road. A square keep of brick with
+// quoins of stone rises behind, its crown on corbels with a turret at its
+// front corner, flying the great banner of the owner's colour; a long banner
+// of the owner's colour hangs on the keep, another over the gate, and
+// pennants fly from the side towers and the gate. Its footprint is four tiles
+// square: x and y run from -2 to 2, and the walls stand on the line of ±1.5.
 
 extension IndustrialOldBuildingsLatePainter {
     mutating func castle(complete: Bool) {
@@ -79,6 +83,56 @@ extension IndustrialOldBuildingsLatePainter {
         gatehouse()
         curtain(.frontAlongY, from: -e + r * 0.9, to: e - r * 0.9, height: top)
         cornerTower(e, e, roof: false, pennant: false)
+        lamp(at: iso(-0.34, 1.86, g), height: 22)
+        lamp(at: iso(0.34, 1.86, g), height: 22)
+    }
+
+    /// A string course of stone along a front stretch drawn with `wall`,
+    /// `length` long, `rise` tall, a little below its battlement.
+    mutating func stringBand(_ length: Double, _ rise: Double) {
+        typealias I = IndustrialOldBuildingsLateInk
+        shape(panel(0, rise - 4, length, rise - 2.6), .colour(I.stoneTop), width: 0.5)
+    }
+
+    /// Quoins of stone up both corners of a face of the keep drawn with
+    /// `wall`, `w` wide and `rise` tall.
+    mutating func keepQuoins(_ w: Double, _ rise: Double) {
+        typealias I = IndustrialOldBuildingsLateInk
+        var v = 0.0, k = 0
+        while v < rise - 0.5 {
+            let top = min(v + 3.6, rise), reach = k % 2 == 0 ? 4.6 : 2.8
+            shape(panel(0, v, reach, top), .colour(I.stoneTop), width: 0.45)
+            shape(panel(w - reach, v, w, top), .colour(I.stone), width: 0.45)
+            v = top
+            k += 1
+        }
+    }
+
+    /// A gun's embrasure on a wall drawn with `wall`, centred on `u` with its
+    /// sill at `v`: a splayed opening dressed in stone, and the muzzle of a
+    /// gun of iron in its dark.
+    mutating func gunPort(_ u: Double, _ v: Double) {
+        typealias I = IndustrialOldBuildingsLateInk
+        shape(panel(u - 5.4, v - 1.2, u + 5.4, v + 9.4), .colour(I.stoneTop), width: 0.6)
+        shape([uv(u - 4, v), uv(u + 4, v), uv(u + 2.4, v + 8), uv(u - 2.4, v + 8)], .colour(I.dark), width: 0.6)
+        line([uv(u - 4, v), uv(u - 2.4, v + 8)], width: 0.4, opacity: 0.6)
+        svg.circle(uv(u, v + 3.4), 2.4, fill: .colour(I.iron), stroke: .colour(I.line), width: 0.6)
+        svg.circle(uv(u - 0.6, v + 3.9), 0.7, fill: .colour(I.ironLight))
+        svg.circle(uv(u + 0.2, v + 3.2), 1.1, fill: .colour(I.ironDark))
+    }
+
+    /// A gas lamp of cast iron standing at `foot` on the screen, `height`
+    /// points tall, its lantern alight.
+    mutating func lamp(at foot: P, height: Double) {
+        typealias I = IndustrialOldBuildingsLateInk
+        let top = foot - P(0, height)
+        shape([foot + P(-1.8, 0), foot + P(-1.8, -3), foot + P(1.8, -3), foot + P(1.8, 0)], .colour(I.iron), width: 0.6)
+        shape([foot + P(-1.1, -3), foot + P(-0.7, -height + 6), foot + P(0.7, -height + 6), foot + P(1.1, -3)], .colour(I.iron),
+              width: 0.6)
+        line([top + P(-3.2, 7.4), top + P(3.2, 7.4)], width: 0.9)
+        let lantern = [top + P(-1.4, 6), top + P(-2.8, 0.6), top + P(2.8, 0.6), top + P(1.4, 6)]
+        shape(lantern, .colour(I.flame), width: 0.6)
+        shape([top + P(-3.6, 0.8), top + P(0, -2.4), top + P(3.6, 0.8)], .colour(I.iron), width: 0.6)
     }
 
     /// Which stretch of the curtain wall: the two at the back, seen from within
@@ -93,20 +147,20 @@ extension IndustrialOldBuildingsLatePainter {
         typealias I = IndustrialOldBuildingsLateInk
         let g = Castle.ground, e = Castle.edge, t = Castle.thick
         let walk: Paint = .colour(battlement ? I.pavingShade : (fresh ? I.rawStoneTop : I.stoneTop))
-        let lit: Paint = .colour(fresh ? I.rawStone : I.stone), shade: Paint = .colour(fresh ? I.rawStoneShade : I.stoneShade)
+        let lit: Paint = .colour(fresh ? I.rawBrick : I.brick), shade: Paint = .colour(fresh ? I.rawBrickShade : I.brickShade)
         let rise = height - g, length = (b - a) * 32
         switch stretch {
         case .backAlongX:
             block(a, -e, b, -e + t, g, height, top: walk, left: lit, right: shade)
             wall(.left, from: a, -e + t, at: g) { p in
-                p.courses(0, length, 0, rise, brick: 9.5)
+                p.courses(0, length, 0, rise, course: 2.6, brick: 6, opacity: 0.3)
                 // A door to the stair in the wall, and its steps.
                 if battlement { p.arch(length * 0.32, 0, width: 6, height: 10, .colour(I.dark), line: 0.8) }
             }
             if battlement { merlons(alongX: true, from: a + 0.35, to: b - 0.35, at: -e, depth: 0.08, on: height) }
         case .backAlongY:
-            block(-e, a, -e + t, b, g, height, top: walk, left: lit, right: .colour(fresh ? I.rawStone : I.stone))
-            wall(.right, from: -e + t, b, at: g) { p in p.courses(0, length, 0, rise, brick: 9.5) }
+            block(-e, a, -e + t, b, g, height, top: walk, left: lit, right: .colour(fresh ? I.rawBrick : I.brick))
+            wall(.right, from: -e + t, b, at: g) { p in p.courses(0, length, 0, rise, course: 2.6, brick: 6, opacity: 0.3) }
             if battlement { merlons(alongX: false, from: a + 0.35, to: b - 0.35, at: -e, depth: 0.08, on: height) }
         case .frontAlongX:
             block(a, e - t, b, e, g, height, top: walk, left: lit, right: shade)
@@ -114,9 +168,10 @@ extension IndustrialOldBuildingsLatePainter {
                 // A battered footing, then the courses.
                 p.colour(p.panel(0, 0, length, 5), .colour(fresh ? I.rawStoneShade : I.stoneShade))
                 p.line([p.uv(0, 5), p.uv(length, 5)], width: 0.6, opacity: 0.8)
-                p.courses(0, length, 5, rise, brick: 9.5)
+                p.courses(0, length, 5, rise, course: 2.6, brick: 6, opacity: 0.3)
                 if battlement {
-                    for u in [length * 0.14, length * 0.86] { p.slit(u, rise - 18) }
+                    p.stringBand(length, rise)
+                    for u in [length * 0.14, length * 0.86] { p.gunPort(u, rise - 22) }
                 }
             }
             if battlement { merlons(alongX: true, from: a, to: b, at: e - 0.08, depth: 0.08, on: height) }
@@ -125,9 +180,10 @@ extension IndustrialOldBuildingsLatePainter {
             wall(.right, from: e, b, at: g) { p in
                 p.colour(p.panel(0, 0, length, 5), .colour(fresh ? I.rawStoneShade : I.stoneDark))
                 p.line([p.uv(0, 5), p.uv(length, 5)], width: 0.6, opacity: 0.8)
-                p.courses(0, length, 5, rise, brick: 9.5)
+                p.courses(0, length, 5, rise, course: 2.6, brick: 6, opacity: 0.3)
                 if battlement {
-                    for u in [length * 0.2, length * 0.5, length * 0.8] { p.slit(u, rise - 18) }
+                    p.stringBand(length, rise)
+                    for u in [length * 0.2, length * 0.5, length * 0.8] { p.gunPort(u, rise - 22) }
                 }
             }
             if battlement { merlons(alongX: false, from: a, to: b, at: e - 0.08, depth: 0.08, on: height) }
@@ -159,7 +215,7 @@ extension IndustrialOldBuildingsLatePainter {
         line([iso(x, y, g + 17), iso(x, y, g + 10)], width: 0.6)
     }
 
-    /// The keep: a square tower of dressed stone on a footing, with arched
+    /// The keep: a square tower of brick with quoins of stone on a footing, with arched
     /// windows, a long banner hung on its right face, a crown of merlons on a
     /// corbel table, a turret at its front corner, and the great banner flown
     /// from its roof.
@@ -170,17 +226,19 @@ extension IndustrialOldBuildingsLatePainter {
         shadow([iso(x1, y0, g), iso(x1 + 0.3, y0 + 0.1, g), iso(x1 + 0.3, y1 + 0.1, g), iso(x1, y1, g)], opacity: 0.12)
         block(x0 - 0.04, y0 - 0.04, x1 + 0.04, y1 + 0.04, g, g + 8, top: .colour(I.stoneTop), left: .colour(I.stoneShade),
               right: .colour(I.stoneDark), width: 1)
-        block(x0, y0, x1, y1, g + 8, top - 8, top: nil, left: .colour(I.stone), right: .colour(I.stoneShade), width: 1.2)
+        block(x0, y0, x1, y1, g + 8, top - 8, top: nil, left: .colour(I.brick), right: .colour(I.brickShade), width: 1.2)
         let rise = top - 8 - (g + 8)
         wall(.left, from: x0, y1, at: g + 8) { p in
-            p.courses(0, w, 0, rise, brick: 9.5)
+            p.courses(0, w, 0, rise, course: 2.6, brick: 6, opacity: 0.3)
+            p.keepQuoins(w, rise)
             for u in [w * 0.3, w * 0.7] {
                 for v in [32.0, 58.0] { p.window(u, v, width: 6, height: 11, shutters: v > 50) }
             }
             p.slit(w * 0.5, 14, height: 8)
         }
         wall(.right, from: x1, y1, at: g + 8) { p in
-            p.courses(0, w, 0, rise, brick: 9.5)
+            p.courses(0, w, 0, rise, course: 2.6, brick: 6, opacity: 0.3)
+            p.keepQuoins(w, rise)
             p.window(w * 0.25, 58, width: 6, height: 11, shutters: false)
             p.slit(w * 0.25, 30, height: 8)
             p.slit(w * 0.78, 30, height: 8)
@@ -218,7 +276,7 @@ extension IndustrialOldBuildingsLatePainter {
     }
 
     /// An arched window on a wall drawn with `wall`: its foot at (`u`, `v`),
-    /// with leaded glass, and its shutters of teal folded open when `shutters` is true.
+    /// glazed in sashes, and its shutters of navy folded open when `shutters` is true.
     mutating func window(_ u: Double, _ v: Double, width w: Double, height h: Double, shutters: Bool) {
         typealias I = IndustrialOldBuildingsLateInk
         if shutters {
@@ -229,11 +287,12 @@ extension IndustrialOldBuildingsLatePainter {
         }
         voussoirs(u, v, width: w, height: h, depth: 1.6, count: 5)
         arch(u, v, width: w, height: h, .colour(I.navyDark), line: 0.8)
-        // The leading of the glass.
-        var lead = PathData()
-        lead.move(uv(u, v + 0.3)); lead.line(uv(u, v + h - 0.3))
-        lead.move(uv(u - w / 2 + 0.3, v + h * 0.45)); lead.line(uv(u + w / 2 - 0.3, v + h * 0.45))
-        svg.path(lead, stroke: .colour(I.navyLight), width: 0.5)
+        // The sash bars, painted the light colour.
+        var bars = PathData()
+        bars.move(uv(u, v + 0.3)); bars.line(uv(u, v + h - 0.3))
+        bars.move(uv(u - w / 2 + 0.3, v + h * 0.45)); bars.line(uv(u + w / 2 - 0.3, v + h * 0.45))
+        bars.move(uv(u - w / 2 + 0.3, v + h * 0.2)); bars.line(uv(u + w / 2 - 0.3, v + h * 0.2))
+        svg.path(bars, stroke: .colour(I.light), width: 0.5)
         shape(panel(u - w / 2 - 1, v - 1.2, u + w / 2 + 1, v), .colour(I.stoneTop), width: 0.55)
     }
 
@@ -293,10 +352,10 @@ extension IndustrialOldBuildingsLatePainter {
 
     // MARK: The castle being built
 
-    /// The castle being built: the curtain walls raised part of their height
+    /// The castle being refaced and rebuilt: the curtain walls raised part of their height
     /// and left stepped, the corner towers and the gate's towers begun, the
     /// keep's lower storeys inside scaffolding flying the owner's pennant, and
-    /// stone, timber and mortar to hand.
+    /// stone, brick, timber and mortar to hand.
     private mutating func castleRising() {
         typealias I = IndustrialOldBuildingsLateInk
         let g = Castle.ground, e = Castle.edge, t = Castle.thick, r = Castle.tower

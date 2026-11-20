@@ -3,15 +3,17 @@
 
 import Foundation
 
-// The Alchemy-age alchemist's workshop: a house with a ground storey of
-// dressed stone and an upper storey framed in timber and plastered, under a
-// roof of teal slate. A tall chimney of stone rises through its ridge and
-// gives off smoke coloured by what is burned below; alembics, retorts and
-// flasks of coloured liquor stand in its broad front window; its door stands
-// open on the glow of the furnace within, which lights the ground before it;
-// and kegs of powder are stacked in the yard. A banner of the owner's colour
-// hangs from the upper storey and a pennant flies from the gable. Its
-// footprint is three tiles square: x and y run from -1.5 to 1.5.
+// The Industrial-age alchemist's workshop: the Alchemy age's workshop grown
+// into a chemical works. A building of red brick, two storeys on a plinth of
+// stone, under a roof of slate with a gable of brick and a round window; a
+// broad laboratory window on its front shows retorts, an alembic and flasks
+// of coloured liquor, and its door stands open on the glow of the furnace
+// within. Beside it a tall square chimney of brick, tapering, banded in iron
+// and capped in stone, carries the furnaces' smoke high over the town. An
+// iron vat with a band of the owner's colour stands in the yard with kegs of
+// powder stacked beside it; a banner of the owner's colour hangs from the
+// upper storey and a pennant flies from the gable. Its footprint is three
+// tiles square: x and y run from -1.5 to 1.5.
 
 extension IndustrialOldBuildingsLatePainter {
     mutating func workshop(complete: Bool) {
@@ -28,8 +30,9 @@ extension IndustrialOldBuildingsLatePainter {
         static let house = (x0: -1.25, y0: -1.2, x1: 0.5, y1: 0.2)
         static let storey = 26.0, eave = 46.0, ridge = 70.0
         /// The chimney rises from the furnace through the ridge, near the gable.
-        static let chimney = (x0: 0.06, y0: -0.66, x1: 0.36, y1: -0.34)
-        static let chimneyTop = 122.0
+        /// The chimney stands free in the yard, beside the gable.
+        static let stack = (x: 0.98, y: -1.0, foot: 0.2, head: 0.13)
+        static let chimneyTop = 118.0
         static let over = 0.1
     }
 
@@ -61,40 +64,38 @@ extension IndustrialOldBuildingsLatePainter {
         let g = Workshop.ground, storey = Workshop.storey, eave = Workshop.eave
         let front = (x1 - x0) * 32, end = (y1 - y0) * 32
         shadow([iso(x1, y0, g), iso(x1 + 0.45, y0 + 0.15, g), iso(x1 + 0.45, y1 + 0.15, g), iso(x1, y1, g)], opacity: 0.12)
-        // The ground storey, of dressed stone.
-        block(x0, y0, x1, y1, g, storey, top: nil, left: .colour(I.stone), right: .colour(I.stoneShade))
+        stack(top: Workshop.chimneyTop, smoking: true)
+        // Two storeys of brick on a plinth of stone, a string course between them.
+        block(x0, y0, x1, y1, g, eave, top: nil, left: .colour(I.brick), right: .colour(I.brickShade))
         wall(.left, from: x0, y1, at: g) { p in
-            p.courses(0, front, 0, storey - g, brick: 9)
+            p.shape(p.panel(0, 0, front, 3), .colour(I.stone), width: 0.6)
+            p.courses(0, front, 3, eave - g, course: 2.5, brick: 6, opacity: 0.3)
+            p.brickQuoins(0, front, eave - g)
             p.frontWindow(6, 7, width: 24, height: 13)
             p.furnaceDoor(front - 13, width: 11, height: 18)
+            p.shape(p.panel(0, storey - g, front, storey - g + 1.6), .colour(I.stoneTop), width: 0.5)
+            p.casement(front * 0.5 - 4, storey - g + 3.2, width: 8, height: 8.6)
+            p.casement(front * 0.82 - 4, storey - g + 3.2, width: 8, height: 8.6)
+            p.hanging(front * 0.17, top: eave - g - 6.5, width: 9, length: 13.5)
         }
         wall(.right, from: x1, y1, at: g) { p in
-            p.courses(0, end, 0, storey - g, brick: 9)
-            p.window(10, 9, width: 5, height: 9, shutters: true)
+            p.shape(p.panel(0, 0, end, 3), .colour(I.stoneShade), width: 0.6)
+            p.courses(0, end, 3, eave - g, course: 2.5, brick: 6, opacity: 0.3)
+            p.brickQuoins(0, end, eave - g)
+            p.casement(end * 0.3 - 3.5, 8, width: 7, height: 10)
+            p.casement(end * 0.7 - 3.5, 8, width: 7, height: 10)
+            p.shape(p.panel(0, storey - g, end, storey - g + 1.6), .colour(I.stone), width: 0.5)
+            p.casement(end * 0.3 - 3.5, storey - g + 6.5, width: 7, height: 10)
+            p.casement(end * 0.7 - 3.5, storey - g + 6.5, width: 7, height: 10)
         }
-        // The upper storey, framed in timber, standing out a little over the stone.
-        let o = 0.04
-        block(x0 - o, y0 - o, x1 + o, y1 + o, storey, eave, top: nil, left: .colour(I.light), right: .colour(I.plasterShade))
-        wall(.left, from: x0 - o, y1 + o, at: storey) { p in
-            p.timberFrame(front + 2 * o * 32, eave - storey, posts: 7)
-            p.casement(front * 0.5 - 4, 6.5, width: 8, height: 8)
-            p.casement(front * 0.82 - 4, 6.5, width: 8, height: 8)
-            p.hanging(front * 0.17, top: eave - storey - 6, width: 9, length: 13.5)
-        }
-        wall(.right, from: x1 + o, y1 + o, at: storey) { p in
-            p.timberFrame(end + 2 * o * 32, eave - storey, posts: 5)
-            p.casement(end * 0.3 - 3.5, 6.5, width: 7, height: 8)
-        }
-        // The jetty's beam under the upper storey.
-        line([iso(x0 - o, y1 + o, storey), iso(x1 + o, y1 + o, storey), iso(x1 + o, y0 - o, storey)], width: 1.6)
-        slateRoof(x0 - o, y0 - o, x1 + o, y1 + o, eave: eave, ridge: Workshop.ridge, over: Workshop.over)
-        chimney(roofFront: y1 + o + Workshop.over)
+        slateRoof(x0, y0, x1, y1, eave: eave, ridge: Workshop.ridge, over: Workshop.over)
+        vat(0.95, -0.28)
         kegs()
         bench(-1.15, 0.95)
     }
 
     /// A broad window on a wall drawn with `wall`, its foot at (`u`, `v`):
-    /// a frame of stone round a dark room, and on the sill the alchemist's
+    /// a frame of stone round a dark room, and on the sill the chemist's
     /// glass: an alembic on its stand, a retort, and flasks of coloured liquor.
     mutating func frontWindow(_ u: Double, _ v: Double, width w: Double, height h: Double) {
         typealias I = IndustrialOldBuildingsLateInk
@@ -143,7 +144,7 @@ extension IndustrialOldBuildingsLatePainter {
 
     /// The open door of the furnace room on a wall drawn with `wall`, centred
     /// on `u`: an arch of voussoirs over the dark within, where the furnace's
-    /// mouth glows, its door of teal planks folded back against the wall.
+    /// mouth glows, its door of navy planks folded back against the wall.
     mutating func furnaceDoor(_ u: Double, width w: Double, height h: Double) {
         typealias I = IndustrialOldBuildingsLateInk
         // The door leaf, folded back against the wall at the left.
@@ -164,75 +165,74 @@ extension IndustrialOldBuildingsLatePainter {
         shape(panel(u - w / 2 - 1.4, -1.2, u + w / 2 + 1.4, 0.2), .colour(I.stoneTop), width: 0.6)
     }
 
-    /// The timber frame of a plastered storey on a wall drawn with `wall`,
-    /// `length` long and `height` tall: a sill and a plate, `posts` posts,
-    /// a rail at mid height, and a brace in each end bay.
-    mutating func timberFrame(_ length: Double, _ height: Double, posts: Int) {
+    /// Quoins of stone up both ends of a wall drawn with `wall`, from `u0`
+    /// to `u1`, above the plinth to `height`.
+    mutating func brickQuoins(_ u0: Double, _ u1: Double, _ height: Double) {
         typealias I = IndustrialOldBuildingsLateInk
-        let s = 1.6
-        func beam(_ a: P, _ b: P, width: Double = s) {
-            svg.line([a, b], stroke: .colour(I.line), width: width + 1)
-            svg.line([a + shift * 0.5, b + shift * 0.5], stroke: .colour(I.timber), width: width)
+        var v = 3.0, k = 0
+        while v < height - 0.5 {
+            let top = min(v + 3.4, height), reach = k % 2 == 0 ? 4.2 : 2.6
+            shape(panel(u0, v, u0 + reach, top), .colour(I.stoneTop), width: 0.45)
+            shape(panel(u1 - reach, v, u1, top), .colour(I.stoneTop), width: 0.45)
+            v = top
+            k += 1
         }
-        let mid = height * 0.45
-        beam(uv(0, mid), uv(length, mid), width: 1.2)
-        for k in 0..<posts {
-            let u = length * Double(k) / Double(posts - 1)
-            beam(uv(u, 0), uv(u, height))
-        }
-        let bay = length / Double(posts - 1)
-        beam(uv(0.6, mid), uv(bay - 0.6, height - 0.6), width: 1.2)
-        beam(uv(length - 0.6, mid), uv(length - bay + 0.6, height - 0.6), width: 1.2)
-        beam(uv(0, 0.8), uv(length, 0.8), width: 2)
-        beam(uv(0, height - 0.8), uv(length, height - 0.8), width: 2)
     }
 
-    /// A small casement window of leaded panes on a wall drawn with `wall`, its foot at (`u`, `v`).
+    /// A sash window on a wall drawn with `wall`, its foot at (`u`, `v`):
+    /// dark glass in frames of the light colour, two over two, under a
+    /// segmental arch of brick and over a sill of stone.
     mutating func casement(_ u: Double, _ v: Double, width w: Double, height h: Double) {
         typealias I = IndustrialOldBuildingsLateInk
-        shape(panel(u, v, u + w, v + h), .colour(I.navyDark), width: 0.8)
-        var lead = PathData()
-        lead.move(uv(u + w / 2, v)); lead.line(uv(u + w / 2, v + h))
-        lead.move(uv(u, v + h / 2)); lead.line(uv(u + w, v + h / 2))
-        lead.move(uv(u + 0.6, v + 0.6)); lead.line(uv(u + w / 2 - 0.4, v + h / 2 - 0.4))
-        lead.move(uv(u + w / 2 + 0.4, v + h / 2 + 0.4)); lead.line(uv(u + w - 0.6, v + h - 0.6))
-        svg.path(lead, stroke: .colour(I.navyLight), width: 0.45)
-        shape(panel(u - 0.8, v - 1, u + w + 0.8, v), .colour(I.timberLight), width: 0.5)
+        shape(panel(u - 0.5, v, u + w + 0.5, v + h), .colour(I.light), width: 0.6)
+        colour(panel(u + 0.4, v + 0.5, u + w - 0.4, v + h - 0.5), .colour(I.navyDark))
+        colour([uv(u + 0.4, v + h * 0.55), uv(u + w * 0.5, v + h - 0.5), uv(u + 0.4, v + h - 0.5)], .colour(I.navyLight), opacity: 0.6)
+        var bars = PathData()
+        bars.move(uv(u + w / 2, v + 0.5)); bars.line(uv(u + w / 2, v + h - 0.5))
+        bars.move(uv(u, v + h / 2)); bars.line(uv(u + w, v + h / 2))
+        svg.path(bars, stroke: .colour(I.light), width: 0.6)
+        let (a0, a1, a2) = (uv(u - 1, v + h), uv(u + w / 2, v + h + 2.8), uv(u + w + 1, v + h))
+        line(width: 2.4) { d in d.move(a0); d.quad(a1, a2) }
+        svg.path({ var d = PathData(); d.move(a0); d.quad(a1, a2); return d }(), stroke: .colour(I.brickShade), width: 1.2)
+        shape(panel(u - 1.2, v - 1.2, u + w + 1.2, v), .colour(I.stoneTop), width: 0.5)
     }
 
-    /// A gabled roof of teal slate over a box from (x0, y0) to (x1, y1), its
-    /// eaves at `eave` and its ridge running along x at `ridge`, overhanging by
-    /// `over` tiles, its gable end (facing +x) framed in timber and plastered.
+    /// A gabled roof of slate over a box from (x0, y0) to (x1, y1), its eaves
+    /// at `eave` and its ridge running along x at `ridge`, overhanging by
+    /// `over` tiles, its gable end (facing +x) of brick with a round window.
     private mutating func slateRoof(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double, eave: Double, ridge: Double,
                                     over: Double) {
         typealias I = IndustrialOldBuildingsLateInk
         let ym = (y0 + y1) / 2
         let (a0, a1, b0, b1) = (x0 - over, x1 + over, y0 - over, y1 + over)
         let drop = (ridge - eave) * over / (ym - y0)
-        colour([iso(a0, ym, ridge), iso(a1, ym, ridge), iso(a1, b0, eave - drop), iso(a0, b0, eave - drop)], .colour(I.navyShade))
-        // The gable's end wall.
+        colour([iso(a0, ym, ridge), iso(a1, ym, ridge), iso(a1, b0, eave - drop), iso(a0, b0, eave - drop)], .colour(I.slateShade))
+        // The gable's end wall, of brick, with a round window.
         let triangle = [iso(x1, y1, eave), iso(x1, y0, eave), iso(x1, ym, ridge)]
-        colour(triangle, .colour(I.plasterShade))
+        colour(triangle, .colour(I.brickShade))
         wall(.right, from: x1, y1, at: eave) { p in
             let w = (y1 - y0) * 32, rise = ridge - eave
-            func post(_ a: P, _ b: P) {
-                p.svg.line([a, b], stroke: .colour(I.line), width: 2.4)
-                p.svg.line([a, b], stroke: .colour(I.timber), width: 1.4)
+            var d = PathData()
+            var v = 2.5
+            while v < rise - 1.5 {
+                let half = w / 2 * (1 - v / rise) - 0.5
+                d.move(p.uv(w / 2 - half, v)); d.line(p.uv(w / 2 + half, v))
+                v += 2.5
             }
-            post(p.uv(w / 2, 0), p.uv(w / 2, rise - 1))
-            post(p.uv(w * 0.2, 0), p.uv(w / 2, rise * 0.62))
-            post(p.uv(w * 0.8, 0), p.uv(w / 2, rise * 0.62))
-            post(p.uv(w * 0.18, rise * 0.36), p.uv(w * 0.82, rise * 0.36))
-            p.svg.circle(p.uv(w / 2, rise * 0.62) + P(0, 1.5), 1.6, fill: .colour(I.dark), stroke: .colour(I.line), width: 0.5)
+            p.svg.path(d, stroke: .colour(I.line), width: 0.35, opacity: 0.3)
+            p.svg.circle(p.uv(w / 2, rise * 0.4), 3.6, fill: .colour(I.stoneTop), stroke: .colour(I.line), width: 0.6)
+            p.svg.circle(p.uv(w / 2, rise * 0.4), 2.4, fill: .colour(I.navyDark), stroke: .colour(I.line), width: 0.45)
+            p.svg.line([p.uv(w / 2 - 2.4, rise * 0.4), p.uv(w / 2 + 2.4, rise * 0.4)], stroke: .colour(I.light), width: 0.45)
+            p.svg.line([p.uv(w / 2, rise * 0.4 - 2.4), p.uv(w / 2, rise * 0.4 + 2.4)], stroke: .colour(I.light), width: 0.45)
         }
         line(triangle, closed: true, width: 0.9)
         // The roof's thickness along the gable, then the front slope.
         let edge = P(0, 2.2)
         colour([iso(a1, b1, eave - drop), iso(a1, ym, ridge), iso(a1, b0, eave - drop), iso(a1, b0, eave - drop) + edge,
-                iso(a1, ym, ridge) + edge, iso(a1, b1, eave - drop) + edge], .colour(I.navyDark))
+                iso(a1, ym, ridge) + edge, iso(a1, b1, eave - drop) + edge], .colour(I.slateDark))
         let front = [iso(a0, ym, ridge), iso(a1, ym, ridge), iso(a1, b1, eave - drop), iso(a0, b1, eave - drop)]
-        colour([front[3], front[2], front[2] + edge, front[3] + edge], .colour(I.navyDark))
-        colour(front, .colour(I.navy))
+        colour([front[3], front[2], front[2] + edge, front[3] + edge], .colour(I.slateDark))
+        colour(front, .colour(I.slate))
         // The slates: courses across the slope, and their joints staggered.
         var courses = PathData(), joints = PathData()
         let rows = 7
@@ -251,8 +251,8 @@ extension IndustrialOldBuildingsLatePainter {
                 x += 0.18
             }
         }
-        svg.path(courses, stroke: .colour(I.navyDark), width: 0.8)
-        svg.path(joints, stroke: .colour(I.navyDark), width: 0.45, opacity: 0.8)
+        svg.path(courses, stroke: .colour(I.slateDark), width: 0.8)
+        svg.path(joints, stroke: .colour(I.slateDark), width: 0.45, opacity: 0.8)
         // A lit band along the lower edge of each course.
         var lit = PathData()
         for k in 1..<rows {
@@ -260,55 +260,100 @@ extension IndustrialOldBuildingsLatePainter {
             let y = b1 + (ym - b1) * t, h = (eave - drop) + (ridge - eave + drop) * t
             lit.move(iso(a0 + 0.02, y, h)); lit.line(iso(a1 - 0.02, y, h))
         }
-        svg.path(lit, stroke: .colour(I.navyLight), width: 0.5, opacity: 0.8)
+        svg.path(lit, stroke: .colour(I.slateLight), width: 0.5, opacity: 0.8)
         line(front, closed: true, width: 1.1)
         line([front[3], front[3] + edge, front[2] + edge, front[2]], width: 0.9)
         line([iso(a1, ym, ridge), iso(a1, ym, ridge) + edge, iso(a1, b0, eave - drop) + edge, iso(a1, b0, eave - drop)], width: 0.9)
         line([front[2] + edge, iso(a1, ym, ridge) + edge], width: 0.9)
         // The ridge's capping, and the pennant on the gable's peak.
         svg.line([iso(a0, ym, ridge), iso(a1, ym, ridge)], stroke: .colour(I.line), width: 3.2)
-        svg.line([iso(a0, ym, ridge), iso(a1, ym, ridge)], stroke: .colour(I.navyLight), width: 1.6)
+        svg.line([iso(a0, ym, ridge), iso(a1, ym, ridge)], stroke: .colour(I.slateLight), width: 1.6)
         finial(at: iso(a0, ym, ridge), size: 0.8)
         pennant(at: iso(a1, ym, ridge), height: 17, length: 16)
     }
 
-    /// The chimney rising through the roof from the furnace below: a square
-    /// stack of stone standing on the slope (whose eaves, with their drop, lie
-    /// along `roofFront`), with a capping, giving off smoke in three colours.
-    private mutating func chimney(roofFront b1: Double) {
+    /// The chimney standing free in the yard: a square stack of brick on a
+    /// plinth of stone, tapering as it rises to `top`, banded in iron, under
+    /// a corbelled cap of stone; giving off smoke when `smoking`.
+    private mutating func stack(top: Double, smoking: Bool) {
         typealias I = IndustrialOldBuildingsLateInk
-        let (x0, y0, x1, y1) = Workshop.chimney, top = Workshop.chimneyTop
-        let (_, h0, _, h1) = Workshop.house
-        let ym = (h0 + h1) / 2, ridge = Workshop.ridge
-        let drop = (ridge - Workshop.eave) * Workshop.over / (ym - h0 + 0.04)
-        /// The height of the roof's surface at `y`, on either slope.
-        func roof(_ y: Double) -> Double { ridge - abs(y - ym) / (b1 - ym) * (ridge - (Workshop.eave - drop)) }
-        let hf = roof(y1), hb = roof(y0)
-        // Its shadow on the slope at its right.
-        shadow([iso(x1, y1, hf), iso(x1 + 0.22, y1, roof(y1) - 0.5), iso(x1 + 0.22, ym, ridge), iso(x1, ym, ridge)], opacity: 0.16)
-        let left = [iso(x0, y1, hf), iso(x1, y1, hf), iso(x1, y1, top), iso(x0, y1, top)]
-        let right = [iso(x1, y1, hf), iso(x1, ym, ridge), iso(x1, y0, hb), iso(x1, y0, top), iso(x1, y1, top)]
-        colour(left, .colour(I.stone))
-        colour(right, .colour(I.stoneShade))
-        wall(.left, from: x0, y1, at: hf) { p in p.courses(0, (x1 - x0) * 32, 0, top - hf, course: 4.4, brick: 6.4) }
-        wall(.right, from: x1, y1, at: ridge) { p in p.courses(0, (y1 - y0) * 32, 0, top - ridge, course: 4.4, brick: 6.4) }
+        let (cx, cy, foot, head) = (Workshop.stack.x, Workshop.stack.y, Workshop.stack.foot, Workshop.stack.head)
+        let g = Workshop.ground, plinth = g + 7
+        func r(_ h: Double) -> Double { foot + (head - foot) * (h - plinth) / (Workshop.chimneyTop - plinth) }
+        shadow([iso(cx + foot, cy - foot, g), iso(cx + foot + 0.5, cy - foot + 0.1, g), iso(cx + foot + 0.5, cy + foot + 0.1, g),
+                iso(cx + foot, cy + foot, g)], opacity: 0.14)
+        let s0 = foot + 0.05
+        block(cx - s0, cy - s0, cx + s0, cy + s0, g, plinth, top: .colour(I.stoneTop), left: .colour(I.stone), right: .colour(I.stoneShade))
+        let rt = r(top)
+        let left = [iso(cx - foot, cy + foot, plinth), iso(cx + foot, cy + foot, plinth), iso(cx + rt, cy + rt, top), iso(cx - rt, cy + rt, top)]
+        let right = [iso(cx + foot, cy + foot, plinth), iso(cx + foot, cy - foot, plinth), iso(cx + rt, cy - rt, top), iso(cx + rt, cy + rt, top)]
+        colour(left, .colour(smoking ? I.brick : I.rawBrick))
+        colour(right, .colour(smoking ? I.brickShade : I.rawBrickShade))
+        // Its courses, a burnt brick picked out here and there.
+        var d = PathData()
+        var h = plinth + 2.5, k = 0
+        while h < top - 1 {
+            let q = r(h)
+            d.move(iso(cx - q, cy + q, h)); d.line(iso(cx + q, cy + q, h)); d.line(iso(cx + q, cy - q, h))
+            if k % 3 == 1 {
+                let u = Double((k * 7) % 5) / 5 * 1.6 * q - 0.8 * q
+                let a = iso(cx + u, cy + q, h), b = iso(cx + u + 0.12, cy + q, h)
+                colour([a, b, b - P(0, 2.5), a - P(0, 2.5)], .colour(I.brickDark), opacity: 0.35)
+            }
+            h += 2.5
+            k += 1
+        }
+        svg.path(d, stroke: .colour(I.line), width: 0.35, opacity: 0.3)
         line(left, closed: true, width: 1.1)
         line(right, closed: true, width: 1.1)
-        // The lead flashing where it meets the slates.
-        svg.line([iso(x0, y1, hf), iso(x1, y1, hf), iso(x1, ym, ridge)], stroke: .colour(I.line), width: 2.4)
-        svg.line([iso(x0, y1, hf), iso(x1, y1, hf), iso(x1, ym, ridge)], stroke: .colour(I.ironLight), width: 1.2)
-        // A band of stone two thirds up, the capping standing out, and the flue's dark.
-        let band = top - 30
-        block(x0 - 0.03, y0 - 0.03, x1 + 0.03, y1 + 0.03, band, band + 3, top: nil, left: .colour(I.stoneTop), right: .colour(I.stone),
-              width: 0.9)
-        block(x0 - 0.05, y0 - 0.05, x1 + 0.05, y1 + 0.05, top - 4, top, top: .colour(I.stoneTop), left: .colour(I.stoneTop),
-              right: .colour(I.stone), width: 1)
-        shape(level(x0 + 0.06, y0 + 0.06, x1 - 0.06, y1 - 0.06, top), .colour(I.dark), width: 0.6)
-        let mouth = iso((x0 + x1) / 2, (y0 + y1) / 2, top)
-        puff(at: mouth + P(1, -6), radius: 4.2, colour: I.smokeDark)
-        puff(at: mouth + P(5, -16), radius: 5.4, colour: I.smoke)
-        puff(at: mouth + P(12, -28), radius: 5.6, colour: I.smokeLight)
-        puff(at: mouth + P(21, -37), radius: 3.8, colour: I.smokeDark)
+        guard smoking else { return }
+        // Bands of iron up the stack.
+        for hb in stride(from: plinth + 18, to: top - 8, by: 20) {
+            let q = r(hb) + 0.01
+            let band = [iso(cx - q, cy + q, hb), iso(cx + q, cy + q, hb), iso(cx + q, cy - q, hb), iso(cx + q, cy - q, hb + 1.6),
+                        iso(cx + q, cy + q, hb + 1.6), iso(cx - q, cy + q, hb + 1.6)]
+            shape(band, .colour(I.iron), width: 0.5)
+        }
+        // The corbelled cap of stone, and the flue's sooted mouth.
+        let c = rt + 0.03, c2 = rt + 0.06
+        block(cx - c, cy - c, cx + c, cy + c, top, top + 2, top: nil, left: .colour(I.stoneTop), right: .colour(I.stone), width: 0.9)
+        block(cx - c2, cy - c2, cx + c2, cy + c2, top + 2, top + 4.4, top: .colour(I.stoneTop), left: .colour(I.stoneTop),
+              right: .colour(I.stone), width: 0.9)
+        shape(level(cx - rt + 0.02, cy - rt + 0.02, cx + rt - 0.02, cy + rt - 0.02, top + 4.4), .colour(I.sootDark), width: 0.6)
+        let mouth = iso(cx, cy, top + 4.4)
+        puff(at: mouth + P(1.4, -5), radius: 4, colour: I.smokeDark)
+        puff(at: mouth + P(7, -13), radius: 5, colour: I.smoke)
+        puff(at: mouth + P(15, -20), radius: 5.2, colour: I.smokeLight)
+        puff(at: mouth + P(24, -25), radius: 3.6, colour: I.smoke)
+    }
+
+    /// An iron vat standing in the yard at (x, y): a riveted drum on a plinth
+    /// of brick, a band of the owner's colour round it edged in the light
+    /// colour, a rim and a pipe running from it toward the works.
+    private mutating func vat(_ x: Double, _ y: Double) {
+        typealias I = IndustrialOldBuildingsLateInk
+        let g = Workshop.ground, r = 0.22, h0 = g + 3, h1 = g + 22
+        shadow(arc(x + 0.12, y - 0.04, r, from: -60, to: 60, at: g) + [round(x, y, r, 60, g)], opacity: 0.12)
+        cylinder(x, y, r + 0.03, g, h0, lit: I.brickTop, mid: I.brick, shade: I.brickShade, course: nil, width: 0.9)
+        cylinder(x, y, r, h0, h1, lit: I.ironLight, mid: I.iron, shade: I.ironDark, top: .colour(I.iron), course: nil, width: 1)
+        // The owner's band, between two rims of the light colour.
+        let (b0, b1) = (h0 + 9, h0 + 13.4)
+        colour(arc(x, y, r, from: -45, to: 135, at: b0 - 1) + arc(x, y, r, from: 135, to: -45, at: b1 + 1), .colour(I.light))
+        colour(arc(x, y, r, from: -45, to: 135, at: b0) + arc(x, y, r, from: 135, to: -45, at: b1), .team)
+        line(arc(x, y, r, from: -45, to: 135, at: b0), width: 0.45)
+        line(arc(x, y, r, from: -45, to: 135, at: b1), width: 0.45)
+        mark(at: round(x, y, r, 45, (b0 + b1) / 2), radius: 1.1)
+        // Rivets in rows, and the rim.
+        for hv in [h0 + 2.5, h0 + 17] {
+            for a in stride(from: -35.0, to: 130, by: 18) {
+                svg.circle(round(x, y, r, a, hv), 0.35, fill: .colour(I.ironDark))
+            }
+        }
+        line(arc(x, y, r - 0.04, from: 0, to: 360, at: h1, steps: 36), closed: true, width: 0.6)
+        // The pipe from its top toward the works' gable.
+        let pa = round(x, y, r * 0.5, 160, h1), pb = iso(0.5, y, h1 + 2)
+        svg.line([pa, pa - P(0, 3), pb], stroke: .colour(I.line), width: 2.4)
+        svg.line([pa, pa - P(0, 3), pb], stroke: .colour(I.ironLight), width: 1)
     }
 
     /// A puff of smoke at `p`: a cluster of round billows of one colour under one outline.
@@ -357,42 +402,48 @@ extension IndustrialOldBuildingsLatePainter {
 
     // MARK: The workshop being built
 
-    /// The workshop being built: the stone of the ground storey raised part
-    /// of its height, its door's jambs standing, the chimney's stack begun,
-    /// the first posts of the upper storey's frame raised at the back,
-    /// scaffolding along the front flying the owner's pennant, and stone,
-    /// timber and mortar to hand.
+    /// The works being built: the brick of the ground storey raised part of
+    /// its height on its plinth, its door's opening left, the chimney's
+    /// stack half raised inside scaffolding, scaffolding along the front
+    /// flying the owner's pennant, and bricks, timber and mortar to hand.
     private mutating func workshopRising() {
         typealias I = IndustrialOldBuildingsLateInk
         let (x0, y0, x1, y1) = Workshop.house
         let g = Workshop.ground
+        // The chimney's stack, half raised inside its scaffold.
+        let (cx, cy) = (Workshop.stack.x, Workshop.stack.y)
+        scaffold([(cx - 0.32, cy - 0.32), (cx + 0.32, cy - 0.32)], from: g, height: 62, levels: [20, 40, 58])
+        stack(top: 54, smoking: false)
+        scaffold([(cx - 0.32, cy + 0.32), (cx + 0.32, cy + 0.32), (cx + 0.32, cy - 0.32)], from: g, height: 62,
+                 levels: [20, 40, 58], boards: 40, inward: (0, -0.12))
+        pennant(at: iso(cx + 0.32, cy + 0.32, g + 62), height: 12, length: 14)
         // The walls at the back, raised higher; the front lower, with the door's opening.
-        ashlar(x0, y0, x1, y0 + 0.16, g, 22, course: 4.4, stone: 9, fresh: true)
-        ashlar(x0, y0 + 0.16, x0 + 0.16, y1, g, 18, course: 4.4, stone: 9, fresh: true)
-        // The furnace and its chimney's stack, begun within: the furnace's arch, cold, at its foot.
-        let (c0, d0, c1, d1) = Workshop.chimney
-        ashlar(c0 - 0.04, d0 - 0.04, c1 + 0.04, d1 + 0.04, g, 44, course: 4.4, stone: 6.4, fresh: true)
-        hollow(level(c0 + 0.06, d0 + 0.06, c1 - 0.06, d1 - 0.06, 44), depth: 6)
-        wall(.left, from: c0 - 0.04, d1 + 0.04, at: g) { p in p.arch(5.5, 0, width: 6, height: 7, .colour(I.dark), line: 0.8) }
-        // Posts of the upper frame at the back corner, and a plate between them.
-        for (px, py) in [(x0 + 0.06, y0 + 0.06), (x0 + 0.66, y0 + 0.06), (x0 + 0.06, y0 + 0.66)] {
-            pole(iso(px, py, 22), iso(px, py, 46), width: 2, colour: I.timber)
+        for (a0, b0, a1, b1, h) in [(x0, y0, x1, y0 + 0.12, 24.0), (x0, y0 + 0.12, x0 + 0.12, y1, 20.0), (x1 - 0.12, y0 + 0.12, x1, y1, 14.0),
+                                    (x0, y1 - 0.12, x1 - 0.55, y1, 10.0), (x1 - 0.2, y1 - 0.12, x1, y1, 18.0)] {
+            block(a0, b0, a1, b1, g, h, top: .colour(I.brickTop), left: .colour(I.rawBrick), right: .colour(I.rawBrickShade))
+            wall(.left, from: a0, b1, at: g) { p in p.courses(0, (a1 - a0) * 32, 3, h - g, course: 2.5, brick: 6, opacity: 0.35) }
+            wall(.right, from: a1, b1, at: g) { p in p.courses(0, (b1 - b0) * 32, 3, h - g, course: 2.5, brick: 6, opacity: 0.35) }
+            colour(level(a0, b1 - 0.001, a1, b1, g), .colour(I.stone))
         }
-        pole(iso(x0 + 0.06, y0 + 0.06, 45), iso(x0 + 0.66, y0 + 0.06, 45), width: 2.2, colour: I.timber)
-        pole(iso(x0 + 0.06, y0 + 0.06, 45), iso(x0 + 0.06, y0 + 0.66, 45), width: 2.2, colour: I.timber)
-        pennant(at: iso(x0 + 0.06, y0 + 0.06, 46), height: 12, length: 14)
-        ashlar(x1 - 0.16, y0 + 0.16, x1, y1, g, 14, course: 4.4, stone: 9, fresh: true)
-        ashlar(x0, y1 - 0.16, x1 - 0.55, y1, g, 10, course: 4.4, stone: 9, fresh: true)
-        ashlar(x1 - 0.2, y1 - 0.16, x1, y1, g, 20, course: 4.4, stone: 9, fresh: true)
-        // Scaffolding along the front and the gable, flying the owner's pennant.
-        scaffold([(x0 - 0.12, y1 + 0.22), (x1 + 0.2, y1 + 0.22), (x1 + 0.2, y0 - 0.1)], from: g, height: 40, levels: [14, 28, 38],
+        // Scaffolding along the front, flying the owner's pennant.
+        scaffold([(x0 - 0.12, y1 + 0.22), (x1 + 0.2, y1 + 0.22)], from: g, height: 34, levels: [14, 28],
                  boards: 14, inward: (0, -0.1))
-        pennant(at: iso(x1 + 0.2, y1 + 0.22, g + 40), height: 14, length: 15)
+        pennant(at: iso(x0 - 0.12, y1 + 0.22, g + 34), height: 12, length: 14)
         // Materials beside.
         planks(-1.1, -0.45, 1.05, on: g, count: 4)
-        stones(0.85, 0.75, 1.2, 1.05, from: g, courses: 2)
-        stones(1.0, -1.3, 1.3, -1.05, from: g, courses: 1)
+        brickStack(0.85, 0.75, 1.2, 1.05, height: 6)
+        brickStack(1.0, 0.1, 1.3, 0.35, height: 4)
         mortar(0.0, 0.85, on: g)
-        stones(-0.25, 1.15, 0.0, 1.35, from: g, courses: 1)
+    }
+
+    /// New bricks stacked on the map from (x0, y0) to (x1, y1), `height` points high, on a pallet.
+    private mutating func brickStack(_ x0: Double, _ y0: Double, _ x1: Double, _ y1: Double, height: Double) {
+        typealias I = IndustrialOldBuildingsLateInk
+        let g = Workshop.ground
+        block(x0, y0, x1, y1, g, g + 1.2, top: nil, left: .colour(I.timberLight), right: .colour(I.timber), width: 0.6)
+        block(x0, y0, x1, y1, g + 1.2, g + 1.2 + height, top: .colour(I.brickTop), left: .colour(I.rawBrick),
+              right: .colour(I.rawBrickShade), width: 0.8)
+        wall(.left, from: x0, y1, at: g + 1.2) { p in p.courses(0, (x1 - x0) * 32, 0, height, course: 1.6, brick: 3.6, opacity: 0.45) }
+        wall(.right, from: x1, y1, at: g + 1.2) { p in p.courses(0, (y1 - y0) * 32, 0, height, course: 1.6, brick: 3.6, opacity: 0.45) }
     }
 }

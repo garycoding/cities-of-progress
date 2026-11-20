@@ -3,13 +3,15 @@
 
 import Foundation
 
-// The drawing kit of the Alchemy age's new buildings: the palette, the
-// projection of a footprint onto the screen, and the parts the buildings are
-// made of. It follows the kit of the Iron age's new buildings, so that the two
-// ages read as one game: units are points of the screen at zoom 1, y downward,
-// with the origin on the ground at the centre of the footprint; a sprite is
-// drawn at two pixels a point. The Alchemy age adds round work: towers, cones
-// of slate, and battlements that run round them.
+// The drawing kit of the Industrial looks of the castle and the alchemist's
+// workshop: the projection of a footprint onto the screen, and the parts the
+// buildings are made of, in the palette of the rest of the batch
+// (`IndustrialOldBuildingsInk`). It follows the kit of the Alchemy age's new
+// buildings (`AlchemyNewBuildingsPainter`), so that the two ages read as one
+// game: units are points of the screen at zoom 1, y downward, with the origin
+// on the ground at the centre of the footprint; a sprite is drawn at two
+// pixels a point. Round work (towers, cones of slate, battlements that run
+// round them) comes from that kit; the round towers are refaced in brick.
 
 /// The kit of the larger works draws in the same palette as the rest of the batch.
 typealias IndustrialOldBuildingsLateInk = IndustrialOldBuildingsInk
@@ -334,9 +336,10 @@ struct IndustrialOldBuildingsLatePainter {
         shadow(arc(cx + 0.1, cy - 0.05, r, from: -60, to: 60, at: h0) + [round(cx, cy, r, 60, h0)], opacity: 0.12)
         cylinder(cx, cy, r + 0.03, h0, h0 + footing, lit: I.stone, mid: I.stoneShade, shade: I.stoneDark, course: nil, width: 1)
         if h1 > h0 + footing {
-            cylinder(cx, cy, r, h0 + footing, h1, lit: fresh ? I.rawStoneTop : I.stoneTop, mid: fresh ? I.rawStone : I.stone,
-                     shade: fresh ? I.rawStoneShade : I.stoneShade, top: fresh ? .colour(I.rawStoneTop) : nil, course: 4.4,
-                     brick: 8, fresh: fresh)
+            // Refaced in brick over the old stone footing.
+            cylinder(cx, cy, r, h0 + footing, h1, lit: fresh ? I.rawBrick : I.brickTop, mid: fresh ? I.rawBrick : I.brick,
+                     shade: fresh ? I.rawBrickShade : I.brickShade, top: fresh ? .colour(I.brickTop) : nil, course: 2.6,
+                     brick: 5.4, fresh: fresh)
         }
         if fresh {
             // Being built, the tower is a ring of wall open at the top.
@@ -416,24 +419,24 @@ struct IndustrialOldBuildingsLatePainter {
         typealias I = IndustrialOldBuildingsLateInk
         let apex = iso(cx, cy, h + rise)
         func slope(_ a0: Double, _ a1: Double) -> [P] { arc(cx, cy, r, from: a0, to: a1, at: h, steps: 12) + [apex] }
-        colour(slope(-45, 135), .colour(I.navy))
-        colour(slope(70, 135), .colour(I.navyLight))
-        colour(slope(-45, 10), .colour(I.navyShade))
+        colour(slope(-45, 135), .colour(I.slate))
+        colour(slope(70, 135), .colour(I.slateLight))
+        colour(slope(-45, 10), .colour(I.slateShade))
         // Courses of slate round the cone, and a few seams running up it.
         var d = PathData()
         for t in stride(from: 0.18, to: 0.9, by: 0.16) {
             let ring = arc(cx, cy, r * (1 - t), from: -45, to: 135, at: h + rise * t, steps: 12)
             d.move(ring[0]); for p in ring.dropFirst() { d.line(p) }
         }
-        svg.path(d, stroke: .colour(I.navyDark), width: 0.6, opacity: 0.9)
+        svg.path(d, stroke: .colour(I.slateDark), width: 0.6, opacity: 0.9)
         var seams = PathData()
         for a in stride(from: -25.0, to: 130, by: 22) {
             seams.move(round(cx, cy, r, a, h)); seams.line(apex)
         }
-        svg.path(seams, stroke: .colour(I.navyDark), width: 0.4, opacity: 0.6)
+        svg.path(seams, stroke: .colour(I.slateDark), width: 0.4, opacity: 0.6)
         // The eaves, flared a little.
         let eaves = arc(cx, cy, r, from: -45, to: 135, at: h, steps: 18)
-        colour(eaves + arc(cx, cy, r * 1.0, from: 135, to: -45, at: h - 1.6, steps: 18), .colour(I.navyDark))
+        colour(eaves + arc(cx, cy, r * 1.0, from: 135, to: -45, at: h - 1.6, steps: 18), .colour(I.slateDark))
         line([round(cx, cy, r, -45, h)] + [apex] + [round(cx, cy, r, 135, h)], width: 1.1)
         line(eaves.map { $0 + P(0, 1.6) }, width: 1)
         line([eaves.first!, eaves.first! + P(0, 1.6)], width: 0.8)
@@ -629,11 +632,12 @@ struct IndustrialOldBuildingsLatePainter {
             d.close()
             return d
         }
+        svg.path(cloth(shift), stroke: .colour(I.light), width: 2.6)
         colour(.team) { d, o in d = cloth(o) }
-        mark(at: top + P(5.4 * k, 5 * k), radius: 1.9 * k)
+        mark(at: top + P(5.4 * k, 5 * k), radius: 1.5 * k)
         line(width: 0.9) { d in d = cloth(P(0, 0)) }
         svg.line([foot, top - P(0, 1)], stroke: .colour(I.line), width: 2.3)
-        svg.line([foot, top - P(0, 1)], stroke: .colour(I.timberDark), width: 1.3)
+        svg.line([foot, top - P(0, 1)], stroke: .colour(I.ironLight), width: 1.1)
         let f = top - P(0, 1)
         shape([f + P(-1.2, 0), f + P(0, -3.4), f + P(1.2, 0), f + P(0, 0.9)], .colour(I.ironLight), width: 0.7)
     }
@@ -656,11 +660,11 @@ struct IndustrialOldBuildingsLatePainter {
         }
         colour(.colour(I.light)) { d, o in d = cloth(o, inset: 0) }
         colour(.team) { d, o in d = cloth(o, inset: 1.3) }
-        mark(at: top + P(1.2 + w * 0.48, 1.5 + l * 0.5), radius: l * 0.2)
+        mark(at: top + P(1.2 + w * 0.48, 1.5 + l * 0.5), radius: l * 0.16)
         line(width: 0.9) { d in d = cloth(P(0, 0), inset: 0) }
         line(width: 0.4, opacity: 0.7) { d in d = cloth(P(0, 0), inset: 1.3) }
         svg.line([foot, top - P(0, 2)], stroke: .colour(I.line), width: 2.6)
-        svg.line([foot, top - P(0, 2)], stroke: .colour(I.timberDark), width: 1.5)
+        svg.line([foot, top - P(0, 2)], stroke: .colour(I.ironLight), width: 1.3)
         let f = top - P(0, 2)
         shape([f + P(-1.3, 0), f + P(0, -3.8), f + P(1.3, 0), f + P(0, 1)], .colour(I.ironLight), width: 0.7)
     }
@@ -677,7 +681,7 @@ struct IndustrialOldBuildingsLatePainter {
                      uv(u - r + e, v - length + 3.4)]
         colour(outer, .colour(I.light))
         colour(inner, .team)
-        mark(at: uv(u, v - length * 0.4), radius: width * 0.2)
+        mark(at: uv(u, v - length * 0.4), radius: width * 0.16)
         line(outer, closed: true, width: 0.9)
         line(inner, closed: true, width: 0.4, opacity: 0.7)
         line([uv(u - r - 1.4, v + 0.2), uv(u + r + 1.4, v + 0.2)], width: 1.4)
