@@ -3,14 +3,15 @@
 
 import Foundation
 
-// The Alchemy-age watch tower: the Iron age's tower raised in dressed stone
-// with quoins, on a moulded plinth, with a door of teal plank at its foot and
-// loops for guns and bows up its shaft. At the top a lookout of oak and
-// plaster, glazed on every side, stands out on corbels over the shaft, a band
-// of the owner's colour along its sill and a bell hung before it; over it a
-// steep pyramid of slate carries a gilt weathervane, and a banner of the
-// owner's colour hangs on the shaft below the corbels. Its footprint is one
-// tile: x and y run from -0.5 to 0.5.
+// The Industrial-age watch tower: the Alchemy age's stone tower replaced by a
+// lookout framed in iron. Four legs of riveted iron rise from a plinth of
+// dressed stone, leaning in as they climb, tied by girders at each stage and
+// braced crosswise on every face, with a ladder climbing inside. At the top
+// a deck of iron plate with railings round it carries a cabin of painted
+// board, glazed on every side, a band of the owner's colour under its
+// windows, under a pyramid of slate and an iron weathervane; a banner of the
+// owner's colour hangs on the frame's face and a bell from the deck. Its
+// footprint is one tile: x and y run from -0.5 to 0.5.
 
 extension IndustrialOldBuildingsPainter {
     mutating func watchTower(complete: Bool) {
@@ -19,101 +20,160 @@ extension IndustrialOldBuildingsPainter {
         if complete { lookoutTower() } else { lookoutTowerRising() }
     }
 
-    private static let towerShaft = 0.3
+    private static let plinthTop = 7.0
+    private static let deck = 64.0
+    /// The stages at which girders tie the legs together, in points above the ground.
+    private static let stages = [7.0, 26.0, 45.0, 64.0]
 
-    /// The shaft's walls, from the plinth up to `top` points.
-    private mutating func towerWalls(top: Double, raw: Bool) {
+    /// How far a leg stands from the tower's axis at `h` points up, in tiles.
+    private func legReach(_ h: Double) -> Double {
+        0.36 - 0.13 * (h - Self.plinthTop) / (Self.deck - Self.plinthTop)
+    }
+
+    /// A girder or leg of iron from `a` to `b` on the screen, `width` thick.
+    private mutating func girder(_ a: P, _ b: P, width w: Double = 2) {
         typealias I = IndustrialOldBuildingsInk
-        let s = Self.towerShaft, w = 2 * s * 32, height = top - 3
-        for side in [IndustrialOldBuildingsSide.left, .right] {
-            wall(side, from: side == .left ? -s : s, s, at: 3) { p in
-                p.colour(p.panel(0, 0, w, 4), .colour(side == .left ? I.footing : I.footingShade))
-                p.line([p.uv(0, 4), p.uv(w, 4)], width: 0.7)
-                p.courses(0, w, 4, height, course: 4.4, brick: 9.6)
-                if !raw {
-                    p.quoins(at: side == .left ? 0 : w, atStart: side == .left, from: 4, to: height, course: 4.4)
-                }
-                // Loops: a cross for the bow, a round for the gun.
-                for v in side == .left ? [26.0] : [26.0, 46.0] where v + 8 < height {
-                    p.shape(p.panel(w / 2 - 0.8, v, w / 2 + 0.8, v + 8), .colour(I.dark), width: 0.6)
-                    p.shape(p.panel(w / 2 - 2.6, v + 4.6, w / 2 + 2.6, v + 5.6), .colour(I.dark), width: 0.5)
-                    p.svg.circle(p.uv(w / 2, v - 0.2), 1.2, fill: .colour(I.dark), stroke: .colour(I.line), width: 0.5)
-                }
-                if side == .left {
-                    p.door(w / 2, 0, w: 8, h: 13)
-                    if !raw { p.banner(w / 2, top: height - 8, width: 9, length: 17) }
-                } else if height > 36 {
-                    p.casement(w / 2 - 3, 34, w: 6, h: 7, lights: 1, frame: I.stoneTop)
-                }
-            }
+        svg.line([a, b], stroke: .colour(I.line), width: w + 1)
+        svg.line([a, b], stroke: .colour(I.iron), width: w)
+        svg.line([a + P(-w * 0.2, -w * 0.15), b + P(-w * 0.2, -w * 0.15)], stroke: .colour(I.ironLight), width: w * 0.3)
+    }
+
+    /// The point of the leg at the corner (`sx`, `sy`), each -1 or 1, at `h`.
+    private func leg(_ sx: Double, _ sy: Double, _ h: Double) -> P {
+        let r = legReach(h)
+        return iso(sx * r, sy * r, h)
+    }
+
+    /// One face of the frame between the corners (`ax`, `ay`) and (`bx`, `by`),
+    /// up to `top`: its girders at each stage and its cross bracing, and the
+    /// legs at its ends when `legs`.
+    private mutating func frameFace(_ a: (Double, Double), _ b: (Double, Double), to top: Double, legs: Bool) {
+        let stages = Self.stages.filter { $0 <= top + 0.1 }
+        for (lo, hi) in zip(stages, stages.dropFirst()) {
+            girder(leg(a.0, a.1, lo), leg(b.0, b.1, hi), width: 0.8)
+            girder(leg(b.0, b.1, lo), leg(a.0, a.1, hi), width: 0.8)
         }
+        for h in stages.dropFirst() { girder(leg(a.0, a.1, h), leg(b.0, b.1, h), width: 1.3) }
+        if legs {
+            for c in [a, b] { girder(leg(c.0, c.1, Self.plinthTop), leg(c.0, c.1, top), width: 2.2) }
+        }
+    }
+
+    /// The plinth of dressed stone the legs stand on.
+    private mutating func towerPlinth(raw: Bool) {
+        typealias I = IndustrialOldBuildingsInk
+        let s = 0.42, h0 = 3.0, h1 = Self.plinthTop
+        block(-s, -s, s, s, h0, h1, top: .colour(raw ? I.rawStoneTop : I.stoneTop), left: .colour(raw ? I.rawStone : I.stone),
+              right: .colour(raw ? I.rawStoneShade : I.stoneShade), width: 1)
+        // The bolts of the legs' feet.
+        for (sx, sy) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
+            let r = legReach(h1), c = iso(sx * r, sy * r, h1)
+            svg.ellipse(c, 3, 1.5, fill: .colour(I.iron), stroke: .colour(I.line), width: 0.5)
+        }
+    }
+
+    /// A ladder of iron up the middle of the frame, from the plinth to `top`.
+    private mutating func innerLadder(to top: Double) {
+        typealias I = IndustrialOldBuildingsInk
+        let a = iso(-0.05, 0.05, Self.plinthTop), b = iso(0.05, -0.05, Self.plinthTop)
+        svg.line([a, a - P(0, top - Self.plinthTop)], stroke: .colour(I.ironDark), width: 0.9)
+        svg.line([b, b - P(0, top - Self.plinthTop)], stroke: .colour(I.ironDark), width: 0.9)
+        var rungs = PathData()
+        var v = 3.0
+        while v < top - Self.plinthTop { rungs.move(a - P(0, v)); rungs.line(b - P(0, v)); v += 3 }
+        svg.path(rungs, stroke: .colour(I.ironDark), width: 0.6)
     }
 
     private mutating func lookoutTower() {
         typealias I = IndustrialOldBuildingsInk
-        let s = Self.towerShaft, deck = 62.0, eaves = 80.0, e = 0.43
-        shadow([iso(s, -s, 3), iso(s + 0.16, -s + 0.1, 3), iso(s + 0.16, s, 3), iso(s, s, 3)])
-        block(-s, -s, s, s, 3, deck, top: nil, left: .colour(I.stone), right: .colour(I.stoneShade))
-        towerWalls(top: deck, raw: false)
-        // Corbels of stone carrying the lookout.
+        let deck = Self.deck, cabin = 0.3, eaves = deck + 17, e = 0.42
+        shadow([iso(0.42, -0.42, 3), iso(0.6, -0.3, 3), iso(0.6, 0.42, 3), iso(0.42, 0.42, 3)])
+        towerPlinth(raw: false)
+        // The far faces, the ladder, then the near faces over them.
+        frameFace((-1, -1), (1, -1), to: deck, legs: true)
+        frameFace((-1, -1), (-1, 1), to: deck, legs: false)
+        innerLadder(to: deck)
+        frameFace((-1, 1), (1, 1), to: deck, legs: true)
+        frameFace((1, 1), (1, -1), to: deck, legs: false)
+        // The banner on the frame's near left face, between the middle stages.
+        let r = legReach(40)
+        wall(.left, from: -r, r, at: 26) { p in
+            p.banner(r * 32, top: 17, width: 9, length: 15)
+        }
+        // The deck: a plate of iron on a girder rim, with railings round it.
+        block(-e, -e, e, e, deck - 2.4, deck, top: .colour(I.ironLight), left: .colour(I.iron), right: .colour(I.ironDark), width: 1)
+        railing(-e + 0.03, -e + 0.03, e - 0.03, -e + 0.03, on: deck, height: 6, step: 2.6)
+        railing(-e + 0.03, -e + 0.03, -e + 0.03, e - 0.03, on: deck, height: 6, step: 2.6)
+        // The cabin of painted board, glazed on each side.
+        block(-cabin, -cabin, cabin, cabin, deck, eaves, top: nil, left: .colour(I.light), right: .colour(I.plasterShade))
+        let w = 2 * cabin * 32
         for side in [IndustrialOldBuildingsSide.left, .right] {
-            wall(side, from: side == .left ? -s : s, s, at: 3) { p in
-                for u in [2.6, 9.6, 16.6] {
-                    p.shape([p.uv(u - 1.5, deck - 3), p.uv(u + 1.5, deck - 3), p.uv(u + 1.5, deck - 6.6), p.uv(u, deck - 8.6),
-                             p.uv(u - 1.5, deck - 6.6)], .colour(I.stoneTop), width: 0.6)
-                }
+            wall(side, from: side == .left ? -cabin : cabin, cabin, at: deck) { p in
+                var boards = PathData()
+                for v in stride(from: 1.4, to: 5.4, by: 1.3) { boards.move(p.uv(0, v)); boards.line(p.uv(w, v)) }
+                p.svg.path(boards, stroke: .colour(I.line), width: 0.35, opacity: 0.45)
+                p.paintedBand(0, w, 5.4, 7)
+                for u in [0.9, w - 0.9] { p.shape(p.panel(u - 0.9, 0, u + 0.9, eaves - deck), .colour(I.navy), width: 0.5) }
+                p.casement(3.2, 8.6, w: w - 6.4, h: 6.4, lights: 2, frame: I.navy)
             }
         }
-        // The lookout: a floor of oak, walls of plaster framed in oak, a window on each side.
-        block(-e, -e, e, e, deck - 3, deck, top: nil, left: .colour(I.oakLight), right: .colour(I.oak), width: 1)
-        block(-e, -e, e, e, deck, eaves, top: nil, left: .colour(I.light), right: .colour(I.plasterShade))
-        let w = 2 * e * 32
-        for side in [IndustrialOldBuildingsSide.left, .right] {
-            wall(side, from: side == .left ? -e : e, e, at: deck) { p in
-                p.framing(w, from: 0, to: eaves - deck, posts: [1, w - 1], rail: 4.6, braces: [])
-                p.casement(4.4, 6, w: w - 8.8, h: 8.6, lights: 3)
-                p.paintedBand(0, w, 1.2, 3.6)
-            }
-        }
-        // The bell, hung from a bracket before the lookout's left side.
-        let bracket = iso(-0.1, e, eaves - 2)
-        pole(bracket, bracket + P(-7, 3.5), width: 1.2, colour: I.oak)
-        let bell = bracket + P(-7, 12)
-        line([bracket + P(-7, 3.5), bell + P(0, -5.4)], width: 0.7)
+        railing(-e + 0.03, e - 0.03, e - 0.03, e - 0.03, on: deck, height: 6, step: 2.6)
+        railing(e - 0.03, -e + 0.03, e - 0.03, e - 0.03, on: deck, height: 6, step: 2.6)
+        // The bell, hung from a bracket at the deck's front corner.
+        let bracket = iso(e, e, deck + 6)
+        line([bracket, bracket + P(0, -4), bracket + P(5, -4)], width: 1)
+        let bell = bracket + P(5, 4)
+        line([bracket + P(5, -4), bell + P(0, -4.6)], width: 0.6)
         func outline(_ o: P) -> PathData {
             var d = PathData()
-            d.move(bell + P(-3.4, 0) + o)
-            d.quad(bell + P(-2.6, -1.4) + o, bell + P(-2.4, -3.6) + o)
-            d.quad(bell + P(0, -6.4) + o, bell + P(2.4, -3.6) + o)
-            d.quad(bell + P(2.6, -1.4) + o, bell + P(3.4, 0) + o)
+            d.move(bell + P(-3, 0) + o)
+            d.quad(bell + P(-2.3, -1.2) + o, bell + P(-2.1, -3.2) + o)
+            d.quad(bell + P(0, -5.6) + o, bell + P(2.1, -3.2) + o)
+            d.quad(bell + P(2.3, -1.2) + o, bell + P(3, 0) + o)
             d.close()
             return d
         }
-        colour(.colour(I.iron)) { d, o in d = outline(o) }
-        line(width: 0.8) { d in d = outline(P(0, 0)) }
-        line([bell + P(-1.6, -4.2), bell + P(-2, -1)], width: 0.6, opacity: 0.6)
-        svg.circle(bell + P(0, 0.9), 0.9, fill: .colour(I.ironDark))
-        // The roof of slate, the weathervane at its peak, and the pennant at its corner.
-        let peak = hippedRoof(-0.46, -0.46, 0.46, 0.46, eaves: eaves, rise: 21, overhang: 0.05, finials: false)
+        colour(.colour(I.brass)) { d, o in d = outline(o) }
+        line(width: 0.7) { d in d = outline(P(0, 0)) }
+        svg.circle(bell + P(0, 0.8), 0.8, fill: .colour(I.brassShade))
+        // The roof of slate and the weathervane at its peak.
+        let peak = hippedRoof(-cabin - 0.02, -cabin - 0.02, cabin + 0.02, cabin + 0.02, eaves: eaves, rise: 16, overhang: 0.05,
+                              finials: false)
         weathervane(at: iso(0, 0, peak), height: 11)
     }
 
-    /// The tower being built: its shaft half raised in fresh stone inside
-    /// scaffolding flying the owner's pennant, with stone, oak and mortar to hand.
+    /// The tower being built: the plinth laid, the legs raised two stages
+    /// and girdered, a gin pole lashed to them hoisting the next girder,
+    /// scaffolding flying the owner's pennant, and girders and plates to hand.
     private mutating func lookoutTowerRising() {
         typealias I = IndustrialOldBuildingsInk
-        let s = Self.towerShaft, top = 36.0
-        scaffold([(-0.44, -0.44), (0.44, -0.44)], from: 3, height: 50, levels: [15, 30, 44])
-        shadow([iso(s, -s, 3), iso(s + 0.12, -s + 0.08, 3), iso(s + 0.12, s, 3), iso(s, s, 3)])
-        block(-s, -s, s, s, 3, top, top: .colour(I.rawStoneTop), left: .colour(I.rawStone), right: .colour(I.rawStoneShade))
-        towerWalls(top: top, raw: true)
-        blocks(-s, -s, s, -0.08, from: top, courses: 1)
-        blocks(-s, -0.08, -0.1, s, from: top, courses: 1)
-        scaffold([(-0.44, 0.44), (0.44, 0.44), (0.44, -0.44)], from: 3, height: 50, levels: [15, 30, 44], boards: 30,
+        let top = Self.stages[2]
+        scaffold([(-0.46, -0.46), (0.46, -0.46)], from: 3, height: 52, levels: [16, 32, 46])
+        shadow([iso(0.42, -0.42, 3), iso(0.54, -0.34, 3), iso(0.54, 0.42, 3), iso(0.42, 0.42, 3)])
+        towerPlinth(raw: true)
+        frameFace((-1, -1), (1, -1), to: top, legs: true)
+        frameFace((-1, -1), (-1, 1), to: top, legs: false)
+        innerLadder(to: top - 4)
+        frameFace((-1, 1), (1, 1), to: top, legs: true)
+        frameFace((1, 1), (1, -1), to: top, legs: false)
+        // The gin pole on the near leg, its tackle lifting a girder.
+        let foot = leg(1, 1, Self.plinthTop), head = leg(1, 1, top) - P(0, 22)
+        pole(foot, head, width: 1.8, colour: I.timberLight)
+        let hook = head + P(-12, 4)
+        line([head, hook], width: 0.6)
+        line([hook, hook + P(0, 9)], width: 0.6)
+        girder(hook + P(-7, 12), hook + P(7, 6), width: 1.8)
+        line([hook + P(0, 9), hook + P(-5, 11.2)], width: 0.5)
+        line([hook + P(0, 9), hook + P(5, 6.8)], width: 0.5)
+        scaffold([(-0.46, 0.46), (0.46, 0.46), (0.46, -0.46)], from: 3, height: 52, levels: [16, 32, 46], boards: 32,
                  inward: (0, -0.12))
-        pennant(at: iso(0.44, 0.44, 53), height: 11, length: 12)
-        blocks(0.33, -0.3, 0.46, -0.02, from: 3, courses: 1)
-        basket(at: iso(0.38, 0.16, 3), size: 0.8)
-        beam(-0.42, 0.42, -0.02, 0.42, on: 3, size: 2.4)
+        pennant(at: iso(0.46, 0.46, 55), height: 11, length: 12)
+        // Girders and plates waiting on the ground.
+        for k in 0..<3 {
+            let y = 0.18 + Double(k) * 0.07
+            girder(iso(-0.44, y, 3.6 + Double(k % 2) * 1.6), iso(-0.06, y, 3.6 + Double(k % 2) * 1.6), width: 1.6)
+        }
+        block(0.2, -0.4, 0.44, -0.12, 3, 5.4, top: .colour(I.ironLight), left: .colour(I.iron), right: .colour(I.ironDark), width: 0.8)
+        barrel(at: iso(0.36, 0.14, 3), size: 0.75)
     }
 }

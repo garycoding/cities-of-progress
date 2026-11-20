@@ -3,20 +3,21 @@
 
 import Foundation
 
-// The Alchemy-age palisade and stone wall, each one tile that joins its
+// The Industrial-age palisade and stone wall, each one tile that joins its
 // neighbours. The key names no neighbours, so each fills its tile to the
 // edges, is outlined only along the ground and the top, where a row's
 // outline runs on unbroken, and repeats its features every tile, so that
 // across a joint they keep the same spacing whichever way a row runs.
 //
-// The palisade is still timber: sharpened stakes of oak, capped with iron
-// and bound with two iron bands, set in a footing of dressed stone carrying a
-// band of the owner's colour. The stone wall is taller: dressed stone on a
-// darker footing, a table of corbels carrying a parapet, a band of the
-// owner's colour beneath it, and on the parapet one merlon pierced by a loop,
-// standing square in the middle of the tile, so that a row of tiles shows
-// merlons and crenels of about equal width. Each footprint is one tile: x
-// and y run from -0.5 to 0.5.
+// The palisade is still timber: sharpened stakes of oak, capped with iron,
+// bound with two iron bands and tied along each row by a bolted iron strap,
+// set in a footing of brick under a stone coping that carries a band of the
+// owner's colour. The stone wall is taller: a footing of dressed stone, a
+// body of brick, a string course of stone over a band of the owner's colour,
+// and a parapet coped in stone; on it one pier of brick with stone quoins,
+// pierced by a rifle loop, standing square in the middle of the tile, so
+// that a row of tiles shows piers and gaps of about equal width. Each
+// footprint is one tile: x and y run from -0.5 to 0.5.
 
 extension IndustrialOldBuildingsPainter {
     // MARK: The palisade
@@ -24,14 +25,18 @@ extension IndustrialOldBuildingsPainter {
     mutating func palisade(complete: Bool) {
         if complete {
             palisadeBank(height: 8)
-            for (x, y) in Self.stakeLattice { ironShodStake(x, y, on: 8, height: 26, radius: 3.1) }
+            for row in 0..<3 {
+                let y = Double(row - 1) / 3
+                ironStrap(along: y, on: 8 + 12)
+                for (x, yy) in Self.stakeLattice where abs(yy - y) < 0.01 { ironShodStake(x, yy, on: 8, height: 26, radius: 3.1) }
+            }
         } else {
             palisadeBank(height: 4)
             for (x, y) in Self.stakeLattice.prefix(3) { ironShodStake(x, y, on: 4, height: 26, radius: 3.1) }
             let first = Self.stakeLattice[0]
             pennant(at: iso(first.0, first.1, 30), height: 8, length: 12)
             for (k, y) in [0.14, 0.32].enumerated() { beam(-0.36 + Double(k) * 0.05, y, 0.32 + Double(k) * 0.05, y, on: 4, size: 3.4) }
-            blocks(0.2, -0.32, 0.42, -0.06, from: 4, courses: 1)
+            bricks(0.2, -0.32, 0.42, -0.06, from: 4, height: 4)
         }
     }
 
@@ -47,21 +52,32 @@ extension IndustrialOldBuildingsPainter {
         return places.sorted { ($0.0 + $0.1, $0.0) < ($1.0 + $1.1, $1.0) }
     }()
 
-    /// The footing of dressed stone filling the tile, `h` points tall.
+    /// The footing of brick filling the tile, `h` points tall, under a
+    /// coping of stone.
     private mutating func palisadeBank(height h: Double) {
         typealias I = IndustrialOldBuildingsInk
         let e = 0.5
-        colour([iso(-e, e, 0), iso(e, e, 0), iso(e, e, h), iso(-e, e, h)], .colour(I.stone))
-        colour([iso(e, e, 0), iso(e, -e, 0), iso(e, -e, h), iso(e, e, h)], .colour(I.stoneShade))
+        colour([iso(-e, e, 0), iso(e, e, 0), iso(e, e, h), iso(-e, e, h)], .colour(I.brick))
+        colour([iso(e, e, 0), iso(e, -e, 0), iso(e, -e, h), iso(e, e, h)], .colour(I.brickShade))
         colour(level(-e, -e, e, e, h), .colour(I.earth))
         for side in [IndustrialOldBuildingsSide.left, .right] {
             wall(side, from: side == .left ? -e : e, e, at: 0) { p in
-                p.courses(0, 32, 0, h, course: h >= 6 ? h / 3 : h / 2, brick: 32.0 / 3, opacity: 0.45)
-                if h >= 6 { p.paintedBand(0, 32, h / 3 + 0.9, 2 * h / 3 - 0.3) }
-                p.line([p.uv(0, h - 1), p.uv(32, h - 1)], width: 0.5, opacity: 0.6)
+                p.brickwork(0, 32, 0, h - 1.4, course: 2.2, brick: 32.0 / 6, opacity: 0.35, burnt: false)
+                if h >= 6 { p.paintedBand(0, 32, h / 3, 2 * h / 3 - 1.2) }
+                p.colour(p.panel(0, h - 1.4, 32, h), .colour(side == .left ? I.stoneTop : I.stone))
+                p.line([p.uv(0, h - 1.4), p.uv(32, h - 1.4)], width: 0.5, opacity: 0.7)
             }
         }
         line([iso(-e, e, 0), iso(e, e, 0), iso(e, -e, 0)], width: 1.1)
+    }
+
+    /// A strap of iron along the row of stakes at `y`, across the tile at
+    /// `h` points up, with a bolt head at each stake.
+    private mutating func ironStrap(along y: Double, on h: Double) {
+        typealias I = IndustrialOldBuildingsInk
+        let a = iso(-0.5, y, h), b = iso(0.5, y, h)
+        shape([a, b, b - P(0, 2), a - P(0, 2)], .colour(I.iron), width: 0.6)
+        svg.line([a - P(0, 1.6), b - P(0, 1.6)], stroke: .colour(I.ironLight), width: 0.4)
     }
 
     /// A stake of oak at (x, y) on `h`, `height` points to its point and
@@ -83,6 +99,8 @@ extension IndustrialOldBuildingsPainter {
             shape([band + P(-r, 0), band + P(r, 0), band + P(r, -1.5), band + P(-r, -1.5)], .colour(I.iron), width: 0.6)
             svg.circle(band + P(r * 0.3, -0.75), 0.4, fill: .colour(I.ironLight))
         }
+        // The bolt through the strap behind.
+        svg.circle(foot - P(0, 13), 0.7, fill: .colour(I.ironDark), stroke: .colour(I.line), width: 0.35)
     }
 
     // MARK: The stone wall
@@ -97,59 +115,63 @@ extension IndustrialOldBuildingsPainter {
         }
     }
 
-    /// The wall's body, filling the tile from the ground to `height`: dressed
-    /// stone in courses on a darker footing and, when `finished`, a table of
-    /// corbels, the owner's band, and a parapet four points tall above it.
+    /// The wall's body, filling the tile from the ground to `height`: brick in
+    /// courses on a footing of dressed stone and, when `finished`, the owner's
+    /// band, a string course of stone on blocks, and a parapet four points
+    /// tall above it, coped in stone.
     private mutating func curtain(height h: Double, finished: Bool) {
         typealias I = IndustrialOldBuildingsInk
         let e = 0.5, top = finished ? h + 4 : h
-        colour([iso(-e, e, 0), iso(e, e, 0), iso(e, e, top), iso(-e, e, top)], .colour(I.stone))
-        colour([iso(e, e, 0), iso(e, -e, 0), iso(e, -e, top), iso(e, e, top)], .colour(I.stoneShade))
-        colour(level(-e, -e, e, e, top), .colour(finished ? I.footing : I.rawStoneTop))
-        let brick = 32.0 / 3
+        colour([iso(-e, e, 0), iso(e, e, 0), iso(e, e, top), iso(-e, e, top)], .colour(finished ? I.brick : I.rawBrick))
+        colour([iso(e, e, 0), iso(e, -e, 0), iso(e, -e, top), iso(e, e, top)], .colour(finished ? I.brickShade : I.rawBrickShade))
+        colour(level(-e, -e, e, e, top), .colour(finished ? I.stoneShade : I.brickTop))
         for side in [IndustrialOldBuildingsSide.left, .right] {
             wall(side, from: side == .left ? -e : e, e, at: 0) { p in
                 p.colour(p.panel(0, 0, 32, 5), .colour(side == .left ? I.footing : I.footingShade))
                 p.line([p.uv(0, 5), p.uv(32, 5)], width: 0.6, opacity: 0.8)
                 for u in [8.0, 24.0] { p.line([p.uv(u, 0.4), p.uv(u, 4.6)], width: 0.5, opacity: 0.6) }
-                p.courses(0, 32, 5, finished ? h - 7 : h, course: 4.4, brick: brick, opacity: 0.45, phase: -brick / 4)
+                p.brickwork(0, 32, 5, finished ? h - 4.6 : h, course: 2.5, brick: 32.0 / 6, opacity: 0.35, burnt: finished)
                 guard finished else { return }
-                // The owner's band, then the corbel table, then the parapet.
+                // The owner's band, then the string course on its blocks, then the parapet.
                 p.paintedBand(0, 32, h - 10.4, h - 8)
                 let lit = side == .left ? I.stoneTop : I.stone
                 for u in stride(from: 32.0 / 8, to: 32, by: 32.0 / 4) {
-                    p.shape([p.uv(u - 1.6, h - 1.4), p.uv(u + 1.6, h - 1.4), p.uv(u + 1.6, h - 4.6), p.uv(u, h - 6.6),
-                             p.uv(u - 1.6, h - 4.6)], .colour(lit), width: 0.55)
+                    p.shape(p.panel(u - 1.4, h - 4.6, u + 1.4, h - 1.4), .colour(lit), width: 0.5)
                 }
                 p.colour(p.panel(0, h - 1.4, 32, h + 4), .colour(lit))
                 p.line([p.uv(0, h - 1.4), p.uv(32, h - 1.4)], width: 0.7)
-                p.line([p.uv(0, h + 1.4), p.uv(32, h + 1.4)], width: 0.4, opacity: 0.5)
-                for u in [5.33, 16, 26.67] { p.line([p.uv(u, h - 1), p.uv(u, h + 1.2)], width: 0.4, opacity: 0.5) }
+                p.brickwork(0, 32, h - 1.4, h + 2.6, course: 2, brick: 32.0 / 6, opacity: 0.35, burnt: false)
+                p.colour(p.panel(0, h + 2.6, 32, h + 4), .colour(I.stoneTop))
+                p.line([p.uv(0, h + 2.6), p.uv(32, h + 2.6)], width: 0.45, opacity: 0.7)
+                p.line([p.uv(0, h - 1.4), p.uv(32, h - 1.4)], width: 0.7)
             }
         }
         line([iso(-e, e, 0), iso(e, e, 0), iso(e, -e, 0)], width: 1.2)
         line([iso(-e, e, top), iso(e, e, top), iso(e, -e, top)], width: 1)
         line([iso(-e, e, top), iso(-e, -e, top), iso(e, -e, top)], width: 0.6, opacity: 0.6)
         if finished {
+            colour(level(-e + 0.06, -e + 0.06, e - 0.06, e - 0.06, top), .colour(I.stoneTop), opacity: 0.6)
             // The wall-walk behind the parapet, a little lower: a dark line along its inner edge.
             line([iso(-e, e - 0.12, top), iso(e - 0.12, e - 0.12, top), iso(e - 0.12, -e, top)], width: 0.5, opacity: 0.45)
         }
     }
 
-    /// The merlon standing square in the middle of the parapet, pierced by a
-    /// loop for a gun on its two faces, under a low pointed cap.
+    /// The pier standing square in the middle of the parapet: brick with
+    /// quoins of stone, pierced by a rifle loop dressed in stone on its two
+    /// faces, under a low pointed coping of stone.
     private mutating func loopedMerlon(on h: Double) {
         typealias I = IndustrialOldBuildingsInk
         let s = 0.25, rise = 12.0
         shadow([iso(s, -s, h), iso(s + 0.16, -s + 0.06, h), iso(s + 0.16, s + 0.06, h), iso(s, s, h)], opacity: 0.16)
-        block(-s, -s, s, s, h, h + rise, top: nil, left: .colour(I.stone), right: .colour(I.stoneShade), width: 0.9)
+        block(-s, -s, s, s, h, h + rise, top: nil, left: .colour(I.brick), right: .colour(I.brickShade), width: 0.9)
         for side in [IndustrialOldBuildingsSide.left, .right] {
             wall(side, from: side == .left ? -s : s, s, at: h) { p in
                 let w = 2 * s * 32
-                p.courses(0, w, 0, rise, course: 4, brick: 32.0 / 3, opacity: 0.45, phase: -8 / 3)
-                // A loop for a gun: a slit ending in a round.
-                p.shape(p.panel(w / 2 - 0.6, 4.4, w / 2 + 0.6, rise - 2), .colour(I.dark), width: 0.5)
-                p.svg.circle(p.uv(w / 2, 3.6), 1.4, fill: .colour(I.dark), stroke: .colour(I.line), width: 0.5)
+                p.brickwork(0, w, 0, rise, course: 2.4, brick: 32.0 / 6, opacity: 0.35, burnt: false)
+                p.quoins(at: side == .left ? 0 : w, atStart: side == .left, from: 0, to: rise, course: 3, reach: 3)
+                // A rifle loop in a dressing of stone.
+                p.shape(p.panel(w / 2 - 1.8, 2.2, w / 2 + 1.8, rise - 1.4), .colour(I.stoneTop), width: 0.5)
+                p.shape(p.panel(w / 2 - 0.55, 3.2, w / 2 + 0.55, rise - 2.4), .colour(I.dark), width: 0.45)
             }
         }
         let apex = iso(0, 0, h + rise + 2.8)
@@ -162,18 +184,19 @@ extension IndustrialOldBuildingsPainter {
         line([front, apex], width: 0.6)
     }
 
-    /// The wall being raised: the next course begun along its back, the owner's
-    /// pennant on a pole set in the work, a trough of mortar and stone waiting.
+    /// The wall being raised: the next courses begun along its back, the
+    /// owner's pennant on a pole set in the work, a trough of mortar and
+    /// bricks waiting.
     private mutating func curtainRising(on h: Double) {
         typealias I = IndustrialOldBuildingsInk
-        blocks(-0.5, -0.5, 0.1, -0.06, from: h, courses: 1)
+        bricks(-0.5, -0.5, 0.1, -0.1, from: h - 1.2, height: 3)
         pennant(at: iso(-0.28, -0.3, h + 4), height: 26, length: 13)
         block(0.05, 0.1, 0.4, 0.35, h, h + 2.6, top: .colour(I.timberLight), left: .colour(I.timber), right: .colour(I.timberDark),
               width: 0.8)
         colour(level(0.09, 0.14, 0.36, 0.31, h + 2.6), .colour(I.plasterShade))
         line([iso(0.12, 0.24, h + 3), iso(0.3, 0.16, h + 6.6)], width: 1)
-        blocks(0.18, -0.38, 0.42, -0.12, from: h, courses: 1)
-        blocks(-0.42, 0.12, -0.16, 0.38, from: h, courses: 1)
+        bricks(0.18, -0.38, 0.42, -0.12, from: h, height: 4)
+        bricks(-0.42, 0.12, -0.16, 0.38, from: h, height: 3)
         // The owner's band, already painted on the finished footing.
         for side in [IndustrialOldBuildingsSide.left, .right] {
             wall(side, from: side == .left ? -0.5 : 0.5, 0.5, at: 0) { p in p.paintedBand(0, 32, 7, 9.4) }
