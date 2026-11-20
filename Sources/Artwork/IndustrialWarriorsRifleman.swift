@@ -39,7 +39,7 @@ struct IndustrialWarriorsRifleman: PersonLook {
         var degrees: Double
         /// How far along the rifle the near hand holds the fore-end; nil when it works the bolt.
         var nearAlong: Double?
-        var farAlong = 9.5
+        var farAlong = 7.0
         var bolt = Bolt.home
         var eyes = Eyes.open
         var mouth = Mouth.firm
@@ -48,13 +48,13 @@ struct IndustrialWarriorsRifleman: PersonLook {
 
     /// The two shots of the cycle: aim, fire, recover, and the bolt worked.
     static let drill: [Drill] = {
-        let aim = Drill(lean: 5, butt: P(0.6, -46.4), degrees: 90.4, nearAlong: 23)
-        var fire = Drill(lean: 2.4, butt: P(-0.9, -46.9), degrees: 94.6, nearAlong: 23, eyes: .closed, headTilt: 5)
+        let aim = Drill(lean: 5, butt: P(3.8, -45.4), degrees: 90.4, nearAlong: 20.5)
+        var fire = Drill(lean: 2.4, butt: P(2.3, -45.9), degrees: 94.6, nearAlong: 20.5, eyes: .closed, headTilt: 5)
         fire.backLeg = Limb(-15, 7); fire.frontLeg = Limb(13, 11)
-        let recover = Drill(lean: 3.8, butt: P(-0.3, -46.8), degrees: 92.4, nearAlong: 23, eyes: .wide, headTilt: 6.5)
-        let lift = Drill(lean: 4.4, butt: P(0.2, -46.6), degrees: 91.2, bolt: .lifted, eyes: .down, headTilt: 6)
-        let back = Drill(lean: 4.2, butt: P(0, -46.6), degrees: 91.4, bolt: .back, eyes: .down, headTilt: 6)
-        let home = Drill(lean: 4.8, butt: P(0.4, -46.5), degrees: 90.8, bolt: .home, headTilt: 7)
+        let recover = Drill(lean: 3.8, butt: P(2.9, -45.8), degrees: 92.4, nearAlong: 20.5, eyes: .wide, headTilt: 6.5)
+        let lift = Drill(lean: 4.4, butt: P(3.4, -45.6), degrees: 91.2, bolt: .lifted, eyes: .down, headTilt: 6)
+        let back = Drill(lean: 4.2, butt: P(3.2, -45.6), degrees: 91.4, bolt: .back, eyes: .down, headTilt: 6)
+        let home = Drill(lean: 4.8, butt: P(3.6, -45.5), degrees: 90.8, bolt: .home, headTilt: 7)
         return [aim, fire, recover, lift, back, home, aim, fire, recover, lift, back, home]
     }()
 

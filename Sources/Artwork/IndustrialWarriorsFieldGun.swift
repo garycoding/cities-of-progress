@@ -20,9 +20,9 @@ import GameCore
 /// peaked caps with the team's band): the layer, on the gun's far side,
 /// clean-shaven with nose E, looks through the sight; the loader, beside the
 /// breech, with a bushy moustache and nose B.
-/// Standing, the crew wait by the gun; walking, the loader pushes on a
-/// handspike in the trail and the layer at the shield, and the wheels turn
-/// with their stride; fighting, the gun fires with a flash and a cloud of
+/// Standing, the crew wait by the gun; walking, the loader pushes at the
+/// breech and the layer hauls on a drag rope ahead, and the
+/// wheels turn with their stride; fighting, the gun fires with a flash and a cloud of
 /// smoke, its barrel recoils on the cradle and runs out again, the layer lays
 /// it again, and the loader swings the breech open (the spent case flying),
 /// loads the next round, closes the breech and stoops to the box for another.
@@ -32,7 +32,7 @@ import GameCore
 /// stands on it: between the wheels and the trail's spade, with the crew
 /// behind the breech (a breech-loader is served from behind its shield).
 struct IndustrialWarriorsFieldGun: PersonLook {
-    static let canvas = Canvas(minX: -54, minY: -104, width: 176, height: 110, pixelsPerUnit: Canvas.person.pixelsPerUnit)
+    static let canvas = Canvas(minX: -54, minY: -104, width: 178, height: 110, pixelsPerUnit: Canvas.person.pixelsPerUnit)
 
     /// How far the gun and its crew are moved so that the origin is at the
     /// middle of the ground they stand on.
@@ -154,11 +154,11 @@ struct IndustrialWarriorsFieldGun: PersonLook {
 
     // MARK: The crew's places
 
-    static let layerAt = -27.0, walkingLayerAt = -42.0
-    static let walkingLoaderAt = -62.0
+    static let layerAt = -27.0, walkingLayerAt = 51.0
 
-    /// The handspike pushed in the trail's eye whilst walking.
-    static let spikeFoot = P(-58.6, -9), spikeTop = P(-48, -35)
+    /// Where the drag rope is made fast, on the carriage before the axle.
+    static let ropeEye = P(8, -24)
+    static let walkingLoaderAt = -50.0
 
     // MARK: The rigs
 
@@ -179,8 +179,9 @@ struct IndustrialWarriorsFieldGun: PersonLook {
             r.lean = 16
             r.mouth = .firm
             let at = P(walkingLoaderAt, 0)
-            r.frontArm = IndustrialWarriorsKit.reach(r, front: true, origin: at, to: spikeTop + P(-0.6, 1.2))
-            r.backArm = IndustrialWarriorsKit.reach(r, front: false, origin: at, to: spikeTop + (spikeFoot - spikeTop) * 0.2)
+            // Both hands on the breech, pushing.
+            r.frontArm = IndustrialWarriorsKit.reach(r, front: true, origin: at, to: onBarrel(1, -1.6))
+            r.backArm = IndustrialWarriorsKit.reach(r, front: false, origin: at, to: onBarrel(-0.6, 2.4))
         case .fighting:
             let s = loads[frame]
             r = Moves.standing(frame == 0 || frame == 11 ? frame : 0)
@@ -201,12 +202,12 @@ struct IndustrialWarriorsFieldGun: PersonLook {
         switch pose {
         case .walking:
             r = Moves.walking(frame, stride: pace)
-            r.lean = 14
+            r.lean = 11
             r.mouth = .firm
-            let at = P(walkingLayerAt, 0)
-            r.frontArm = IndustrialWarriorsKit.reach(r, front: true, origin: at, to: P(-30.6, -42))
-            r.backArm = IndustrialWarriorsKit.reach(r, front: false, origin: at, to: P(-31.4, -37))
-            return (r, at)
+            // Ahead of the gun, hauling on the drag rope over his shoulder.
+            r.backArm = BronzePeopleKit.reach(IronWarriorsKit.backShoulder(r), P(2, -42))
+            r.frontArm = BronzePeopleKit.reach(IronWarriorsKit.frontShoulder(r), P(3.4, -40))
+            return (r, P(walkingLayerAt, 0))
         case .fighting:
             r = Moves.standing(frame)
             r.backLeg = Limb(-12, 6); r.frontLeg = Limb(12, 8)
@@ -241,11 +242,20 @@ struct IndustrialWarriorsFieldGun: PersonLook {
         d.svg.group(at: Self.offset) { svg in
             svg.ellipse(P(-28, 0.2), 50, 4.2, fill: .colour("#000000"), opacity: 0.13)
 
-            // The layer, on the gun's far side, behind it.
+            // The layer, on the gun's far side: behind it, or ahead of it hauling.
             let (layerRig, layerAt) = Self.layerRig(pose, frame)
             var layerDrawing = Drawing(layer: layer, rig: layerRig, phase: phase)
             Self.drawLayer(&layerDrawing, pose, frame)
-            svg.group(at: layerAt) { $0.raw(layerDrawing.svg.body) }
+            let layerBody = layerDrawing.svg.body
+            if pose == .walking {
+                // The drag rope, from its eye on the carriage to his hand at his shoulder.
+                let hand = layerDrawing.world(layerDrawing.joints.backHand) + layerAt
+                var rope = PathData()
+                rope.move(Self.ropeEye + P(Self.far.x, 0)); rope.quad(P((Self.ropeEye.x + hand.x) / 2, -27), hand)
+                svg.path(rope, stroke: .colour(Ink.line), width: 1.7)
+                svg.path(rope, stroke: .colour(IndustrialWarriorsInk.paleBuff), width: 0.8)
+            }
+            svg.group(at: layerAt) { $0.raw(layerBody) }
 
             // The gun.
             svg.group(at: P(jump, 0)) { svg in
@@ -260,7 +270,6 @@ struct IndustrialWarriorsFieldGun: PersonLook {
                 Self.sight(&svg)
                 Self.wheel(&svg, at: Self.axle, degrees: spin, far: false)
             }
-            if pose == .walking { Self.handspike(&svg) }
             if pose == .fighting {
                 Self.shot(&svg, frame: frame)
                 if frame == 1 { BronzePeopleProps.dust(&svg, at: P(-70, -1.4), size: 1, opacity: 0.45) }
@@ -423,12 +432,6 @@ struct IndustrialWarriorsFieldGun: PersonLook {
         }
     }
 
-    /// The handspike in the trail's eye, pushed on whilst walking.
-    static func handspike(_ svg: inout SVG) {
-        svg.line([spikeFoot, spikeTop], stroke: .colour(Ink.line), width: 2.8)
-        svg.line([spikeFoot, spikeTop], stroke: .colour(IndustrialWarriorsInk.paleWood), width: 1.4)
-    }
-
     // MARK: The shot
 
     /// The flash at the muzzle, and the cloud of smoke and dust that rolls
@@ -474,9 +477,10 @@ struct IndustrialWarriorsFieldGun: PersonLook {
                     for i in 0..<3 { d.svg.circle(d.up(P(7.8 + Double(i) * 0.2, -44 + Double(i) * 4.4)), 0.5, fill: .colour(IndustrialWarriorsInk.paleSoot)) }
                 }
                 // The seat of the trousers, from the waist to the legs, and the braces.
-                IndustrialWarriorsKit.shape(&d.svg, [d.up(P(-12.8, -28.4)), d.up(P(11.2, -28.6)), P(9.8, -18.4), P(6.8, -14.4), P(-5.8, -14.4), P(-11.8, -18.4)],
+                IndustrialWarriorsKit.shape(&d.svg, [d.up(P(-11.6, -28.4)), d.up(P(10.6, -28.6)), P(9.2, -19), P(6.4, -14.6), P(-5.2, -14.6), P(-10.8, -19)],
                                             fill: .colour(IndustrialWarriorsInk.brick), width: 1.1)
                 d.svg.line([P(0.6, -27), P(0.4, -15.4)], stroke: .colour(IndustrialWarriorsInk.darkBrick), width: 0.8)
+                d.svg.path("M5.4,-26.6 q1.6,3 4.4,3.4", stroke: .colour(IndustrialWarriorsInk.darkBrick), width: 0.8)
                 for (top, bottom) in [(P(6, -47.4), P(5.6, -28.4)), (P(-4.6, -47.2), P(-7.4, -28.2))] {
                     let a = d.up(top), b = d.up(bottom)
                     IndustrialWarriorsKit.shape(&d.svg, [a + P(-1, 0), a + P(1, 0), b + P(1, 0), b + P(-1, 0)], fill: .colour(IndustrialWarriorsInk.darkSoot), width: 0.6)

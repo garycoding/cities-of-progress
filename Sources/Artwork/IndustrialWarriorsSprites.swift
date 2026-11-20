@@ -4,7 +4,7 @@
 import Foundation
 import GameCore
 
-/// The rifleman, the field gun with its crew of three and the armoured car of
+/// The rifleman, the field gun with its crew of two and the armoured car of
 /// the Industrial age, drawn in the Cartoon Modern style of docs/art-style.md
 /// on the jointed figure every age shares (Figure.swift), one age on from the
 /// Alchemy warriors (`AlchemyWarriorSprites`).
