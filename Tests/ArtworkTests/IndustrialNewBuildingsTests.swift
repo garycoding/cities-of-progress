@@ -269,7 +269,7 @@ struct IndustrialNewBuildingsRenders {
             (SpriteKey(.building(.house, .alchemy), .complete), 11, 19, .rome),
             (SpriteKey(.building(.factory, .industrial), .underConstruction), 17.5, 4.5, .angkor),
             (SpriteKey(.building(.railwayDepot, .industrial), .complete), 21, 10.5, .angkor),
-            (SpriteKey(.building(.oilWell, .industrial), .complete), 23, 13, .angkor),
+            (SpriteKey(.building(.oilWell, .industrial), .complete), 22, 16, .angkor),
             (SpriteKey(.site(.tree), .complete), 3.5, 4.5, nil),
             (SpriteKey(.site(.tree), .complete), 4.5, 2.5, nil),
             (SpriteKey(.site(.tree), .complete), 2.5, 13.5, nil),
