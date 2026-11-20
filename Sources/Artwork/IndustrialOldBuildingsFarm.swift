@@ -3,14 +3,17 @@
 
 import Foundation
 
-// The Alchemy-age farm: the Iron age's field of ripe grain standing in rows
-// along its furrows, low on its footprint, inside a fence of oak posts and
-// rails with a gate at the front flying the owner's pennants. At the back
-// corner a granary half-timbered in oak stands on staddle stones under a
-// steep roof of slate with a gilt finial, banded in the owner's colour, with
-// sheaves stood against it; a scarecrow in a tunic of the owner's colour
-// stands in the grain. A farm lasts forever, so it is never drawn spent. Its
-// footprint is three tiles square: x and y run from -1.5 to 1.5.
+// The Industrial-age farm: the Alchemy age's field of ripe grain standing in
+// rows along its furrows, low on its footprint, inside a fence of oak posts
+// and rails with a gate at the front flying the owner's pennants. A reaping
+// machine stands in the grain where it has cut two rows to stubble: a drive
+// wheel of iron, a cutter bar along its platform, a reel of slats above it,
+// the driver's seat on its spring, and a grain board of the owner's colour
+// along its platform, with sheaves left behind it. At the back corner a granary of
+// painted weatherboard stands on staddle stones under a roof of slate, banded
+// in the owner's colour, with sheaves stood against it. A farm lasts
+// forever, so it is never drawn spent. Its footprint is three tiles square:
+// x and y run from -1.5 to 1.5.
 
 /// The colours of the field: ploughed soil, and the ripe grain.
 private enum IndustrialOldBuildingsField {
@@ -34,6 +37,9 @@ extension IndustrialOldBuildingsPainter {
     private static let fieldGate = (x0: -0.26, x1: 0.26)
     /// Where the rows of grain run along x, from the back.
     private static let grainRows: [Double] = (0..<9).map { -1.2 + Double($0) * 0.3 }
+    /// The rows the reaper has cut, and where the cutting stopped along x.
+    private static let cutRows: [Double] = [0.3, 0.6]
+    private static let cutFrom = 0.22
 
     private mutating func grainField() {
         let e = Self.fieldFence
@@ -43,8 +49,15 @@ extension IndustrialOldBuildingsPainter {
         granary(complete: true)
         for y in Self.grainRows {
             let start = y - 0.1 < Self.granaryBox.y1 + 0.06 ? Self.granaryBox.x1 + 0.2 : -1.26
-            grainRow(from: start, to: 1.26, at: y)
-            if abs(y) < 0.01 { scarecrow(at: iso(0.32, 0.16, 1.5)) }
+            // The two rows the reaper has cut, from its cutter bar to the fence.
+            let cut = Self.cutRows.contains { abs($0 - y) < 0.01 }
+            grainRow(from: start, to: cut ? Self.cutFrom : 1.26, at: y)
+            if cut { stubble(from: Self.cutFrom, to: 1.3, at: y) }
+            if abs(y - Self.cutRows[1]) < 0.01 {
+                sheaf(at: iso(1.02, 0.36, 1.5))
+                sheaf(at: iso(1.22, 0.56, 1.5))
+                reaper(at: (Self.cutFrom + 0.08, 0.42))
+            }
         }
         railFence(from: (-e, e), to: (Self.fieldGate.x0, e), posts: 4)
         railFence(from: (Self.fieldGate.x1, e), to: (e, e), posts: 4)
@@ -84,9 +97,10 @@ extension IndustrialOldBuildingsPainter {
         pennant(at: iso(x1, y, 17.5), height: 12, length: 13)
     }
 
-    /// The granary at the back corner: half-timbered on staddle stones, banded
-    /// in the owner's colour, under a roof of slate, with a ladder to its
-    /// door; or, being built, its stones set and its floor's frame laid on them.
+    /// The granary at the back corner: painted weatherboard on staddle
+    /// stones, banded in the owner's colour, its door and corner boards
+    /// painted navy, under a roof of slate, with a ladder to its door; or,
+    /// being built, its stones set and its floor's frame laid on them.
     private mutating func granary(complete: Bool) {
         typealias I = IndustrialOldBuildingsInk
         let (x0, y0, x1, y1) = Self.granaryBox
@@ -105,17 +119,28 @@ extension IndustrialOldBuildingsPainter {
               width: 1)
         let width = (x1 - x0 - 0.06) * 32
         wall(.left, from: x0 + 0.03, y1 - 0.03, at: floor) { p in
-            p.framing(width, from: 0, to: eave - floor, posts: [1, width - 1], rail: 7.4, braces: [(0, true)])
-            p.paintedBand(0, width, 7.4, 9.6)
-            p.shape(p.panel(width / 2 - 3.2, 0, width / 2 + 3.2, 7.4), .colour(I.dark), width: 0.8)
+            p.weatherboard(width, eave - floor)
+            p.paintedBand(0, width, 8, 10)
+            p.shape(p.panel(width / 2 - 3.4, 0, width / 2 + 3.4, 7.4), .colour(I.navy), width: 0.8)
+            p.line([p.uv(width / 2 - 2.8, 0.6), p.uv(width / 2 + 2.8, 6.8)], width: 0.5)
+            for u in [0.9, width - 0.9] { p.shape(p.panel(u - 0.9, 0, u + 0.9, eave - floor), .colour(I.navy), width: 0.45) }
         }
         wall(.right, from: x1 - 0.03, y1 - 0.03, at: floor) { p in
-            p.framing(width, from: 0, to: eave - floor, posts: [1, width - 1], rail: 7.4, braces: [(0, false)])
-            p.paintedBand(0, width, 7.4, 9.6)
+            p.weatherboard(width, eave - floor)
+            p.paintedBand(0, width, 8, 10)
+            p.shape(p.panel(width - 1.8, 0, width, eave - floor), .colour(I.navyShade), width: 0.45)
         }
-        gableAlongX(x0 + 0.03, y0 + 0.03, x1 - 0.03, y1 - 0.03, eave: eave, ridge: ridge, over: 0.07, gableWall: .colour(I.light)) { p, w, r in
-            p.timber(p.uv(w / 2, 0), p.uv(w / 2, r - 1), width: 1.4)
-            p.svg.circle(p.uv(w / 2 + 4, r * 0.32), 1.5, fill: .colour(I.dark), stroke: .colour(I.line), width: 0.5)
+        gableAlongX(x0 + 0.03, y0 + 0.03, x1 - 0.03, y1 - 0.03, eave: eave, ridge: ridge, over: 0.07,
+                    gableWall: .colour(I.plasterShade)) { p, w, r in
+            var boards = PathData()
+            var v = 1.6
+            while v < r - 1.4 {
+                let half = w / 2 * (1 - v / r) - 0.5
+                boards.move(p.uv(w / 2 - half, v)); boards.line(p.uv(w / 2 + half, v))
+                v += 1.6
+            }
+            p.svg.path(boards, stroke: .colour(I.line), width: 0.35, opacity: 0.45)
+            p.svg.circle(p.uv(w / 2, r * 0.36), 1.6, fill: .colour(I.navy), stroke: .colour(I.line), width: 0.5)
         }
         let mid = (x0 + x1) / 2
         let feet = (iso(mid - 0.05, y1 + 0.22, h0), iso(mid + 0.05, y1 + 0.22, h0))
@@ -135,7 +160,7 @@ extension IndustrialOldBuildingsPainter {
 
     /// The field being marked out: the back of it ploughed in furrows, the
     /// front still beaten earth with pegs and lines along the furrows to come,
-    /// the plough left at the end of the last, sacks of seed, the granary's
+    /// an iron plough left at the end of the last, a cart of seed in sacks, the granary's
     /// stones set, the fence begun, and the owner's pennant on a stake.
     private mutating func fieldMarkedOut() {
         typealias I = IndustrialOldBuildingsInk
@@ -164,9 +189,9 @@ extension IndustrialOldBuildingsPainter {
             for p in [a, b] { pole(p, p - P(0, 6.4), width: 1.1, colour: I.timberLight) }
         }
         plough(at: iso(0.42, -0.18, 1.5))
+        cart(0.62, 0.62, on: 1.5, length: 0.46, load: .sacks)
         for (k, y) in [0.96, 1.06, 1.16].enumerated() { beam(-0.2 + Double(k) * 0.04, y, 1.0, y, on: 1.5, size: 1.6) }
-        sack(at: iso(1.1, 0.42, 1.5))
-        sack(at: iso(1.22, 0.58, 1.5), size: 0.9)
+        sack(at: iso(1.18, 0.2, 1.5))
         sack(at: iso(-1.0, 1.1, 1.5))
         pennant(at: iso(-1.2, 0.2, 1.5), height: 26, length: 14)
     }
@@ -238,56 +263,130 @@ extension IndustrialOldBuildingsPainter {
                  stroke: .colour(IndustrialOldBuildingsField.grainShade), width: 0.6)
     }
 
-    /// A scarecrow standing in the grain at `p` on the screen: a post and an
-    /// arm of timber, a tunic of the owner's colour, a head of sacking under a
-    /// hat of straw, and straw at its cuffs.
-    private mutating func scarecrow(at p: P) {
-        typealias I = IndustrialOldBuildingsInk
-        pole(p, p - P(0, 30), width: 1.6, colour: I.timber)
-        pole(p - P(9.6, 22), p - P(-9.6, 22), width: 1.3, colour: I.timber)
-        let tunic = [p - P(5, 23.4), p - P(-5, 23.4), p - P(-6.4, 11), p - P(-2, 12.4), p - P(0, 10.6), p - P(2, 12.4),
-                     p - P(6.4, 11)]
-        shape(tunic, .team, width: 0.9)
-        // A belt of rope, and the sleeves over the arm.
-        line([p - P(5.6, 16.4), p - P(-5.6, 16.4)], width: 0.9)
-        shape([p - P(5, 23.4), p - P(9, 22.8), p - P(9, 20.4), p - P(5.4, 20.6)], .team, width: 0.8)
-        shape([p - P(-5, 23.4), p - P(-9, 22.8), p - P(-9, 20.4), p - P(-5.4, 20.6)], .team, width: 0.8)
-        for side in [-1.0, 1.0] {
-            line([p - P(side * 9, 22.6), p - P(side * 11.2, 23.4)], width: 0.6)
-            line([p - P(side * 9, 21.4), p - P(side * 11.4, 21.2)], width: 0.6)
+    /// Painted weatherboard on a wall drawn with `wall`, `w` wide and `h`
+    /// tall: lapped boards, each with its shadowed lower edge.
+    private mutating func weatherboard(_ w: Double, _ h: Double) {
+        var v = 1.6
+        var edges = PathData()
+        while v < h - 0.4 {
+            edges.move(uv(0, v)); edges.line(uv(w, v))
+            v += 1.6
         }
-        // The head: sacking, two stitched eyes and a mouth.
-        let head = p - P(0, 27.4)
-        svg.circle(head + P(-0.6, 0.4), 3.6, fill: .colour(I.light))
-        svg.circle(head, 3.6, fill: .none, stroke: .colour(I.line), width: 0.8)
-        line([head + P(-1.8, -0.8), head + P(-0.8, 0.2)], width: 0.5)
-        line([head + P(-0.8, -0.8), head + P(-1.8, 0.2)], width: 0.5)
-        line([head + P(0.9, -0.8), head + P(1.9, 0.2)], width: 0.5)
-        line([head + P(1.9, -0.8), head + P(0.9, 0.2)], width: 0.5)
-        line([head + P(-1.4, 1.8), head + P(1.6, 1.6)], width: 0.5)
-        // The hat: a wide brim of straw and a rounded crown.
-        let brim = head + P(0, -2.4)
-        colour(.colour(I.straw)) { d, o in
-            d.move(brim + P(-3, 0) + o)
-            d.cubic(brim + P(-3, -4.6) + o, brim + P(3, -4.6) + o, brim + P(3, 0) + o)
-            d.close()
-        }
-        line(width: 0.8) { d in
-            d.move(brim + P(-3, 0))
-            d.cubic(brim + P(-3, -4.6), brim + P(3, -4.6), brim + P(3, 0))
-        }
-        svg.ellipse(brim + P(-0.6, 0.5), 6.4, 1.4, fill: .colour(I.straw))
-        svg.ellipse(brim, 6.4, 1.4, fill: .none, stroke: .colour(I.line), width: 0.8)
-        line([brim + P(-2.8, -1.2), brim + P(2.8, -1.2)], width: 0.5, opacity: 0.8)
+        svg.path(edges, stroke: .colour(IndustrialOldBuildingsInk.line), width: 0.4, opacity: 0.5)
     }
 
-    /// An ard lying at `p` on the screen, its beam toward the back left and its share in the soil.
+    /// Stubble left where a row was cut, from x0 to x1 along the row at `y`.
+    private mutating func stubble(from x0: Double, to x1: Double, at y: Double) {
+        var d = PathData()
+        var x = x0 + 0.03
+        var k = 0
+        while x < x1 {
+            for dy in [-0.05, 0.03] {
+                let p = iso(x + dy * 0.4, y + dy, 1.5)
+                d.move(p); d.line(p - P(0.3 * Double(k % 3 - 1), 1.6 + Double(k % 2)))
+            }
+            x += 0.06
+            k += 1
+        }
+        svg.path(d, stroke: .colour(IndustrialOldBuildingsField.grainShade), width: 0.6)
+    }
+
+    /// A reaping machine standing in the field, its cutter bar at the cut's
+    /// end at (x, y) and its platform running back along x: a drive wheel of
+    /// iron on the near side, the platform with its cutter bar, a reel of
+    /// slats on arms above it, the driver's seat on a spring, a grain board
+    /// of the owner's colour along the platform, and the pole for the team reaching forward.
+    private mutating func reaper(at place: (Double, Double)) {
+        typealias I = IndustrialOldBuildingsInk
+        let (x, y) = place
+        let h0 = 1.5, deck = h0 + 5.6
+        let (px0, px1, py0, py1) = (x, x + 0.34, y - 0.2, y + 0.06)
+        shadow(level(px0 - 0.04, py0, px1 + 0.24, py1 + 0.2, h0), opacity: 0.16)
+        // The far side of the reel and its far arm.
+        let axle = (x: x + 0.12, h: deck + 11.0), rr = 0.15, rh = 6.4
+        func reelPoint(_ a: Double, _ yy: Double) -> P { iso(axle.x + rr * cos(a), yy, axle.h + rh * sin(a)) }
+        pole(iso(px1 - 0.02, py0 + 0.02, deck), iso(axle.x, py0 + 0.02, axle.h), width: 1.2, colour: I.timberDark)
+        // The platform: boards painted navy on a frame of iron, its cutter bar along the front edge.
+        block(px0, py0, px1, py1, deck - 3.4, deck, top: .colour(I.timberLight), left: .colour(I.light), right: .colour(I.navyShade),
+              width: 0.8)
+
+        let bar = [iso(px0 - 0.04, py0 - 0.04, deck - 1.6), iso(px0 - 0.04, py1 + 0.04, deck - 1.6)]
+        svg.line(bar, stroke: .colour(I.line), width: 2.2)
+        svg.line(bar, stroke: .colour(I.ironLight), width: 1)
+        var teeth = PathData()
+        for k in 0...6 {
+            let t = Double(k) / 6, p = bar[0] + (bar[1] - bar[0]) * t
+            teeth.move(p); teeth.line(p + P(-2.2, -0.6))
+        }
+        svg.path(teeth, stroke: .colour(I.line), width: 0.6)
+        // Cut stalks lying on the platform.
+        var cut = PathData()
+        for k in 0..<5 {
+            let yy = py0 + 0.04 + Double(k) * 0.045
+            cut.move(iso(px0 + 0.04, yy, deck + 0.4)); cut.line(iso(px1 - 0.06, yy + 0.02, deck + 0.4))
+        }
+        svg.path(cut, stroke: .colour(IndustrialOldBuildingsField.grainShade), width: 0.9)
+        // The grain board standing along the platform's near edge: the owner's
+        // colour in a rim of the light colour.
+        shape([iso(px0 + 0.02, py1, deck), iso(px1 - 0.1, py1, deck), iso(px1 - 0.1, py1, deck + 5.4),
+               iso(px0 + 0.02, py1, deck + 5.4)], .colour(I.light), width: 0.6)
+        shape([iso(px0 + 0.05, py1, deck + 0.8), iso(px1 - 0.13, py1, deck + 0.8), iso(px1 - 0.13, py1, deck + 4.6),
+               iso(px0 + 0.05, py1, deck + 4.6)], .team, width: 0.45)
+        cog(at: iso((px0 + px1 - 0.08) / 2, py1, deck + 2.7), radius: 1)
+        // The reel's slats, then its near arm and axle.
+        for k in 0..<4 {
+            let a = Double(k) * .pi / 2 + 0.4
+            let s0 = reelPoint(a, py0 - 0.02), s1 = reelPoint(a, py1 + 0.06)
+            svg.line([s0, s1], stroke: .colour(I.line), width: 1.8)
+            svg.line([s0, s1], stroke: .colour(I.timberLight), width: 0.8)
+            line([iso(axle.x, py1 + 0.06, axle.h), s1], width: 0.7)
+        }
+        svg.line([iso(axle.x, py0 - 0.02, axle.h), iso(axle.x, py1 + 0.08, axle.h)], stroke: .colour(I.ironDark), width: 1.2)
+        pole(iso(px1 - 0.02, py1 + 0.06, deck), iso(axle.x, py1 + 0.06, axle.h), width: 1.2, colour: I.timberDark)
+        // The frame of iron beside the drive wheel.
+        let fy = py1 + 0.08
+        svg.line([iso(px1 - 0.2, fy, deck), iso(px1 + 0.1, fy, deck)], stroke: .colour(I.line), width: 2)
+        svg.line([iso(px1 - 0.2, fy, deck), iso(px1 + 0.1, fy, deck)], stroke: .colour(I.iron), width: 1)
+        // The seat on its spring.
+        let seat = iso(px1 + 0.04, fy - 0.08, deck + 12)
+        line([iso(px1 - 0.06, fy - 0.08, deck + 4.6), seat + P(0, 1)], width: 1.1)
+        svg.ellipse(seat, 3.2, 1.4, fill: .colour(I.iron), stroke: .colour(I.line), width: 0.6)
+        // The pole reaching forward for the team.
+        pole(iso(px1 + 0.1, fy - 0.1, deck + 1), iso(px1 + 0.62, fy - 0.1, h0 + 5), width: 1.5, colour: I.timber)
+        pole(iso(px1 + 0.62, fy - 0.1, h0), iso(px1 + 0.62, fy - 0.1, h0 + 5), width: 1, colour: I.timberDark)
+        // The drive wheel of iron, its rim ribbed for grip.
+        wall(.left, from: px1 + 0.16, fy + 0.04, at: h0) { p in
+            let r = 6.4, c = p.uv(0, r)
+            p.svg.circle(c + p.shift, r, fill: .colour(I.iron), opacity: 0.25)
+            p.svg.circle(c, r, fill: .none, stroke: .colour(I.line), width: 2.6)
+            p.svg.circle(c, r, fill: .none, stroke: .colour(I.iron), width: 1.4)
+            var ribs = PathData()
+            for k in 0..<16 {
+                let a = Double(k) * .pi / 8
+                ribs.move(c + P(cos(a), sin(a)) * (r - 0.6)); ribs.line(c + P(cos(a), sin(a)) * (r + 0.7))
+            }
+            p.svg.path(ribs, stroke: .colour(I.line), width: 0.5)
+            var spokes = PathData()
+            for k in 0..<4 {
+                let a = Double(k) * .pi / 4 + 0.2
+                spokes.move(c + P(cos(a), sin(a)) * (r - 0.8)); spokes.line(c - P(cos(a), sin(a)) * (r - 0.8))
+            }
+            p.svg.path(spokes, stroke: .colour(I.line), width: 1.1)
+            p.svg.path(spokes, stroke: .colour(I.ironLight), width: 0.45)
+            p.svg.circle(c, 1.8, fill: .colour(I.iron), stroke: .colour(I.line), width: 0.5)
+        }
+    }
+
+    /// A plough of iron lying at `p` on the screen: its beam toward the back
+    /// left on a small front wheel, its two handles standing up behind, and its
+    /// share and mouldboard in the soil.
     private mutating func plough(at p: P) {
         typealias I = IndustrialOldBuildingsInk
-        pole(p + P(-2, -1), p + P(-22, -9.6), width: 1.8, colour: I.timber)
-        // The yoke-pole's end, and the handle standing up from the share.
-        pole(p + P(-22, -9.6), p + P(-25, -8.4), width: 1.2, colour: I.timber)
-        pole(p + P(0, -1.4), p + P(4.6, -12), width: 1.4, colour: I.timberLight)
-        shape([p + P(-1.6, -2.4), p + P(5, -1.2), p + P(8.2, 0.2), p + P(1, 0.6)], .colour(I.ironLight), width: 0.8)
+        pole(p + P(-1, -2), p + P(-22, -9), width: 1.8, colour: I.iron)
+        svg.ellipse(p + P(-21, -6.6), 2.2, 3, fill: .colour(I.ironLight), stroke: .colour(I.line), width: 0.7)
+        pole(p + P(0, -1.6), p + P(7.6, -12.6), width: 1.2, colour: I.timberLight)
+        pole(p + P(2.4, -1.2), p + P(10.2, -11.2), width: 1.2, colour: I.timberLight)
+        shape([p + P(-3, -3), p + P(4.4, -4.2), p + P(8.4, 0.2), p + P(1, 0.8)], .colour(I.navy), width: 0.8)
+        shape([p + P(-3, -1), p + P(1, 0.8), p + P(-4.6, 0.6)], .colour(I.ironLight), width: 0.6)
     }
 }
