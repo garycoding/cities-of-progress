@@ -32,9 +32,13 @@ public enum MapCommands {
     ///
     /// - Ground: move. A site: workers gather there (others move to it). An own
     ///   building that is unfinished or damaged: engineers work there. An own town
-    ///   centre or stock pen: workers, scholars and engineers work there. Another
-    ///   of the player's or an ally's: move to it. An opponent: attack.
-    public static func contextualOrder(on target: MapTarget, view: PlayerView, selection: [EntityID]) -> Order? {
+    ///   centre or stock pen: workers, scholars and engineers work there. A
+    ///   complete farm or alchemist's workshop: workers work there. A complete
+    ///   building where improvements are researched: scholars work there, to
+    ///   carry the research. Another of the player's or an ally's: move to it.
+    ///   An opponent: attack.
+    public static func contextualOrder(on target: MapTarget, view: PlayerView, selection: [EntityID],
+                                       catalogue: Catalogue = .standard) -> Order? {
         let people = selection.compactMap { view.entity($0) }.filter {
             if case .unit = $0.kind { return $0.owner == view.player } else { return false }
         }
@@ -61,6 +65,11 @@ public enum MapCommands {
                 if kind == .townCentre || kind == .stockPen {
                     let hands = ids { $0 == .worker || $0 == .scholar || $0 == .engineer }
                     if !hands.isEmpty { return .work(units: hands, at: entity.id) }
+                }
+                // Scholars carry the research at a complete building that researches.
+                if !unfinished && !catalogue.stats(kind).researches.isEmpty {
+                    let scholars = ids { $0 == .scholar }
+                    if !scholars.isEmpty { return .work(units: scholars, at: entity.id) }
                 }
                 // A complete farm takes a farmer, a complete alchemist's workshop its craftsmen.
                 if (kind == .farm || kind == .alchemistsWorkshop) && !unfinished {

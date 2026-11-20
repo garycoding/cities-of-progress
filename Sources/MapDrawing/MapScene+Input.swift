@@ -92,7 +92,8 @@ extension MapScene {
             target = .ground(MapPosition(x: min(max(position.x, 0), Double(session.view.mapWidth)),
                                          y: min(max(position.y, 0), Double(session.view.mapHeight))))
         }
-        if let order = MapCommands.contextualOrder(on: target, view: session.view, selection: session.selection) {
+        if let order = MapCommands.contextualOrder(on: target, view: session.view, selection: session.selection,
+                                                     catalogue: session.catalogue) {
             session.issue(order)
         }
     }
