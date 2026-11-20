@@ -87,6 +87,21 @@ import Testing
         }
     }
 
+    @Test func scholarsWorkAtACompleteBuildingThatResearches() {
+        let scholar = id(.unit(.scholar)), clubman = id(.unit(.clubman))
+        let barracks = view.entity(id(.building(.barracks)))!
+        #expect(MapCommands.contextualOrder(on: .entity(barracks), view: view, selection: [scholar, clubman])
+                == .work(units: [scholar], at: barracks.id))
+        var unfinished = barracks
+        unfinished.activity = .underConstruction(0.5)
+        #expect(MapCommands.contextualOrder(on: .entity(unfinished), view: view, selection: [scholar])
+                == .move(units: [scholar], to: barracks.position))
+        // A house researches nothing: scholars only go there.
+        let house = view.entity(id(.building(.house)))!
+        #expect(MapCommands.contextualOrder(on: .entity(house), view: view, selection: [scholar])
+                == .move(units: [scholar], to: house.position))
+    }
+
     @Test func anOpponentGivesAttack() {
         let clubman = id(.unit(.clubman))
         let enemy = view.entity(id(.unit(.spearman), owner: 1))!
