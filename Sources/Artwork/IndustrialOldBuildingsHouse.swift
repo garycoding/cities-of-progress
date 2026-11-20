@@ -3,107 +3,107 @@
 
 import Foundation
 
-// The Alchemy-age house: the Iron age's house grown into a town house of two
-// storeys. Its ground floor is of dressed stone with a door of teal plank and
-// a window glazed in leaded panes; its upper floor is half-timbered in dark
-// oak over plaster and jettied out over the street, with a band of the
-// owner's colour along the jetty's beam. Its gable faces the street under a
-// steep roof of slate with gilt finials, and a chimney of stone rises
-// through the roof. Barrels and a bench stand in the cobbled yard. Its
-// footprint is two tiles square: x and y run from -1 to 1.
+// The Industrial-age house: the Alchemy age's town house rebuilt as a villa
+// of red brick, two storeys on a plinth of stone. Its gable faces the street
+// under a roof of blue-grey slate, edged with a bargeboard painted the light
+// colour and an iron finial; a square bay window stands out from the ground
+// floor beside a panelled door under a fanlight; sash windows under arches of
+// brick light both floors; a string course of stone carries a band of the
+// owner's colour; and a chimney stack of brick with pots of clay rises
+// through the roof. Iron railings front the yard, where barrels and a bench
+// stand. Its footprint is two tiles square: x and y run from -1 to 1.
 
 extension IndustrialOldBuildingsPainter {
     mutating func house(complete: Bool) {
         cobbles(1, height: 2)
-        if complete { townHouse() } else { townHouseRising() }
+        if complete { villa() } else { villaRising() }
     }
 
     private static let ground = (x0: -0.78, y0: -0.86, x1: 0.42, y1: 0.3)
-    /// How far the upper floor stands out over the lower, in tiles.
-    private static let jetty = 0.07
     private static let floor = 17.0
     private static let eaves = 33.0
 
-    /// The ground floor's wall of stone drawn with `wall`, `length` long and
-    /// `height` tall: a plinth, courses, and quoins at the corner.
-    private mutating func groundWall(_ length: Double, _ height: Double, quoinAtStart: Bool) {
+    /// A wall of brick drawn with `wall`, `length` long and `height` tall: a
+    /// plinth of stone, the brickwork, quoins at its corners, and the string
+    /// course with the owner's band at the first floor.
+    private mutating func villaWall(_ length: Double, _ height: Double, floor f: Double, lit: Bool) {
         typealias I = IndustrialOldBuildingsInk
-        colour(panel(0, 0, length, 2.6), .colour(I.footing))
-        line([uv(0, 2.6), uv(length, 2.6)], width: 0.6)
-        courses(0, length, 2.6, height, course: 3.6, brick: 8.4)
-        quoins(at: quoinAtStart ? 0 : length, atStart: quoinAtStart, from: 2.6, to: height, course: 3.6)
+        shape(panel(0, 0, length, 2.6), .colour(lit ? I.footing : I.footingShade), width: 0.6)
+        brickwork(0, length, 2.6, height)
+        quoins(at: 0, atStart: true, from: 2.6, to: height, course: 3.2, reach: 3.6)
+        quoins(at: length, atStart: false, from: 2.6, to: height, course: 3.2, reach: 3.6)
+        stringCourse(0, length, f - 1.2, f + 0.4)
+        paintedBand(0, length, f + 1.3, f + 2.9)
     }
 
-    private mutating func townHouse() {
+    private mutating func villa() {
         typealias I = IndustrialOldBuildingsInk
         let (x0, y0, x1, y1) = Self.ground
-        let h0 = 2.0, f = Self.floor, e = Self.eaves, j = Self.jetty
-        let (u1, v1) = (x1 + j, y1 + j)
-        shadow([iso(x1, y0, h0), iso(x1 + 0.3, y0 + 0.16, h0), iso(x1 + 0.3, y1 + 0.12, h0), iso(x1, y1, h0)])
-        // The ground floor, of stone.
-        block(x0, y0, x1, y1, h0, f, top: nil, left: .colour(I.stone), right: .colour(I.stoneShade))
+        let h0 = 2.0, f = Self.floor, e = Self.eaves
         let front = (x1 - x0) * 32, side = (y1 - y0) * 32
+        shadow([iso(x1, y0, h0), iso(x1 + 0.3, y0 + 0.16, h0), iso(x1 + 0.3, y1 + 0.12, h0), iso(x1, y1, h0)])
+        // Railings along the front of the yard, behind the house's foot on the right.
+        railing(x1 + 0.12, y0 + 0.06, x1 + 0.12, y1 + 0.5, on: h0, height: 7)
+        block(x0, y0, x1, y1, h0, e, top: nil, left: .colour(I.brick), right: .colour(I.brickShade))
         wall(.left, from: x0, y1, at: h0) { p in
-            p.groundWall(front, f - h0, quoinAtStart: false)
-            p.door(11, 0, w: 8, h: 13)
-            p.casement(22, 4.4, w: 10, h: 7, lights: 2, frame: I.stoneTop)
+            p.villaWall(front, e - h0, floor: f - h0, lit: true)
+            p.door(29, 2.6, w: 7, h: 12.4)
+            p.casement(4, f - h0 + 5, w: 6, h: 8.6, lights: 1, frame: I.brick)
+            p.casement(14.4, f - h0 + 5, w: 6, h: 8.6, lights: 1, frame: I.brick)
+            p.casement(26.4, f - h0 + 5, w: 5.2, h: 8.6, lights: 1, frame: I.brick)
+            p.drainpipe(front - 1.6, from: e - h0)
         }
         wall(.right, from: x1, y1, at: h0) { p in
-            p.groundWall(side, f - h0, quoinAtStart: true)
-            p.casement(12, 4.4, w: 10, h: 7, lights: 2, frame: I.stoneTop)
+            p.villaWall(side, e - h0, floor: f - h0, lit: false)
+            p.casement(8, 4.6, w: 7.4, h: 8.6, lights: 2, frame: I.brick)
+            p.casement(23, 4.6, w: 5.6, h: 8.6, lights: 1, frame: I.brick)
+            p.casement(8, f - h0 + 5, w: 7.4, h: 8.6, lights: 2, frame: I.brick)
+            p.casement(23, f - h0 + 5, w: 5.6, h: 8.6, lights: 1, frame: I.brick)
         }
-        // The jetty's shadow on the stone below it.
-        shadow([iso(x0, y1, f - 3), iso(x1, y1, f - 3), iso(x1, y0, f - 3), iso(x1, y0, f), iso(x1, y1, f), iso(x0, y1, f)],
-               opacity: 0.16)
-        // The upper floor, half-timbered, standing out over the lower on the two sides that face the street.
-        block(x0, y0, u1, v1, f, e, top: nil, left: .colour(I.light), right: .colour(I.plasterShade))
-        let upperFront = (u1 - x0) * 32, upperSide = (v1 - y0) * 32
-        wall(.left, from: x0, v1, at: f) { p in
-            p.framing(upperFront, from: 0, to: e - f, posts: [1, 10, 20.5, 31, upperFront - 1], rail: 9,
-                      braces: [(0, true), (3, false)])
-            p.casement(12.4, 5, w: 6.4, h: 7, lights: 1)
-            p.casement(22.9, 5, w: 6.4, h: 7, lights: 1)
-            p.paintedBand(0, upperFront, 0.4, 2.6)
+        bayWindow(x0 + 0.08, x0 + 0.56, y1, depth: 0.12, from: h0, to: f - 2)
+        // The roof, its gable to the street, with a bargeboard painted the light colour.
+        let ridge = e + 24
+        gableAlongY(x0, y0, x1, y1, eave: e, ridge: ridge, over: 0.06, gableWall: .colour(I.brick)) { p, w, rise in
+            p.gableBrickwork(w, rise)
+            p.archedWindow(w / 2, rise * 0.22, w: 5, h: 9)
+            p.shape([p.uv(w / 2 - 1.4, rise - 6), p.uv(w / 2, rise - 3.6), p.uv(w / 2 + 1.4, rise - 6), p.uv(w / 2, rise - 8.4)],
+                    .colour(I.stoneTop), width: 0.45)
         }
-        wall(.right, from: u1, v1, at: f) { p in
-            p.framing(upperSide, from: 0, to: e - f, posts: [1, 13, 27, upperSide - 1], rail: 9, braces: [(0, true), (2, false)])
-            p.casement(16, 5, w: 8, h: 7, lights: 2)
-            p.paintedBand(0, upperSide, 0.4, 2.6)
-        }
-        // The jetty's beam ends showing under the upper floor.
-        for k in 0..<5 {
-            let x = x0 + 0.06 + Double(k) * (u1 - x0 - 0.12) / 4
-            shape([iso(x - 0.02, v1, f), iso(x + 0.02, v1, f), iso(x + 0.02, v1, f - 1.6), iso(x - 0.02, v1, f - 1.6)], .colour(I.oak),
-                  width: 0.5)
-        }
-        // The roof, its gable to the street.
-        let ridge = e + 26
-        gableAlongY(x0, y0, u1, v1, eave: e, ridge: ridge, over: 0.06, gableWall: .colour(I.light)) { p, w, rise in
-            // King post, collar and braces, and a small window in the apex.
-            p.timber(p.uv(w / 2, 0), p.uv(w / 2, rise - 1.5), width: 2)
-            p.timber(p.uv(w * 0.22, rise * 0.4), p.uv(w * 0.78, rise * 0.4), width: 1.8)
-            p.timber(p.uv(w * 0.1, 0.6), p.uv(w * 0.44, rise * 0.4 - 0.8), width: 1.6)
-            p.timber(p.uv(w * 0.9, 0.6), p.uv(w * 0.56, rise * 0.4 - 0.8), width: 1.6)
-            p.casement(w / 2 - 3, rise * 0.4 + 2.4, w: 6, h: 6, lights: 1)
-            p.timber(p.uv(0, 1), p.uv(w, 1), width: 2)
-        }
-        // The chimney of stone, rising through the roof's lit slope, with two pots.
-        let (cx0, cy0, cx1, cy1) = (0.2, -0.62, 0.36, -0.46)
-        let foot = e + (ridge - e) * ((u1 + 0.06) - (cx0 + cx1) / 2) / ((u1 + 0.06) - (x0 + u1) / 2) - 2
-        block(cx0, cy0, cx1, cy1, foot, ridge + 1, top: .colour(I.stoneTop), left: .colour(I.stone), right: .colour(I.stoneShade),
-              width: 0.9)
-        wall(.left, from: cx0, cy1, at: foot) { p in p.courses(0, 5.1, 0, ridge + 1 - foot, course: 3.2, brick: 5.1, opacity: 0.5) }
-        block(cx0 - 0.02, cy0 - 0.02, cx1 + 0.02, cy1 + 0.02, ridge + 1, ridge + 2.6, top: .colour(I.stoneTop),
-              left: .colour(I.stoneTop), right: .colour(I.stone), width: 0.8)
-        for (x, y) in [(cx0 + 0.04, cy0 + 0.05), (cx1 - 0.04, cy1 - 0.04)] {
-            let p = iso(x, y, ridge + 2.6)
-            shape([p + P(-1.5, 0), p + P(1.5, 0), p + P(1.1, -3.4), p + P(-1.1, -3.4)], .colour(I.clay), width: 0.6)
-        }
-        // Barrels and a bench in the yard.
+        // The stack of brick rising through the roof's right slope, with three pots.
+        let (cx0, cy0, cx1, cy1) = (0.1, -0.62, 0.3, -0.42)
+        let foot = e + (ridge - e) * ((x1 + 0.06) - (cx0 + cx1) / 2) / ((x1 + 0.06) - (x0 + x1) / 2) - 2
+        chimneyStack(cx0, cy0, cx1, cy1, from: foot, to: ridge + 4, pots: 2)
+        // Barrels, a bench and a lamp in the yard.
         barrel(at: iso(-0.88, 0.62, h0), size: 0.85)
         barrel(at: iso(-0.66, 0.8, h0), size: 0.8)
-        bench(at: (0.12, 0.62), on: h0)
-        sack(at: iso(0.78, 0.5, h0), size: 0.8)
+        bench(at: (0.12, 0.66), on: h0)
+        gasLamp(at: iso(0.74, 0.74, h0), height: 22)
+    }
+
+    /// A square bay window standing out `depth` tiles from the front wall at
+    /// `y`, from `xa` to `xb`, from `h0` to `h1`: sashes on its three faces
+    /// between brick piers, under a cornice and a roof of lead.
+    private mutating func bayWindow(_ xa: Double, _ xb: Double, _ y: Double, depth: Double, from h0: Double, to h1: Double) {
+        typealias I = IndustrialOldBuildingsInk
+        let y2 = y + depth
+        block(xa, y, xb, y2, h0, h1, top: nil, left: .colour(I.brick), right: .colour(I.brickShade), width: 1)
+        let w = (xb - xa) * 32, d = depth * 32
+        wall(.left, from: xa, y2, at: h0) { p in
+            p.shape(p.panel(0, 0, w, 2.6), .colour(I.footing), width: 0.5)
+            p.brickwork(0, w, 2.6, h1 - h0, burnt: false)
+            p.casement(2, 4.2, w: w - 4, h: 8.6, lights: 2)
+        }
+        wall(.right, from: xb, y2, at: h0) { p in
+            p.shape(p.panel(0, 0, d, 2.6), .colour(I.footingShade), width: 0.5)
+            p.casement(0.9, 4.2, w: d - 1.8, h: 8.6, lights: 1)
+        }
+        block(xa - 0.02, y - 0.01, xb + 0.02, y2 + 0.02, h1, h1 + 1.6, top: .colour(I.stoneTop), left: .colour(I.stoneTop),
+              right: .colour(I.stone), width: 0.7)
+        let top = [iso(xa - 0.02, y, h1 + 1.6), iso(xb + 0.02, y, h1 + 1.6), iso(xb + 0.02, y2 + 0.02, h1 + 1.6),
+                   iso(xa - 0.02, y2 + 0.02, h1 + 1.6)]
+        let back = [iso(xa - 0.02, y, h1 + 4.6), iso(xb + 0.02, y, h1 + 4.6)]
+        shape([top[3], top[2], back[1], back[0]], .colour(I.slateLight), width: 0.7)
+        shape([top[2], top[1], back[1]], .colour(I.slateShade), width: 0.6)
     }
 
     /// A bench of oak standing along x at (x, y) on `h`.
@@ -115,47 +115,46 @@ extension IndustrialOldBuildingsPainter {
               right: .colour(I.timberDark), width: 0.7)
     }
 
-    /// The house being built: its ground floor raised in fresh stone round the
-    /// door's opening, the oak frame of the upper floor standing on it with
-    /// its posts, plates and braces but no plaster yet, scaffolding with the
-    /// owner's pennant, a ladder, and slates, timber and mortar to hand.
-    private mutating func townHouseRising() {
+    /// The house being built: its ground storey raised in fresh brick on its
+    /// plinth, the openings of the door, the bay and the windows left, the
+    /// timber of the first floor's joists laid across it; scaffolding with the
+    /// owner's pennant; a ladder; and bricks, slates and mortar to hand.
+    private mutating func villaRising() {
         typealias I = IndustrialOldBuildingsInk
         let (x0, y0, x1, y1) = Self.ground
-        let h0 = 2.0, f = Self.floor, e = Self.eaves
+        let h0 = 2.0, f = Self.floor + 4
         let front = (x1 - x0) * 32, side = (y1 - y0) * 32
         slates(-0.96, -0.96, -0.82, -0.6, from: h0, height: 6)
-        // The frame's posts and plate at the back, behind the stone.
-        for x in [x0 + 0.04, -0.18, x1 - 0.04] { pole(iso(x, y0 + 0.04, f), iso(x, y0 + 0.04, e), width: 2, colour: I.oak) }
-        pole(iso(x0 + 0.04, y0 + 0.04, e), iso(x1 - 0.04, y0 + 0.04, e), width: 2, colour: I.oak)
-        pole(iso(x0 + 0.04, y0 + 0.04, e), iso(x0 + 0.04, y1 - 0.04, e), width: 2, colour: I.oak)
         shadow([iso(x1, y0, h0), iso(x1 + 0.18, y0 + 0.1, h0), iso(x1 + 0.18, y1 + 0.06, h0), iso(x1, y1, h0)])
-        shell(x0, y0, x1, y1, from: h0, floor: h0, to: f, thickness: 0.08, lit: .colour(I.rawStone),
-              shade: .colour(I.rawStoneShade), top: .colour(I.rawStoneTop), ground: .colour(I.pavingShade)) { p in
+        shell(x0, y0, x1, y1, from: h0, floor: h0, to: f, thickness: 0.07, lit: .colour(I.rawBrick),
+              shade: .colour(I.rawBrickShade), top: .colour(I.brickTop), ground: .colour(I.pavingShade)) { p in
             p.basket(at: p.iso(-0.3, -0.4, h0), size: 0.9)
+            p.bricks(0.0, -0.7, 0.24, -0.5, from: h0, height: 5)
+            // The joists of the first floor, laid across from wall to wall.
+            for k in 0..<6 {
+                let x = x0 + 0.12 + Double(k) * 0.2
+                p.pole(p.iso(x, y0 + 0.05, f - 2), p.iso(x, y1 - 0.05, f - 2), width: 1.6, colour: I.timberLight)
+            }
         }
         wall(.left, from: x0, y1, at: h0) { p in
-            p.courses(0, front, 0, f - h0, course: 3.6, brick: 8.4)
-            p.shape(p.panel(7, 0, 15, f - h0), .colour(I.dark), width: 1)
-            p.shape(p.panel(6, f - h0 - 2, 16, f - h0), .colour(I.oak), width: 0.7)
+            p.shape(p.panel(0, 0, front, 2.6), .colour(I.rawStone), width: 0.6)
+            p.brickwork(0, front, 2.6, f - h0, opacity: 0.4, burnt: false)
+            p.arch(29, 2.6, width: 7, height: 12.4, .colour(I.dark), line: 0.9)
+            p.shape(p.panel(3, 2.6, 18, 14), .colour(I.dark), width: 0.9)
+            p.timber(p.uv(2.4, 14.4), p.uv(18.6, 14.4), width: 1.4, paint: I.timberLight)
         }
-        wall(.right, from: x1, y1, at: h0) { p in p.courses(0, side, 0, f - h0, course: 3.6, brick: 8.4) }
-        // The frame of the upper floor at the front: sill, posts, a brace, and part of its plate.
-        pole(iso(x0, y1 - 0.02, f), iso(x1, y1 - 0.02, f), width: 2.2, colour: I.oak)
-        pole(iso(x1 - 0.02, y1, f), iso(x1 - 0.02, y0, f), width: 2.2, colour: I.oak)
-        for x in [x0 + 0.04, -0.4, -0.08, x1 - 0.04] { pole(iso(x, y1 - 0.04, f), iso(x, y1 - 0.04, e), width: 2, colour: I.oak) }
-        for y in [-0.3] { pole(iso(x1 - 0.04, y, f), iso(x1 - 0.04, y, e), width: 2, colour: I.oak) }
-        pole(iso(x0 + 0.04, y1 - 0.04, e), iso(-0.08, y1 - 0.04, e), width: 2, colour: I.oak)
-        pole(iso(x1 - 0.04, y1 - 0.04, e), iso(x1 - 0.04, -0.3, e), width: 2, colour: I.oak)
-        pole(iso(x0 + 0.06, y1 - 0.04, f + 1), iso(-0.4, y1 - 0.04, e - 2), width: 1.5, colour: I.oak)
-        pole(iso(x1 - 0.04, y1 - 0.06, f + 1), iso(x1 - 0.04, -0.3, e - 2), width: 1.5, colour: I.oak)
-        // Scaffolding along the side, its tallest pole flying the owner's pennant.
+        wall(.right, from: x1, y1, at: h0) { p in
+            p.shape(p.panel(0, 0, side, 2.6), .colour(I.rawStoneShade), width: 0.6)
+            p.brickwork(0, side, 2.6, f - h0, opacity: 0.4, burnt: false)
+            p.shape(p.panel(8, 4.6, 15.4, 13.2), .colour(I.dark), width: 0.8)
+            p.shape(p.panel(23, 4.6, 28.6, 13.2), .colour(I.dark), width: 0.8)
+        }
         scaffold([(x1 + 0.18, 0.26), (x1 + 0.18, -0.3), (x1 + 0.18, -0.8)], from: h0, height: 34, levels: [13, 26], boards: 13)
         pennant(at: iso(x1 + 0.18, 0.26, h0 + 34), height: 11, length: 13)
-        ladder(foot: iso(-0.62, y1 + 0.32, h0), iso(-0.46, y1 + 0.32, h0), head: iso(-0.62, y1 + 0.02, f + 5),
-               iso(-0.46, y1 + 0.02, f + 5), rungs: 5)
+        ladder(foot: iso(-0.62, y1 + 0.32, h0), iso(-0.46, y1 + 0.32, h0), head: iso(-0.62, y1 + 0.02, f + 3),
+               iso(-0.46, y1 + 0.02, f + 3), rungs: 5)
         timbers(-0.3, 0.5, length: 0.66, on: h0)
-        blocks(0.62, 0.55, 0.9, 0.86, from: h0, courses: 2)
+        bricks(0.62, 0.55, 0.9, 0.86, from: h0, height: 6)
         slates(0.72, -0.5, 0.88, -0.16, from: h0, height: 6)
         basket(at: iso(0.66, 0.3, h0), size: 0.9)
     }

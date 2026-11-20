@@ -280,3 +280,91 @@ extension IndustrialOldBuildingsPainter {
         }
     }
 }
+
+/// What a cart carries.
+enum IndustrialOldBuildingsLoad: Sendable {
+    case empty, sacks, sheaves, crates
+}
+
+extension IndustrialOldBuildingsPainter {
+    /// A two-wheeled cart standing on the map at (x, y) on `h`, its bed
+    /// running along x, `length` tiles long: a bed of boards painted navy
+    /// with sideboards, a pair of tall wheels of spoked timber with iron
+    /// tyres, shafts reaching forward to the right, a prop under them, and
+    /// `load` heaped in it.
+    mutating func cart(_ x: Double, _ y: Double, on h: Double, length: Double = 0.5, load: IndustrialOldBuildingsLoad) {
+        typealias I = IndustrialOldBuildingsInk
+        let (x0, x1, y0, y1) = (x - length / 2, x + length / 2, y - 0.12, y + 0.12)
+        let bed = h + 7.5, side = 4.5, r = 6.6
+        shadow(level(x0 - 0.04, y0, x1 + 0.3, y1 + 0.1, h), opacity: 0.14)
+        // The far wheel, half hidden.
+        wall(.left, from: x - 0.02, y0 - 0.02, at: h) { p in
+            p.svg.circle(p.uv(0, r), r, fill: .none, stroke: .colour(I.line), width: 2)
+            p.svg.circle(p.uv(0, r), r, fill: .none, stroke: .colour(I.timberDark), width: 0.9)
+        }
+        // The shafts, and the prop under their ends.
+        let tipA = iso(x1 + 0.42, y0 + 0.03, h + 4), tipB = iso(x1 + 0.42, y1 - 0.03, h + 4)
+        pole(iso(x0 + 0.1, y0 + 0.03, bed), tipA, width: 1.4, colour: I.timber)
+        pole(iso(x1 + 0.42, (y0 + y1) / 2, h), iso(x1 + 0.42, (y0 + y1) / 2, h + 4), width: 1.1, colour: I.timberDark)
+        // The bed and its sideboards.
+        block(x0, y0, x1, y1, bed, bed + 1.6, top: .colour(I.timberLight), left: .colour(I.navy), right: .colour(I.navyShade),
+              width: 0.8)
+        switch load {
+        case .empty: break
+        case .sacks:
+            for (dx, dy) in [(-0.12, -0.04), (0.08, -0.05), (-0.02, 0.06), (0.16, 0.05)] {
+                sack(at: iso(x + dx, y + dy, bed + 1.6), size: 0.75)
+            }
+        case .sheaves:
+            for (dx, dy) in [(-0.14, -0.05), (0.04, -0.05), (0.2, -0.05), (-0.1, 0.06), (0.1, 0.06)] {
+                sheaf(at: iso(x + dx, y + dy, bed + 1.6), size: 0.8)
+            }
+        case .crates:
+            crate(x0 + 0.04, y0 + 0.02, x0 + 0.24, y1 - 0.02, from: bed + 1.6, height: 5)
+            crate(x0 + 0.27, y0 + 0.02, x1 - 0.04, y1 - 0.02, from: bed + 1.6, height: 4)
+            barrel(at: iso(x0 + 0.38, y, bed + 5.6), size: 0.65)
+        }
+        for (a, b, paint) in [(iso(x0, y1, bed + 1.6), iso(x1, y1, bed + 1.6), I.navyLight)] {
+            shape([a, b, b - P(0, side), a - P(0, side)], .colour(paint), width: 0.7)
+            var slats = PathData()
+            for k in 1..<5 {
+                let t = Double(k) / 5, p = a + (b - a) * t
+                slats.move(p); slats.line(p - P(0, side))
+            }
+            svg.path(slats, stroke: .colour(I.line), width: 0.4, opacity: 0.6)
+        }
+        shape([iso(x1, y1, bed + 1.6), iso(x1, y0, bed + 1.6), iso(x1, y0, bed + 1.6 + side), iso(x1, y1, bed + 1.6 + side)],
+              .colour(I.navyShade), width: 0.7)
+        pole(iso(x0 + 0.1, y1 + 0.01, bed), tipB, width: 1.5, colour: I.timberLight)
+        // The near wheel: an iron tyre, a felloe of timber, twelve spokes and a hub.
+        wall(.left, from: x, y1 + 0.03, at: h) { p in
+            let c = p.uv(0, r)
+            p.svg.circle(c + p.shift, r, fill: .colour(I.timber), opacity: 0.25)
+            p.svg.circle(c, r, fill: .none, stroke: .colour(I.line), width: 2.2)
+            p.svg.circle(c, r, fill: .none, stroke: .colour(I.iron), width: 1)
+            p.svg.circle(c, r - 1.3, fill: .none, stroke: .colour(I.timberLight), width: 1)
+            var spokes = PathData()
+            for k in 0..<6 {
+                let a = Double(k) * .pi / 6
+                spokes.move(c + P(cos(a), sin(a)) * (r - 1.3)); spokes.line(c - P(cos(a), sin(a)) * (r - 1.3))
+            }
+            p.svg.path(spokes, stroke: .colour(I.line), width: 1.1)
+            p.svg.path(spokes, stroke: .colour(I.timberLight), width: 0.45)
+            p.svg.circle(c, 1.5, fill: .colour(I.iron), stroke: .colour(I.line), width: 0.5)
+        }
+    }
+
+    /// A sheaf of grain standing at `p` on the screen, bound at its waist.
+    mutating func sheaf(at p: P, size s: Double = 1) {
+        typealias I = IndustrialOldBuildingsInk
+        let outline = [p + P(-2.6 * s, 0), p + P(-1.2 * s, -4 * s), p + P(-2.4 * s, -8 * s), p + P(0, -9 * s),
+                       p + P(2.4 * s, -8 * s), p + P(1.2 * s, -4 * s), p + P(2.6 * s, 0)]
+        shape(outline, .colour(I.straw), width: 0.6)
+        colour([p + P(0.4 * s, 0), p + P(0.6 * s, -4 * s), p + P(1.6 * s, -8.4 * s), p + P(2.4 * s, -8 * s),
+                p + P(1.2 * s, -4 * s), p + P(2.6 * s, 0)], .colour(I.strawShade), opacity: 0.8)
+        line([p + P(-1.2 * s, -4 * s), p + P(1.2 * s, -4 * s)], width: 0.8)
+        var ears = PathData()
+        for dx in [-1.6, -0.5, 0.6, 1.6] { ears.move(p + P(dx * s, -7.8 * s)); ears.line(p + P(dx * 1.2 * s, -9.6 * s)) }
+        svg.path(ears, stroke: .colour(I.strawShade), width: 0.6)
+    }
+}

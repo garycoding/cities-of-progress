@@ -747,3 +747,28 @@ extension IndustrialOldBuildingsPainter {
                opacity: 0.14)
     }
 }
+
+extension IndustrialOldBuildingsPainter {
+    /// Brickwork in a gable drawn with `wall` (as `gableAlongX` and
+    /// `gableAlongY` give it), `w` wide at its foot and `rise` tall: courses
+    /// and staggered joints, each cut to the triangle.
+    mutating func gableBrickwork(_ w: Double, _ rise: Double, course: Double = 2.5, brick: Double = 6) {
+        typealias I = IndustrialOldBuildingsInk
+        var d = PathData()
+        var v = course, row = 1
+        func span(_ v: Double) -> (Double, Double) { (v / rise * w / 2 + 0.6, w - v / rise * w / 2 - 0.6) }
+        while v < rise - 1.5 {
+            let (a, b) = span(v)
+            if b > a { d.move(uv(a, v)); d.line(uv(b, v)) }
+            let (c0, c1) = span(v + course)
+            var u = (row % 2 == 0 ? brick / 2 : brick)
+            while u < w {
+                if u > c0 && u < c1 { d.move(uv(u, v + 0.2)); d.line(uv(u, v + course - 0.2)) }
+                u += brick
+            }
+            v += course
+            row += 1
+        }
+        svg.path(d, stroke: .colour(I.line), width: 0.35, opacity: 0.3)
+    }
+}

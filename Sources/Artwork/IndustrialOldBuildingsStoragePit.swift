@@ -3,129 +3,164 @@
 
 import Foundation
 
-// The Alchemy-age storage pit: the Iron age's store grown one age richer. A
-// deep cellar lined with dressed stone, its kerb painted with the owner's
-// colour, holds barrels, crates and sacks; a crane of oak with iron fittings
-// swings a barrel out of it on a pulley, under the owner's pennant; and a
-// shed of oak posts under a steep roof of slate, with a gilt finial, keeps
-// more barrels dry at the back. Its footprint is two tiles square: x and y
-// run from -1 to 1.
+// The Industrial-age storage pit: the Alchemy age's cellar and crane rebuilt
+// as a warehouse of red brick, two storeys and a loft under a gabled roof of slate.
+// Its gable faces the street, with a loading door to each floor and the
+// loft stacked one over another under the cathead, a beam of timber and iron at the apex from
+// which a sack hangs on its chain; a painted board of the owner's colour runs
+// across the gable under the cathead. Its side has small windows under brick
+// arches, iron shutters and tie-plates, and wide doors at the ground. A cart
+// with crates, barrels and sacks wait on the paved yard. Its footprint is two
+// tiles square: x and y run from -1 to 1.
 
 extension IndustrialOldBuildingsPainter {
     mutating func storagePit(complete: Bool) {
         cobbles(1, height: 1.5)
-        if complete { cellar() } else { cellarDug() }
+        if complete { warehouse() } else { warehouseRising() }
     }
 
-    /// The shed at the back left: posts of oak under a gabled roof of slate.
-    private mutating func storeShed(roofed: Bool) {
+    private static let store = (x0: -0.86, y0: -0.86, x1: 0.42, y1: 0.36)
+    private static let storeEaves = 25.0
+    private static let storeRidge = 41.0
+
+    /// A loading door of planks painted navy on a wall drawn with `wall`,
+    /// centred on `u` and standing on `v`, `w` wide and `h` tall, under a
+    /// lintel of stone, open at the top storey to show the dark within.
+    private mutating func loadingDoor(_ u: Double, _ v: Double, w: Double, h: Double, open: Bool = false) {
         typealias I = IndustrialOldBuildingsInk
-        let h0 = 1.5, (x0, y0, x1, y1) = (-0.98, -0.98, -0.62, -0.12), eave = 17.0
-        shadow(level(x0, y0, x1 + 0.12, y1 + 0.12, h0), opacity: 0.16)
-        for (x, y) in [(x0 + 0.03, y0 + 0.03), (x1 - 0.03, y0 + 0.03)] { pole(iso(x, y, h0), iso(x, y, h0 + eave), width: 1.6, colour: I.oak) }
-        if roofed {
-            for i in 0..<3 { barrel(at: iso(-0.8, -0.84 + Double(i) * 0.24, h0), size: 0.78) }
+        colour(panel(u - w / 2 - 0.8, v - 0.2, u + w / 2 + 0.8, v + h + 0.2), .colour(I.dark), opacity: 0.6)
+        if open {
+            shape(panel(u - w / 2, v, u + w / 2, v + h), .colour(I.dark), width: 0.8)
+            // One leaf swung back against the wall.
+            shape(panel(u + w / 2 + 0.6, v, u + w / 2 + 3.4, v + h), .colour(I.navy), width: 0.6)
+        } else {
+            shape(panel(u - w / 2, v, u + w / 2, v + h), .colour(I.navy), width: 0.8)
+            var planks = PathData()
+            var x = u - w / 2 + 1.4
+            while x < u + w / 2 - 0.4 { planks.move(uv(x, v + 0.3)); planks.line(uv(x, v + h - 0.3)); x += 1.4 }
+            svg.path(planks, stroke: .colour(I.line), width: 0.35, opacity: 0.5)
+            line([uv(u - w / 2 + 0.4, v + 0.4), uv(u + w / 2 - 0.4, v + h - 0.4)], width: 0.6)
+            line([uv(u, v), uv(u, v + h)], width: 0.6)
         }
-        for (x, y) in [(x0 + 0.03, y1 - 0.03), (x1 - 0.03, y1 - 0.03)] { pole(iso(x, y, h0), iso(x, y, h0 + eave), width: 1.6, colour: I.oak) }
-        guard roofed else {
-            pole(iso(x0 + 0.03, y1 - 0.03, h0 + eave), iso(x1 - 0.03, y1 - 0.03, h0 + eave), width: 1.6, colour: I.oak)
-            return
-        }
-        pole(iso(x1 - 0.03, y0, h0 + eave - 0.6), iso(x1 - 0.03, y1, h0 + eave - 0.6), width: 1.8, colour: I.oak)
-        gableAlongY(x0, y0, x1, y1, eave: h0 + eave, ridge: h0 + eave + 10, over: 0.04, gableWall: .colour(I.light)) { p, w, r in
-            p.timber(p.uv(w / 2, 0), p.uv(w / 2, r - 1), width: 1.5)
-            p.timber(p.uv(1, 1), p.uv(w - 1, 1), width: 1.6)
-        }
+        shape(panel(u - w / 2 - 1.2, v + h + 0.2, u + w / 2 + 1.2, v + h + 1.8), .colour(I.stoneTop), width: 0.5)
+        shape(panel(u - w / 2 - 0.8, v - 1.1, u + w / 2 + 0.8, v), .colour(I.stoneTop), width: 0.45)
     }
 
-    private mutating func cellar() {
+    /// A small window under a brick arch, with an iron shutter folded back,
+    /// on a wall drawn with `wall`.
+    private mutating func storeWindow(_ u: Double, _ v: Double) {
         typealias I = IndustrialOldBuildingsInk
-        let h0 = 1.5, rim = 5.0, floor = -4.0, e = 0.58, cx = 0.08
-        storeShed(roofed: true)
-        // The crane's post at the back right, behind the cellar.
-        let foot = iso(0.8, -0.8, h0), head = foot - P(0, 42)
-        pole(foot, head, width: 2.6, colour: I.oak)
-        shell(cx - e, -e, cx + e, e, from: h0, floor: floor, to: rim, thickness: 0.07, lit: .colour(I.stone),
-              shade: .colour(I.stoneShade), top: .colour(I.stoneTop), ground: .colour(I.dark)) { p in
-            let length = 2 * (e - 0.07) * 32
-            p.wall(.left, from: cx - e + 0.07, -e + 0.07, at: floor) { q in q.courses(0, length, 0, rim - floor, course: 3.4, brick: 8) }
-            p.wall(.right, from: cx - e + 0.07, e - 0.07, at: floor) { q in q.courses(0, length, 0, rim - floor, course: 3.4, brick: 8) }
-            // In the cellar, the farther first: crates, barrels and sacks.
-            p.crate(cx - 0.4, -0.42, cx - 0.12, -0.16, from: floor, height: 7)
-            p.barrel(at: p.iso(cx + 0.2, -0.3, floor), size: 0.9)
-            p.barrel(at: p.iso(cx + 0.35, -0.05, floor), size: 0.9)
-            p.sack(at: p.iso(cx - 0.32, 0.12, floor), size: 0.9)
-            p.sack(at: p.iso(cx - 0.12, 0.3, floor), size: 0.85)
-        }
-        colour(level(cx - e, e, cx + e, 0.99, h0), .colour(I.paving))
-        colour(level(cx + e, -e, 0.99, 0.99, h0), .colour(I.paving))
-        line([iso(cx - e, e, h0), iso(cx + e, e, h0), iso(cx + e, -e, h0)], width: 1.2)
-        wall(.left, from: cx - e, e, at: h0) { p in p.paintedBand(0, 2 * e * 32, 1, 2.6) }
-        wall(.right, from: cx + e, e, at: h0) { p in p.paintedBand(0, 2 * e * 32, 1, 2.6) }
-        // The crane: a jib out over the cellar, braced to the post and strapped with iron,
-        // a pulley at its end, and a barrel in a sling; the winding drum on the post.
-        let tip = head + P(-40, 9)
-        pole(head + P(1.5, -1), tip, width: 2, colour: I.oakLight)
-        pole(foot - P(0, 24), head + (tip - head) * 0.42, width: 1.3, colour: I.oakLight)
-        for p in [head, head + (tip - head) * 0.42, foot - P(0, 24), head + (tip - head) * 0.8] {
-            svg.circle(p, 1, fill: .colour(I.ironDark), stroke: .colour(I.line), width: 0.4)
-        }
-        let rope = tip + P(0, 17)
-        line([tip, rope], width: 0.7)
-        line([tip, head + P(0, 27)], width: 0.6)
-        svg.circle(tip, 2, fill: .colour(I.timberLight), stroke: .colour(I.line), width: 0.7)
-        svg.circle(tip, 0.6, fill: .colour(I.ironDark))
-        line([rope, rope + P(-3, 3)], width: 0.6)
-        line([rope, rope + P(3, 3)], width: 0.6)
-        barrel(at: rope + P(0, 12), size: 0.85)
-        let drum = head + P(0, 27)
-        svg.ellipse(drum, 3, 2.2, fill: .colour(I.timber), stroke: .colour(I.line), width: 0.7)
-        line([drum + P(-2.4, -0.4), drum + P(-5, -3.4)], width: 1.1)
-        pennant(at: head - P(0, 1), height: 11, length: 13)
-        finial(at: head - P(0, 0.4), size: 0.6)
-        // Goods waiting in the yard.
-        crate(0.62, 0.66, 0.9, 0.92, from: h0, height: 6)
-        sack(at: iso(-0.55, 0.85, h0), size: 0.85)
-        barrel(at: iso(-0.82, 0.62, h0), size: 0.8)
+        casement(u, v, w: 4.4, h: 6, lights: 1, frame: I.brick)
+        shape(panel(u + 5.4, v - 0.2, u + 7.6, v + 6.2), .colour(I.iron), width: 0.5)
+        for vv in [v + 1.4, v + 4.6] { svg.circle(uv(u + 6.5, vv), 0.35, fill: .colour(I.ironDark)) }
     }
 
-    /// The store being dug: the cellar open, its lining of stone laid partway
-    /// up the far walls, its earth heaped behind it, a ladder down into it,
-    /// the crane's post and the shed's posts set up, and stone waiting.
-    private mutating func cellarDug() {
+    /// A round tie-plate of iron on a wall drawn with `wall`, at (u, v).
+    private mutating func tiePlate(_ u: Double, _ v: Double) {
         typealias I = IndustrialOldBuildingsInk
-        let h0 = 1.5, floor = -7.0, e = 0.56, cx = 0.1, lining = 5.2, length = 2 * e * 32
-        storeShed(roofed: false)
-        heap(at: iso(-0.3, -0.85, h0), width: 30, height: 11)
-        let foot = iso(0.8, -0.8, h0)
-        pole(foot, foot - P(0, 34), width: 2.6, colour: I.oak)
-        pennant(at: foot - P(0, 34), height: 10, length: 13)
-        shell(cx - e, -e, cx + e, e, from: h0, floor: floor, to: h0, thickness: 0, lit: .colour(I.earthShade),
-              shade: .colour(I.dark), top: .colour(I.earth), ground: .colour(I.earthShade), outer: false) { p in
-            p.wall(.left, from: cx - e, -e, at: floor) { q in
-                q.shape([q.uv(0, 0), q.uv(length, 0), q.uv(length, lining - 3), q.uv(length * 0.55, lining - 3),
-                         q.uv(length * 0.55, lining), q.uv(0, lining)], .colour(I.rawStone), width: 0.8)
-                q.courses(0, length, 0, lining - 3, course: 3, brick: 8, opacity: 0.6)
-                q.courses(0, length * 0.55, lining - 3, lining, course: 3, brick: 8, opacity: 0.6)
+        svg.circle(uv(u, v), 1.3, fill: .colour(I.iron), stroke: .colour(I.line), width: 0.45)
+        svg.circle(uv(u, v), 0.4, fill: .colour(I.ironLight))
+    }
+
+    private mutating func warehouse() {
+        typealias I = IndustrialOldBuildingsInk
+        let (x0, y0, x1, y1) = Self.store
+        let h0 = 1.5, e = Self.storeEaves, ridge = Self.storeRidge
+        let front = (x1 - x0) * 32, side = (y1 - y0) * 32
+        shadow([iso(x1, y0, h0), iso(x1 + 0.3, y0 + 0.16, h0), iso(x1 + 0.3, y1 + 0.12, h0), iso(x1, y1, h0)])
+        block(x0, y0, x1, y1, h0, e, top: nil, left: .colour(I.brick), right: .colour(I.brickShade))
+        let storey = (e - h0 - 2) / 2
+        wall(.left, from: x0, y1, at: h0) { p in
+            p.shape(p.panel(0, 0, front, 2), .colour(I.footing), width: 0.6)
+            p.brickwork(0, front, 2, e - h0)
+            p.stringCourse(0, front, 2 + storey - 0.6, 2 + storey + 0.4)
+            // The stack of loading doors up the middle of the gable.
+            p.loadingDoor(front / 2, 2, w: 8, h: storey - 2.4)
+            p.loadingDoor(front / 2, 2 + storey + 0.6, w: 6.4, h: storey - 3)
+            for k in 0..<2 {
+                let v = 2 + storey * Double(k) + 2.4
+                p.storeWindow(4, v)
+                p.storeWindow(front - 11.6, v)
             }
-            p.wall(.right, from: cx - e, e, at: floor) { q in
-                q.shape([q.uv(0, 0), q.uv(length, 0), q.uv(length, lining), q.uv(length * 0.45, lining),
-                         q.uv(length * 0.45, lining - 3), q.uv(0, lining - 3)], .colour(I.rawStoneShade), width: 0.8)
-                q.courses(0, length, 0, lining - 3, course: 3, brick: 8, opacity: 0.6)
-                q.courses(length * 0.45, length, lining - 3, lining, course: 3, brick: 8, opacity: 0.6)
-            }
-            p.basket(at: p.iso(cx - 0.2, -0.3, floor), size: 0.9)
-            p.ladder(foot: p.iso(cx - 0.3, -0.42, floor), p.iso(cx - 0.08, -0.42, floor), head: p.iso(cx - 0.3, -e - 0.1, h0 + 6),
-                     p.iso(cx - 0.08, -e - 0.1, h0 + 6), rungs: 4)
+            p.drainpipe(1.6, from: e - h0)
         }
-        blocks(0.7, 0.36, 0.94, 0.66, from: h0, courses: 2)
-        blocks(0.4, 0.72, 0.66, 0.94, from: h0, courses: 1)
-        // The kerb's first stones, and its band of the owner's colour already painted on them.
-        wall(.left, from: cx - e, e, at: h0) { p in
-            p.shape(p.panel(0, 0, length * 0.6, 3.6), .colour(I.rawStone), width: 0.8)
-            p.paintedBand(1, length * 0.6 - 1, 1, 2.6)
+        wall(.right, from: x1, y1, at: h0) { p in
+            p.shape(p.panel(0, 0, side, 2), .colour(I.footingShade), width: 0.6)
+            p.brickwork(0, side, 2, e - h0)
+            p.stringCourse(0, side, 2 + storey - 0.6, 2 + storey + 0.4)
+            p.paintedBand(14, side, e - h0 - 2.6, e - h0 - 1.2)
+            p.archedDoors(12, 2, w: 12, h: storey + 1.6)
+            for u in [24.0, 32.0] { p.storeWindow(u, 4.4) }
+            for u in [5.0, 15.0, 25.0] { p.storeWindow(u, 2 + storey + 2.4) }
+            for u in [2.4, side - 2.4] { p.tiePlate(u, 2 + storey - 2) }
         }
-        basket(at: iso(-0.8, 0.8, h0), size: 1)
-        timbers(-0.9, 0.62, length: 0.42, on: h0)
+        gableAlongY(x0, y0, x1, y1, eave: e, ridge: ridge, over: 0.05, gableWall: .colour(I.brick), finials: false) { p, w, rise in
+            p.gableBrickwork(w, rise)
+            // The painted board of the owner's colour across the gable.
+            p.colour(p.panel(w / 2 - 12.5, 0.8, w / 2 + 12.5, 4.6), .colour(I.light))
+            p.colour(p.panel(w / 2 - 11.5, 1.6, w / 2 + 11.5, 3.8), .team)
+            p.line(p.panel(w / 2 - 12.5, 0.8, w / 2 + 12.5, 4.6), closed: true, width: 0.6)
+            p.line(p.panel(w / 2 - 11.5, 1.6, w / 2 + 11.5, 3.8), closed: true, width: 0.45)
+            p.cog(at: p.uv(w / 2, 2.7), radius: 0.8)
+            // The loft's loading door, open, under the cathead.
+            p.loadingDoor(w / 2, 6.2, w: 5.6, h: 6.4, open: true)
+        }
+        // The cathead: a beam at the apex, braced, with a pulley and a sack on its chain.
+        let xm = (x0 + x1) / 2
+        let c = e + 14.6
+        let tip = iso(xm, y1 + 0.36, c)
+        shape([iso(xm - 0.04, y1 + 0.05, c + 1.6), iso(xm + 0.04, y1 + 0.05, c + 1.6), iso(xm + 0.04, y1 + 0.36, c + 1.6),
+               iso(xm + 0.04, y1 + 0.36, c - 0.8), iso(xm - 0.04, y1 + 0.36, c - 0.8), iso(xm - 0.04, y1 + 0.05, c - 0.8)],
+              .colour(I.timber), width: 0.7)
+        line([iso(xm, y1 + 0.05, c - 7), iso(xm, y1 + 0.26, c - 0.8)], width: 1.2)
+        svg.circle(tip + P(0, 1.6), 1.6, fill: .colour(I.iron), stroke: .colour(I.line), width: 0.5)
+        let hook = tip + P(0, 20)
+        line([tip + P(0, 1.6), hook], width: 0.7)
+        line([hook, hook + P(-2, 2)], width: 0.5)
+        line([hook, hook + P(2, 2)], width: 0.5)
+        sack(at: hook + P(0, 11), size: 0.9)
+        // The yard: a cart of crates, barrels, sacks, and the owner's pennant.
+        cart(0.72, -0.48, on: h0, length: 0.46, load: .crates)
+        barrel(at: iso(0.66, 0.62, h0), size: 0.8)
+        barrel(at: iso(0.84, 0.8, h0), size: 0.8)
+        crate(-0.3, 0.62, -0.04, 0.88, from: h0, height: 6)
+        pennant(at: iso(-0.9, 0.9, h0), height: 34, length: 13)
+    }
+
+    /// The warehouse being built: its walls of fresh brick raised a storey
+    /// and more, the openings of its doors left, scaffolding up its gable
+    /// with the owner's pennant, a derrick crane lifting bricks, and bricks,
+    /// timber and slates waiting in the yard.
+    private mutating func warehouseRising() {
+        typealias I = IndustrialOldBuildingsInk
+        let (x0, y0, x1, y1) = Self.store
+        let h0 = 1.5, top = 17.0
+        let front = (x1 - x0) * 32, side = (y1 - y0) * 32
+        derrick(-0.6, -0.95, on: h0, height: 34, reach: -22, drop: 10)
+        shadow([iso(x1, y0, h0), iso(x1 + 0.18, y0 + 0.1, h0), iso(x1 + 0.18, y1 + 0.06, h0), iso(x1, y1, h0)])
+        shell(x0, y0, x1, y1, from: h0, floor: h0, to: top, thickness: 0.07, lit: .colour(I.rawBrick),
+              shade: .colour(I.rawBrickShade), top: .colour(I.brickTop), ground: .colour(I.pavingShade)) { p in
+            p.bricks(-0.6, -0.6, -0.3, -0.36, from: h0, height: 5)
+            p.basket(at: p.iso(0.0, -0.5, h0), size: 0.9)
+        }
+        wall(.left, from: x0, y1, at: h0) { p in
+            p.shape(p.panel(0, 0, front, 2), .colour(I.rawStone), width: 0.6)
+            p.brickwork(0, front, 2, top - h0, opacity: 0.4, burnt: false)
+            p.shape(p.panel(front / 2 - 4, 2, front / 2 + 4, 10.6), .colour(I.dark), width: 0.9)
+            p.timber(p.uv(front / 2 - 5, 11.4), p.uv(front / 2 + 5, 11.4), width: 1.6, paint: I.stoneTop)
+            for u in [4.0, front - 11.6] { p.shape(p.panel(u, 4.4, u + 4.4, 10.4), .colour(I.dark), width: 0.7) }
+        }
+        wall(.right, from: x1, y1, at: h0) { p in
+            p.shape(p.panel(0, 0, side, 2), .colour(I.rawStoneShade), width: 0.6)
+            p.brickwork(0, side, 2, top - h0, opacity: 0.4, burnt: false)
+            p.arch(12, 2, width: 12, height: 13.6, .colour(I.dark), line: 0.9)
+        }
+        scaffold([(x0 + 0.05, y1 + 0.16), (-0.22, y1 + 0.16), (x1 - 0.05, y1 + 0.16)], from: h0, height: 30, levels: [12, 24],
+                 boards: 12, inward: (0, -0.16))
+        pennant(at: iso(x1 - 0.05, y1 + 0.16, h0 + 30), height: 11, length: 13)
+        bricks(0.6, 0.55, 0.9, 0.86, from: h0, height: 6)
+        bricks(0.62, -0.2, 0.9, 0.08, from: h0, height: 4)
+        timbers(-0.9, 0.62, length: 0.5, on: h0)
+        slates(0.66, -0.8, 0.84, -0.46, from: h0, height: 6)
     }
 }
