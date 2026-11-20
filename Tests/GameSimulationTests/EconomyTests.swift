@@ -165,6 +165,23 @@ private let load = Catalogue.standard.gathering.load
         #expect(sim.living(engineer).task == .idle)
     }
 
+    @Test func anEngineerGoesOnToTheNextBuildingUnderConstructionNearby() {
+        var sim = duel()
+        let engineer = sim.add(.engineer, me, 6.5, 6.5)
+        #expect(sim.apply(.construct(engineers: [engineer], building: .house, at: GridPoint(8, 2)), from: me) == .accepted)
+        let first = sim.buildings(me, .house)[0]
+        let second = sim.add(.house, me, 11, 2, complete: false)
+        let far = sim.add(.house, me, 30, 30, complete: false)
+        do { let reached = sim.run(until: { $0.living(first).complete }, limit: 1_000); #expect(reached) }
+        sim.step()
+        #expect(sim.living(engineer).task == .work(second))
+        do { let reached = sim.run(until: { $0.living(second).complete }, limit: 2_000); #expect(reached) }
+        sim.step()
+        // The far house is beyond the radius: the engineer stands idle.
+        #expect(sim.living(engineer).task == .idle)
+        #expect(!sim.living(far).complete)
+    }
+
     @Test func constructionIsRefusedWherePlacementForbidsIt() {
         var sim = duel(sites: [(.tree, 8, 6)], water: [GridPoint(12, 8)])
         let engineer = sim.add(.engineer, me, 6.5, 6.5)

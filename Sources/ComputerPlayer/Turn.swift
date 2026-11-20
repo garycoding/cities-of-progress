@@ -461,9 +461,13 @@ struct Ground {
             if building[here] > 0 { near.append(placed[Int(building[here]) - 1]) }
             if site[here] > 0 { on.append(sites[Int(site[here]) - 1]) }
         }
+        // An oil field holds nothing but a well (`Placement.canPlace(_:at:in:)`).
+        let fields = on.filter { $0.kind == .oilField && $0.remaining > 0 }.map(\.tile)
+        var occupied = Placement.occupied(buildings: near, sites: on, catalogue: catalogue)
+        for t in fields { occupied.insert(t) }
         return Placement.canPlace(kind, at: origin, width: width, height: height, terrain: view.terrain,
-                                  occupied: Placement.occupied(buildings: near, sites: on, catalogue: catalogue),
-                                  explored: { view.visibility(at: $0) != .unexplored }, catalogue: catalogue)
+                                  occupied: occupied, explored: { view.visibility(at: $0) != .unexplored },
+                                  catalogue: catalogue, wanted: Placement.site(for: kind) == .oilField ? Set(fields) : [])
     }
 
     /// Whether a person can stand on a tile: inside the map, passable, and

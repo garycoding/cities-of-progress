@@ -20,6 +20,10 @@ public enum InterfaceText {
         case .plateArmour: "Plate armour"
         case .guilds: "Guilds"
         case .banking: "Banking"
+        case .machineTools: "Machine tools"
+        case .rifling: "Rifling"
+        case .steelPlate: "Steel plate"
+        case .refining: "Refining"
         }
     }
 
@@ -37,6 +41,10 @@ public enum InterfaceText {
         case .plateArmour: "Warfighters take much less harm."
         case .guilds: "Workers gather faster and workshops make more gunpowder."
         case .banking: "Merchants' exchanges give more."
+        case .machineTools: "Workers gather faster and workshops make more gunpowder."
+        case .rifling: "Warfighters strike much harder."
+        case .steelPlate: "Warfighters take less harm again."
+        case .refining: "Oil wells pump more."
         }
     }
 

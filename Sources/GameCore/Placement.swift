@@ -40,14 +40,26 @@ public enum Placement {
         return out
     }
 
+    /// The kind of site a building must stand on: an oil well on an oil field
+    /// (ruled 2026-11-19); nil for every other building. Nothing else may be
+    /// built over an oil field.
+    public static func site(for kind: BuildingKind) -> SiteKind? { kind == .oilWell ? .oilField : nil }
+
     /// Whether a building of `kind` may be placed with its origin at `origin`.
     /// `explored` answers whether the placing player has explored a tile.
+    /// `wanted` holds the tiles of the sites of `site(for: kind)` with
+    /// something left: the footprint must cover one, and they do not count as
+    /// occupied for it.
     public static func canPlace(_ kind: BuildingKind, at origin: GridPoint, width: Int, height: Int,
                                 terrain: [Terrain], occupied: Set<GridPoint>,
-                                explored: (GridPoint) -> Bool, catalogue: Catalogue = .standard) -> Bool {
-        footprint(kind, at: origin, catalogue: catalogue).allSatisfy { t in
+                                explored: (GridPoint) -> Bool, catalogue: Catalogue = .standard,
+                                wanted: Set<GridPoint> = []) -> Bool {
+        let tiles = footprint(kind, at: origin, catalogue: catalogue)
+        let needs = site(for: kind) != nil
+        if needs && !tiles.contains(where: wanted.contains) { return false }
+        return tiles.allSatisfy { t in
             t.x >= 0 && t.y >= 0 && t.x < width && t.y < height
-                && terrain[t.y * width + t.x].isBuildable && !occupied.contains(t) && explored(t)
+                && terrain[t.y * width + t.x].isBuildable && (!occupied.contains(t) || needs && wanted.contains(t)) && explored(t)
         }
     }
 
@@ -62,7 +74,13 @@ public enum Placement {
         }
         var occupied = occupied(buildings: buildings, sites: view.sites, catalogue: catalogue)
         for t in view.outcrops { occupied.insert(t) }
+        // An oil field holds nothing but a well, and one well at that.
+        let fields = view.sites.filter { $0.kind == .oilField && $0.remaining > 0 }.map(\.tile)
+        let built = Set(buildings.flatMap { footprint($0.kind, at: $0.origin, catalogue: catalogue) })
+        for t in fields { occupied.insert(t) }
+        let wanted = site(for: kind) == .oilField ? Set(fields.filter { !built.contains($0) }) : []
         return canPlace(kind, at: origin, width: view.mapWidth, height: view.mapHeight, terrain: view.terrain,
-                        occupied: occupied, explored: { view.visibility(at: $0) != .unexplored }, catalogue: catalogue)
+                        occupied: occupied, explored: { view.visibility(at: $0) != .unexplored }, catalogue: catalogue,
+                        wanted: wanted)
     }
 }

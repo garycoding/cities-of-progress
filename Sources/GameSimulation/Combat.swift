@@ -127,7 +127,7 @@ extension Simulation {
                 let k = tileIndex(t)
                 guard buildingAt[k] == Int32(entities[i].id.rawValue) else { continue }
                 buildingAt[k] = -1
-                blocked[k] = !terrain[k].isPassable || siteAt[k] >= 0
+                blocked[k] = !terrain[k].isPassable || siteAt[k] >= 0 && sites[Int(siteAt[k])].kind.blocksTile
             }
         }
         deathsPending = true

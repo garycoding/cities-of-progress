@@ -56,7 +56,7 @@ extension Turn {
             if pens > 0 && pens < 3 && herders >= 6 * pens { out.append(pen) }
         }
         if view.age >= .iron {
-            // Farms, which never run out, as the herds and prey thin; then the stable and the siege workshop.
+            // Farms, reseeded by their farmers when they run dry, as the herds and prey thin; then the stable and the siege workshop.
             // A farm is wanted once the pens are full and no prey is near, at most a quarter of the workers.
             let farms = count(.farm), wantedFarms = tuning.workers(at: view.age) / 4
             let herders = herders
@@ -76,9 +76,25 @@ extension Turn {
                 out.append((.castle, Turn.toward(base, front, by: 7), 0...10))
             }
         }
+        if view.age >= .industrial {
+            // An oil well on the nearest field with oil and no well, the nearer fields first and then the
+            // distant ones as those run dry; the factory; a railway depot at home and a second toward the front.
+            if let field = unclaimedOilField() { out.append((.oilWell, field, 0...1)) }
+            if count(.factory) == 0 { out.append((.factory, Turn.toward(base, front, by: 7), 0...10)) }
+            if count(.railwayDepot) == 0 {
+                out.append((.railwayDepot, homeSide(by: 5), 0...8))
+            } else if count(.railwayDepot) == 1 && !completeBuildings(.railwayDepot).isEmpty {
+                out.append((.railwayDepot, Turn.toward(base, front, by: 16), 0...8))
+            }
+        }
         if count(.storagePit) < 4, let cluster = distantCluster() { out.append((.storagePit, cluster, 0...5)) }
         out += wall()
-        return out
+        // The newest age's buildings first, so that the age's own come before more of the older ones.
+        let ranked = out.enumerated().sorted { a, b in
+            let x = catalogue.stats(a.element.0).age, y = catalogue.stats(b.element.0).age
+            return x != y ? x > y : a.offset < b.offset
+        }
+        return ranked.map(\.element)
     }
 
     /// Engineers construct a building near `anchor`, if one can be spared, the
@@ -149,6 +165,20 @@ extension Turn {
             if !taken, site(for: kind, near: spot, rings: 0...0) != nil { return [(kind, spot, 0...0)] }
         }
         return []
+    }
+
+    /// The centre of the nearest oil field with oil left, within 40 tiles of the
+    /// base, that no well of the player's stands on or is planned for; at most
+    /// four wells at a time.
+    private func unclaimedOilField() -> MapPosition? {
+        guard count(.oilWell) < 4, memory.plans.allSatisfy({ $0.kind != .oilWell }) else { return nil }
+        // A field under anyone's well, an ally's or an opponent's too, is taken.
+        let wells = view.entities.filter { $0.kind == .building(.oilWell) }
+        let fields = view.sites.filter { site in
+            site.kind == .oilField && site.remaining > 0 && site.tile.centre.distance(to: base) <= 40
+                && !wells.contains { $0.position.distance(to: site.tile.centre) < 1.5 }
+        }
+        return fields.min { ($0.tile.centre.distance(to: base), $0.id) < ($1.tile.centre.distance(to: base), $1.id) }?.tile.centre
     }
 
     private func homeSide(by distance: Double) -> MapPosition {

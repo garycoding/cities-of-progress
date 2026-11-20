@@ -17,7 +17,7 @@ import Testing
         #expect(Catalogue.standard.advance(from: .iron) != nil)
     }
 
-    @Test func aFarmFeedsOneWorkerForeverAndThePloughRaisesItsYield() {
+    @Test func aFarmFeedsOneWorkerAndThePloughRaisesItsYield() {
         var sim = duel()
         sim.players[0].age = .iron
         let farm = sim.add(.farm, me, 8, 8)
@@ -33,13 +33,46 @@ import Testing
         var food = sim.resources(me)[.food]
         sim.run(60 * Tick.rate)
         #expect(abs(Double(sim.resources(me)[.food] - food) - 60 * perSecond) <= 1)
-        // Much later the farm still yields: it is never spent.
+        // Much later the farm still yields: its farmer reseeds it from the stock's wood.
+        sim.players[0].resources = ResourceAmounts([.wood: 1000])
         sim.run(20 * 60 * Tick.rate)
+        #expect(sim.resources(me)[.wood] < 1000)
         food = sim.resources(me)[.food]
         sim.players[0].improvements.append(.plough)
         sim.run(60 * Tick.rate)
         #expect(abs(Double(sim.resources(me)[.food] - food) - 60 * perSecond * 1.25) <= 1)
         #expect(sim.living(workers[0]).task == .work(farm))
+    }
+
+    @Test func aFarmRunsDryAndIsReseededByItsFarmerOrByOrder() {
+        var sim = duel()
+        sim.players[0].age = .iron
+        let farm = sim.add(.farm, me, 8, 8)
+        let farmer = sim.people(me, .worker)[0]
+        let full = Catalogue.standard.gathering.farmYield!, cost = Catalogue.standard.gathering.farmReseed!
+        #expect(sim.view(for: me).entity(farm)?.remaining == full)
+        // Without wood, the farm runs dry and the farmer waits there.
+        sim.players[0].resources = ResourceAmounts()
+        #expect(sim.apply(.work(units: [farmer], at: farm), from: me) == .accepted)
+        do { let reached = sim.run(until: { ($0.entity(farm)?.farmUsed ?? 0) >= full }, limit: 20 * 60 * Tick.rate); #expect(reached) }
+        #expect(sim.resources(me)[.food] == full)
+        sim.run(30 * Tick.rate)
+        #expect(sim.resources(me)[.food] == full)
+        #expect(sim.living(farmer).task == .work(farm))
+        // Once the wood is there, the farmer reseeds it and the farm yields again.
+        sim.give(me, [.wood: 100])
+        sim.run(30 * Tick.rate)
+        #expect(sim.resources(me)[.wood] == 100 - cost[.wood])
+        #expect(sim.resources(me)[.food] > full)
+        // A farm without a farmer is reseeded by order, and only once it has run dry.
+        #expect(sim.apply(.reseed(farm: farm), from: me) == .refused(.invalidTarget))
+        #expect(sim.apply(.stop(units: [farmer]), from: me) == .accepted)
+        sim.entities[sim.index(of: farm)!].farmUsed = full
+        sim.players[0].resources = ResourceAmounts()
+        #expect(sim.apply(.reseed(farm: farm), from: me) == .refused(.notEnough(cost)))
+        sim.give(me, [.wood: 60])
+        #expect(sim.apply(.reseed(farm: farm), from: me) == .accepted)
+        #expect(sim.view(for: me).entity(farm)?.remaining == full)
     }
 
     @Test func theCatapultsStoneHarmsOpponentsAroundTheTargetAndNoAlly() {

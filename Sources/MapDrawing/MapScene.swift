@@ -197,7 +197,8 @@ public final class MapScene: SKScene {
         terrain?.update(with: view)
 
         var seenSites = 0
-        for site in view.sites where site.remaining > 0 {
+        let covered = MapHitTesting.coveredSiteTiles(in: view)
+        for site in view.sites where site.remaining > 0 && !covered.contains(site.tile) {
             let node: SiteNode
             if let existing = siteNodes[site.id] { node = existing } else {
                 node = SiteNode()

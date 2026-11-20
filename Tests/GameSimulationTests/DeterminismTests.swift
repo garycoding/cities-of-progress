@@ -10,7 +10,7 @@ import Testing
 /// and every 100 ticks, each worked out from the player's view as a computer
 /// player would, so that the same match is played in every process.
 enum Script {
-    static let length = 10_000
+    static let length = 12_000
 
     static func isOrderTick(_ t: Int) -> Bool { t == 1 || t % 100 == 0 }
 
@@ -158,7 +158,7 @@ enum Script {
 @Suite struct Determinism {
     /// The checksum at the end of the scripted match. A second process must
     /// reproduce it; a change to the rules that changes the match changes it.
-    static let storedChecksum: UInt64 = 0x4A61_DA14_3E5D_73A4
+    static let storedChecksum: UInt64 = 0xD284_B41A_AE0F_F10A
 
     @Test func theScriptedMatchEndsWithTheStoredChecksum() {
         var sim = Simulation(setup: Samples.twoPlayerSetup(seed: 7))

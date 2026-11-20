@@ -100,10 +100,14 @@ public struct ImprovementStats: Hashable, Codable, Sendable {
     public var productionMultiplier: Double?
     /// Merchants' exchanges give this many times as much; optional so that older saves open.
     public var exchangeMultiplier: Double?
+    /// Oil wells pump this many times as much; optional so that older saves open.
+    public var pumpingMultiplier: Double?
 
     public init(improvement: Improvement, age: Age, cost: ResourceAmounts, work: Int,
                 gatheringMultiplier: Double = 1, warfighterDamage: Int = 0, warfighterArmour: Int = 0,
-                farmingMultiplier: Double? = nil, productionMultiplier: Double? = nil, exchangeMultiplier: Double? = nil) {
+                farmingMultiplier: Double? = nil, productionMultiplier: Double? = nil, exchangeMultiplier: Double? = nil,
+                pumpingMultiplier: Double? = nil) {
+        self.pumpingMultiplier = pumpingMultiplier
         self.improvement = improvement; self.age = age; self.cost = cost; self.work = work
         self.gatheringMultiplier = gatheringMultiplier; self.warfighterDamage = warfighterDamage
         self.warfighterArmour = warfighterArmour; self.farmingMultiplier = farmingMultiplier
@@ -135,13 +139,19 @@ public struct GatheringStats: Hashable, Codable, Sendable {
     /// Food per second a worker earns tending a farm (Iron age), before the
     /// plough; optional so that older saves open, and then no farm yields.
     public var farmingPerSecond: Double?
+    /// The food a farm yields before it runs dry and must be reseeded (ruled
+    /// 2026-11-19); optional so that older saves open, and then a farm never runs dry.
+    public var farmYield: Int?
+    /// What reseeding a farm that has run dry costs.
+    public var farmReseed: ResourceAmounts?
     /// How much a worker carries before returning to deliver it.
     public var load: Int
     /// What each kind of site holds when the map is made, by site kind.
     public var amountBySite: [Int]
 
-    public init(perSecond: [SiteKind: Double], herdingPerSecond: Double, farmingPerSecond: Double? = nil, load: Int,
-                siteAmount: [SiteKind: Int]) {
+    public init(perSecond: [SiteKind: Double], herdingPerSecond: Double, farmingPerSecond: Double? = nil,
+                farmYield: Int? = nil, farmReseed: ResourceAmounts? = nil, load: Int, siteAmount: [SiteKind: Int]) {
+        self.farmYield = farmYield; self.farmReseed = farmReseed
         perSecondBySite = SiteKind.allCases.map { perSecond[$0] ?? 0 }
         amountBySite = SiteKind.allCases.map { siteAmount[$0] ?? 0 }
         self.herdingPerSecond = herdingPerSecond; self.farmingPerSecond = farmingPerSecond; self.load = load
@@ -162,6 +172,25 @@ public struct WorkshopStats: Hashable, Codable, Sendable {
     public init(perSecond: Double, woodPerUnit: Int, workers: Int) {
         self.perSecond = perSecond; self.woodPerUnit = woodPerUnit; self.workers = workers
     }
+}
+
+/// How an oil well pumps (ruled 2026-11-19): standing on an oil field, it
+/// pumps `perSecond` oil a second into its owner's stock, without workers,
+/// until the fields beneath it are empty.
+public struct OilWellStats: Hashable, Codable, Sendable {
+    public var perSecond: Double
+
+    public init(perSecond: Double) { self.perSecond = perSecond }
+}
+
+/// The railway between a player's depots (ruled 2026-11-19): people board at
+/// one depot and come out at another `journeyTime` ticks later, whatever the
+/// distance; merchants carrying to an ally ride from the player's depot to the
+/// ally's in the same time.
+public struct RailwayStats: Hashable, Codable, Sendable {
+    public var journeyTime: Int
+
+    public init(journeyTime: Int) { self.journeyTime = journeyTime }
 }
 
 /// How merchants trade: at a town centre a merchant takes `exchangePerSecond`
@@ -225,11 +254,16 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public var merchants: MerchantStats?
     /// How the alchemist's workshop makes gunpowder; optional so that older saves open.
     public var workshop: WorkshopStats?
+    /// How an oil well pumps; optional so that older saves open.
+    public var oilWell: OilWellStats?
+    /// How the railway carries people between depots; optional so that older saves open.
+    public var railway: RailwayStats?
 
     public init(units: [UnitStats], buildings: [BuildingStats], improvements: [ImprovementStats],
                 advances: [AdvanceStats], gathering: GatheringStats, bonuses: [Bonus], upgrades: [UpgradeStats],
-                startingResources: ResourceAmounts, startingPeople: Int, populationMaximum: Int, founderPeople: Int, merchants: MerchantStats? = nil, workshop: WorkshopStats? = nil) {
-        self.workshop = workshop
+                startingResources: ResourceAmounts, startingPeople: Int, populationMaximum: Int, founderPeople: Int, merchants: MerchantStats? = nil, workshop: WorkshopStats? = nil,
+                oilWell: OilWellStats? = nil, railway: RailwayStats? = nil) {
+        self.workshop = workshop; self.oilWell = oilWell; self.railway = railway
         self.merchants = merchants
         self.units = units; self.buildings = buildings; self.improvements = improvements; self.advances = advances
         self.gathering = gathering; self.bonuses = bonuses; self.upgrades = upgrades
@@ -320,7 +354,7 @@ public struct Catalogue: Hashable, Codable, Sendable {
             BuildingStats(kind: .townCentre, age: .stone, cost: cost([.wood: 200, .stone: 100]), buildTime: s(120), health: 1200,
                           armour: 2, footprint: GridPoint(3, 3), sight: 8, attack: Attack(damage: 3, range: 6, interval: s(2)),
                           housing: 5, accepts: allStone, trains: [.worker, .scholar, .engineer, .merchant, .clubman, .slinger],
-                          researches: [.betterTools, .ironTools, .guilds, .banking]),
+                          researches: [.betterTools, .ironTools, .guilds, .banking, .machineTools]),
             BuildingStats(kind: .house, age: .stone, cost: cost([.wood: 30]), buildTime: s(20), health: 200, armour: 0,
                           footprint: GridPoint(2, 2), sight: 3, housing: 5),
             BuildingStats(kind: .storagePit, age: .stone, cost: cost([.wood: 50]), buildTime: s(25), health: 300, armour: 0,
@@ -351,7 +385,8 @@ public struct Catalogue: Hashable, Codable, Sendable {
                           buildTime: s(50), health: 600, armour: 1, footprint: GridPoint(3, 3), sight: 4),
             // The Industrial age's buildings. Their figures are provisional until the Industrial age's rules are built.
             BuildingStats(kind: .factory, age: .industrial, cost: cost([.wood: 150, .stone: 100, .iron: 150]), buildTime: s(70),
-                          health: 900, armour: 2, footprint: GridPoint(3, 3), sight: 4, trains: [.fieldGun, .armouredCar]),
+                          health: 900, armour: 2, footprint: GridPoint(3, 3), sight: 4, trains: [.fieldGun, .armouredCar],
+                          researches: [.rifling, .steelPlate, .refining]),
             BuildingStats(kind: .railwayDepot, age: .industrial, cost: cost([.wood: 120, .stone: 50, .iron: 80]), buildTime: s(50),
                           health: 600, armour: 1, footprint: GridPoint(3, 3), sight: 5),
             BuildingStats(kind: .oilWell, age: .industrial, cost: cost([.wood: 80, .iron: 40]), buildTime: s(30), health: 300,
@@ -380,16 +415,27 @@ public struct Catalogue: Hashable, Codable, Sendable {
                              gatheringMultiplier: 1.15, productionMultiplier: 1.25),
             ImprovementStats(improvement: .banking, age: .alchemy, cost: cost([.gold: 200]), work: s(70),
                              exchangeMultiplier: 1.25),
+            ImprovementStats(improvement: .machineTools, age: .industrial, cost: cost([.food: 300, .iron: 150]), work: s(90),
+                             gatheringMultiplier: 1.15, productionMultiplier: 1.2),
+            ImprovementStats(improvement: .rifling, age: .industrial, cost: cost([.iron: 150, .gunpowder: 100]), work: s(100),
+                             warfighterDamage: 3),
+            ImprovementStats(improvement: .steelPlate, age: .industrial, cost: cost([.iron: 250, .oil: 50]), work: s(100),
+                             warfighterArmour: 2),
+            ImprovementStats(improvement: .refining, age: .industrial, cost: cost([.gold: 150, .oil: 80]), work: s(80),
+                             pumpingMultiplier: 1.5),
         ]
         let advances: [AdvanceStats] = [
             AdvanceStats(from: .stone, cost: cost([.food: 300, .wood: 100]), study: s(4 * 90)),
             AdvanceStats(from: .bronze, cost: cost([.food: 500, .bronze: 150, .gold: 100]), study: s(4 * 150)),
             AdvanceStats(from: .iron, cost: cost([.food: 800, .iron: 200, .gold: 200]), study: s(4 * 200)),
+            AdvanceStats(from: .alchemy, cost: cost([.food: 1000, .iron: 300, .gold: 300, .gunpowder: 150]), study: s(4 * 250)),
         ]
         let gathering = GatheringStats(
             perSecond: [.tree: 0.6, .prey: 0.8, .stone: 0.5, .copper: 0.4, .tin: 0.4, .gold: 0.4, .iron: 0.4, .oilField: 0],
             herdingPerSecond: 0.7,
             farmingPerSecond: 0.9,
+            farmYield: 300,
+            farmReseed: cost([.wood: 60]),
             load: 10,
             siteAmount: [.tree: 100, .prey: 150, .stone: 300, .copper: 400, .tin: 250, .gold: 400, .iron: 500, .oilField: 2000]
         )
@@ -405,6 +451,9 @@ public struct Catalogue: Hashable, Codable, Sendable {
             Bonus(.knight, against: .swordsman, 1.5), Bonus(.knight, against: .archer, 1.5), Bonus(.knight, against: .musketeer, 1.5),
             Bonus(.spearman, against: .knight, 2.5),
             Bonus(.musketeer, against: .knight, 2), Bonus(.musketeer, against: .swordsman, 1.5),
+            Bonus(.rifleman, against: .knight, 2), Bonus(.rifleman, against: .musketeer, 1.5), Bonus(.rifleman, against: .swordsman, 1.5),
+            Bonus(.fieldGun, against: .rifleman, 1.5), Bonus(.fieldGun, against: .musketeer, 1.5), Bonus(.fieldGun, against: .armouredCar, 2),
+            Bonus(.armouredCar, against: .rifleman, 2), Bonus(.armouredCar, against: .musketeer, 2), Bonus(.armouredCar, against: .cannon, 2),
         ]
         let upgrades: [UpgradeStats] = [
             UpgradeStats(from: .clubman, to: .spearman, cost: cost([.food: 20, .bronze: 15]), time: s(6)),
@@ -414,12 +463,17 @@ public struct Catalogue: Hashable, Codable, Sendable {
             UpgradeStats(from: .swordsman, to: .musketeer, cost: cost([.food: 20, .gunpowder: 20]), time: s(8)),
             UpgradeStats(from: .horseman, to: .knight, cost: cost([.food: 40, .gold: 30]), time: s(10)),
             UpgradeStats(from: .catapult, to: .cannon, cost: cost([.iron: 40, .gunpowder: 40]), time: s(12)),
+            UpgradeStats(from: .musketeer, to: .rifleman, cost: cost([.iron: 20, .gunpowder: 15]), time: s(8)),
+            UpgradeStats(from: .cannon, to: .fieldGun, cost: cost([.iron: 60, .oil: 15]), time: s(12)),
+            UpgradeStats(from: .knight, to: .armouredCar, cost: cost([.iron: 80, .oil: 40]), time: s(14)),
         ]
         return Catalogue(units: units, buildings: buildings, improvements: improvements, advances: advances,
                          gathering: gathering, bonuses: bonuses, upgrades: upgrades,
                          startingResources: cost([.food: 200, .wood: 200, .stone: 50]),
                          startingPeople: 3, populationMaximum: 200, founderPeople: 6,
                          merchants: MerchantStats(exchangePerSecond: 1, exchangeRate: 2.0 / 3.0, load: 20),
-                         workshop: WorkshopStats(perSecond: 0.5, woodPerUnit: 2, workers: 3))
+                         workshop: WorkshopStats(perSecond: 0.5, woodPerUnit: 2, workers: 3),
+                         oilWell: OilWellStats(perSecond: 0.5),
+                         railway: RailwayStats(journeyTime: s(5)))
     }()
 }

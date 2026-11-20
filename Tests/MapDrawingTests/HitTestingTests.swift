@@ -67,6 +67,20 @@ import Testing
         #expect(MapHitTesting.site(at: CGPoint(x: p.x, y: p.y + 10), in: hidden, geometry: g) == nil)
     }
 
+    @Test func anOilFieldUnderAWellIsHiddenByIt() {
+        let g = geometry(10, 10)
+        var oily = view
+        let field = ResourceSite(id: SiteID(9999), kind: .oilField, tile: GridPoint(10, 10), remaining: 2000)
+        oily.sites.append(field)
+        let p = g.scenePoint(for: field.tile.centre)
+        #expect(MapHitTesting.site(at: CGPoint(x: p.x, y: p.y + 4), in: oily, geometry: g)?.id == field.id)
+        oily.entities.append(EntityView(id: EntityID(9999), owner: oily.player, kind: .building(.oilWell),
+                                        position: MapPosition(x: 11, y: 11), tile: GridPoint(10, 10), facing: .right,
+                                        health: 300, maxHealth: 300, activity: .idle))
+        #expect(MapHitTesting.coveredSiteTiles(in: oily).contains(field.tile))
+        #expect(MapHitTesting.site(at: CGPoint(x: p.x, y: p.y + 4), in: oily, geometry: g) == nil)
+    }
+
     @Test func targetIsEntityThenSiteThenGround() {
         let g = geometry(10, 10)
         let worker = entity(2)

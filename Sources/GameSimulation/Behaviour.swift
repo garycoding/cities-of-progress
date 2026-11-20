@@ -28,6 +28,7 @@ extension Simulation {
         entities[i].task = .idle
         entities[i].doing = .idle
         entities[i].route = Route()
+        entities[i].rail = nil
     }
 
     /// Give a person a new task, forgetting its route.
@@ -36,6 +37,8 @@ extension Simulation {
         entities[i].task = task
         entities[i].route = Route()
         entities[i].dropOff = nil
+        // A railway journey belongs to the task it was taken for.
+        entities[i].rail = nil
     }
 
     // MARK: Moving
@@ -185,7 +188,16 @@ extension Simulation {
     mutating func workTask(_ i: Int, at building: EntityID) {
         guard let b = index(of: building), entities[b].owner == entities[i].owner,
               let buildingKind = entities[b].buildingKind, let kind = entities[i].unitKind,
-              hasWork(kind, at: b, person: i) else { setIdle(i); return }
+              hasWork(kind, at: b, person: i) else {
+            // An engineer whose building is completed goes on to the next one under
+            // construction nearby, as a gatherer goes on to the next site (ruled 2026-11-19).
+            if entities[i].unitKind == .engineer, entities[i].doing == .constructing,
+               index(of: building).map({ entities[$0].complete }) == true, let next = nextConstruction(for: i) {
+                entities[i].task = .work(entities[next].id)
+                return
+            }
+            setIdle(i); return
+        }
         switch approach(i, .tiles(entities[b].origin, entities[b].size, reach: Rule.besideReach)) {
         case .moving: entities[i].doing = .moving; return
         case .unreachable: setIdle(i); return
@@ -209,10 +221,23 @@ extension Simulation {
             if players[p].resources[.wood] < workshop.woodPerUnit { entities[i].fraction = min(entities[i].fraction, 1) }
         case .worker:
             entities[i].doing = .working
+            let full = buildingKind == .farm ? catalogue.gathering.farmYield : nil
+            if let full, (entities[b].farmUsed ?? 0) >= full {
+                // A farm that has run dry is reseeded by its farmer from the stock (ruled
+                // 2026-11-19); while the stock lacks the cost, the farmer waits.
+                let cost = catalogue.gathering.farmReseed ?? ResourceAmounts()
+                guard players[p].resources.covers(cost) else { return }
+                players[p].resources = players[p].resources - cost
+                entities[b].farmUsed = 0
+            }
             let perSecond = buildingKind == .farm ? farmingRate(player: p) : catalogue.gathering.herdingPerSecond
             let earned = entities[i].fraction + perSecond / Double(Tick.rate)
-            let whole = Int(earned.rounded(.down))
+            var whole = Int(earned.rounded(.down))
             entities[i].fraction = earned - Double(whole)
+            if let full {
+                whole = min(whole, full - (entities[b].farmUsed ?? 0))
+                entities[b].farmUsed = (entities[b].farmUsed ?? 0) + whole
+            }
             players[p].resources[.food] += whole
         case .engineer:
             let buildTime = max(1, stats.buildTime)
@@ -274,8 +299,8 @@ extension Simulation {
         kill(b)
     }
 
-    /// Food per second a worker earns at a farm: farms never run out (ruled
-    /// 2026-11-18), and the plough makes them yield more.
+    /// Food per second a worker earns at a farm; the plough makes it more. A
+    /// farm runs dry after `GatheringStats.farmYield` and is reseeded (ruled 2026-11-19).
     func farmingRate(player: Int) -> Double {
         let plough = players[player].improvements.reduce(1.0) { $0 * (catalogue.stats($1).farmingMultiplier ?? 1) }
         return (catalogue.gathering.farmingPerSecond ?? 0) * plough
@@ -287,6 +312,19 @@ extension Simulation {
         return entities.indices.filter { j in
             j != besides && entities[j].alive && entities[j].unitKind == .worker && entities[j].task == .work(id)
         }.count
+    }
+
+    /// The nearest of the engineer's player's buildings still under construction,
+    /// within the radius in which a gatherer looks for its next site.
+    func nextConstruction(for i: Int) -> Int? {
+        var best: Int?
+        var bestDistance = Double.infinity
+        for j in entities.indices where entities[j].alive && entities[j].owner == entities[i].owner
+            && entities[j].buildingKind != nil && !entities[j].complete {
+            let d = entities[j].position.distance(to: entities[i].position)
+            if d <= Rule.resiteRadius && d < bestDistance { best = j; bestDistance = d }
+        }
+        return best
     }
 
     /// The worker tending a farm, other than `besides`, if any.
@@ -369,6 +407,7 @@ extension Simulation {
 
     mutating func updateBuilding(_ b: Int) {
         guard entities[b].complete, let kind = entities[b].buildingKind else { return }
+        if kind == .oilWell { pump(b) }
         if entities[b].cooldown > 0 { entities[b].cooldown -= 1 }
         if let attack = tables.building(kind).attack, entities[b].cooldown == 0 {
             let e = entities[b]
@@ -392,5 +431,40 @@ extension Simulation {
                 record(.trained(id, head), for: p)
             }
         }
+    }
+
+    /// An oil well pumps oil from the fields beneath it into its owner's stock,
+    /// without workers, until they are empty (ruled 2026-11-19).
+    mutating func pump(_ b: Int) {
+        guard let well = catalogue.oilWell else { return }
+        let p = entities[b].owner.rawValue
+        let rate = well.perSecond * players[p].improvements.reduce(1.0) { $0 * (catalogue.stats($1).pumpingMultiplier ?? 1) }
+        entities[b].fraction += rate / Double(Tick.rate)
+        while entities[b].fraction >= 1 {
+            guard let s = oilBeneath(b) else { entities[b].fraction = 0; return }
+            entities[b].fraction -= 1
+            sites[s].remaining -= 1
+            players[p].resources[.oil] += 1
+            if sites[s].remaining <= 0 { exhaust(s) }
+        }
+    }
+
+    /// The first oil field with oil left beneath a building's footprint.
+    func oilBeneath(_ b: Int) -> Int? {
+        for t in footprintTiles(origin: entities[b].origin, size: entities[b].size) where inMap(t) {
+            let s = Int(siteAt[tileIndex(t)])
+            if s >= 0, sites[s].kind == .oilField, sites[s].remaining > 0 { return s }
+        }
+        return nil
+    }
+
+    /// The oil left beneath a building's footprint.
+    func oilLeft(under b: Int) -> Int {
+        var total = 0
+        for t in footprintTiles(origin: entities[b].origin, size: entities[b].size) where inMap(t) {
+            let s = Int(siteAt[tileIndex(t)])
+            if s >= 0, sites[s].kind == .oilField { total += max(0, sites[s].remaining) }
+        }
+        return total
     }
 }
