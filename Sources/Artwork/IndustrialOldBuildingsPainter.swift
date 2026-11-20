@@ -12,11 +12,13 @@ import Foundation
 // the Industrial age builds with (brick, slate, sash windows, cast iron, gas
 // lamps, chimney pots) are in `IndustrialOldBuildingsParts.swift`.
 
-/// The Industrial age's palette (docs/art-style.md, "Palettes"): brick, navy
-/// and soot on parchment, with the line every age shares, and the shades of
-/// them that brick, dressed stone, slate, cast iron, glass, fire and smoke
-/// need. The owner's colour is never laid against the brick or the navy: a
-/// rim of the light colour always stands between them.
+/// The Industrial age's palette (docs/art-style.md, "Palettes"): brick,
+/// bottle green and soot on parchment, with the line every age shares, and
+/// the shades of them that brick, dressed stone, slate, cast iron, glass, fire
+/// and smoke need. Bottle green replaced the palette's green on 2026-11-19, as
+/// the green was nearly Shang's colour. The owner's colour is never laid
+/// against the brick or the green: a rim of the light colour always stands
+/// between them.
 enum IndustrialOldBuildingsInk {
     static let line = "#2a2420"
     /// Red brick: its top, its lit face, its shaded face, and its darkest
@@ -46,16 +48,18 @@ enum IndustrialOldBuildingsInk {
     /// Granite setts and flagstones: a paved yard.
     static let paving = "#b9b2a2"
     static let pavingShade = "#958e80"
-    /// Slate, blue-grey toward the navy: its lit slope, its shaded slope, its dark.
-    static let slate = "#4d6273"
-    static let slateLight = "#687e8f"
-    static let slateShade = "#3b4e5e"
-    static let slateDark = "#25333f"
-    /// Navy paint: doors, shutters, painted ironwork.
-    static let navy = "#3f5f7a"
-    static let navyLight = "#587a95"
-    static let navyShade = "#2f4a61"
-    static let navyDark = "#213547"
+    /// Slate, a neutral grey with little blue in it, kept clear of Shang's
+    /// colour and the blues of Egypt and Greece: its lit slope, its shaded
+    /// slope, its dark.
+    static let slate = "#575c61"
+    static let slateLight = "#73787d"
+    static let slateShade = "#45494e"
+    static let slateDark = "#2c2f33"
+    /// Bottle-green paint: doors, shutters, painted ironwork.
+    static let green = "#2f5a46"
+    static let greenLight = "#467360"
+    static let greenShade = "#234536"
+    static let greenDark = "#183126"
     /// Soot: a chimney's crown, coal, smoke-stained stone.
     static let soot = "#6b6258"
     static let sootLight = "#8a8177"

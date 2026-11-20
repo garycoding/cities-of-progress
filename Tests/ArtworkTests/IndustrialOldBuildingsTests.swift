@@ -163,18 +163,21 @@ import Testing
     /// Writes the contact sheet, the scene and enlarged drawings for a person
     /// to judge, into the directory named by `ARTWORK_RENDERS`; skipped when it
     /// is not set. `ARTWORK_ONLY` limits the enlarged drawings to the kinds it
-    /// names, and leaves out the sheet and the scene.
+    /// names, and leaves out the sheet and the scene; `ARTWORK_ENLARGED` draws
+    /// all of them; `ARTWORK_SUFFIX` is added to the sheet's and the scene's names.
     @Test(.enabled(if: ProcessInfo.processInfo.environment["ARTWORK_RENDERS"] != nil))
     func rendersTheSheetAndTheScene() throws {
         let environment = ProcessInfo.processInfo.environment
         let directory = URL(fileURLWithPath: environment["ARTWORK_RENDERS"] ?? "/", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let only = environment["ARTWORK_ONLY"].map { $0.split(separator: ",").map(String.init) }
+        // A suffix for the sheet and the scene, so that a later round keeps the earlier files.
+        let suffix = environment["ARTWORK_SUFFIX"] ?? ""
         if only == nil {
             try Preview.writePNG(try #require(IndustrialOldBuildingsPreview.contactSheet(Self.kinds)),
-                                 to: directory.appendingPathComponent("industrial-old-buildings-contact-sheet.png"))
+                                 to: directory.appendingPathComponent("industrial-old-buildings-contact-sheet\(suffix).png"))
             try Preview.writePNG(try #require(IndustrialOldBuildingsPreview.scene()),
-                                 to: directory.appendingPathComponent("industrial-old-buildings-scene.png"))
+                                 to: directory.appendingPathComponent("industrial-old-buildings-scene\(suffix).png"))
         }
         for kind in Self.kinds where only?.contains("\(kind)") ?? (environment["ARTWORK_ENLARGED"] != nil) {
             for complete in [true, false] {
@@ -223,8 +226,6 @@ private enum IndustrialOldBuildingsPreview {
     static let industrial = IndustrialOldBuildingSprites()
     static let alchemyOld = AlchemyOldBuildingSprites()
     static let alchemyNew = AlchemyNewBuildingSprites()
-    /// Rome's red and Angkor's orange, the two team colours nearest the palette's brick.
-    static let civilizations: [Civilization] = [.rome, .angkor]
 
     static func rgb(_ hex: String) -> CGColor {
         let v = Int(hex.dropFirst(), radix: 16) ?? 0
@@ -252,13 +253,14 @@ private enum IndustrialOldBuildingsPreview {
     }
 
     /// For each kind, a row: its Alchemy look, complete and under
-    /// construction, then its Industrial look complete and under
-    /// construction, each in Rome's and Angkor's colours.
+    /// construction, then its Industrial look complete in Rome's, Angkor's,
+    /// Shang's and Olmec's colours, and under construction in Rome's and Shang's.
     static func contactSheet(_ kinds: [BuildingKind]) -> CGImage? {
         let cellW = 440, cellH = 420, label = 34
         let columns: [(age: Age, complete: Bool, civilization: Civilization)] = [
             (.alchemy, true, .rome), (.alchemy, false, .rome),
-            (.industrial, true, .rome), (.industrial, true, .angkor), (.industrial, false, .rome), (.industrial, false, .angkor),
+            (.industrial, true, .rome), (.industrial, true, .angkor), (.industrial, true, .shang), (.industrial, true, .olmec),
+            (.industrial, false, .rome), (.industrial, false, .shang),
         ]
         let width = cellW * columns.count, height = (cellH + label) * kinds.count + 60
         guard let context = Raster.bitmap(width: width, height: height) else { return nil }
@@ -331,8 +333,10 @@ private enum IndustrialOldBuildingsPreview {
             Placed(kind: .castle, x: 17, y: 2, complete: true, civilization: .rome),
             Placed(kind: .alchemistsWorkshop, x: 3, y: 16, complete: true, civilization: .rome),
             Placed(kind: .alchemistsWorkshop, x: 12, y: 18, complete: false, civilization: .rome),
-            Placed(kind: .castle, x: 18, y: 16, complete: false, civilization: .angkor),
-            Placed(kind: .house, x: 19, y: 11, complete: true, civilization: .angkor),
+            Placed(kind: .castle, x: 18, y: 16, complete: false, civilization: .shang),
+            Placed(kind: .house, x: 19, y: 11, complete: true, civilization: .olmec),
+            Placed(kind: .barracks, x: 1, y: 3, complete: true, civilization: .shang),
+            Placed(kind: .stable, x: 19, y: 7, complete: true, civilization: .angkor),
         ]
         for y in 2..<9 { placed.append(Placed(kind: .stoneWall, x: 15, y: y, complete: y != 6, civilization: .rome)) }
         for x in 10..<15 { placed.append(Placed(kind: .stoneWall, x: x, y: 1, complete: true, civilization: .rome)) }

@@ -23,7 +23,7 @@ extension IndustrialOldBuildingsPainter {
     private static let storeEaves = 25.0
     private static let storeRidge = 41.0
 
-    /// A loading door of planks painted navy on a wall drawn with `wall`,
+    /// A loading door of planks painted bottle green on a wall drawn with `wall`,
     /// centred on `u` and standing on `v`, `w` wide and `h` tall, under a
     /// lintel of stone, open at the top storey to show the dark within.
     private mutating func loadingDoor(_ u: Double, _ v: Double, w: Double, h: Double, open: Bool = false) {
@@ -32,9 +32,9 @@ extension IndustrialOldBuildingsPainter {
         if open {
             shape(panel(u - w / 2, v, u + w / 2, v + h), .colour(I.dark), width: 0.8)
             // One leaf swung back against the wall.
-            shape(panel(u + w / 2 + 0.6, v, u + w / 2 + 3.4, v + h), .colour(I.navy), width: 0.6)
+            shape(panel(u + w / 2 + 0.6, v, u + w / 2 + 3.4, v + h), .colour(I.green), width: 0.6)
         } else {
-            shape(panel(u - w / 2, v, u + w / 2, v + h), .colour(I.navy), width: 0.8)
+            shape(panel(u - w / 2, v, u + w / 2, v + h), .colour(I.green), width: 0.8)
             var planks = PathData()
             var x = u - w / 2 + 1.4
             while x < u + w / 2 - 0.4 { planks.move(uv(x, v + 0.3)); planks.line(uv(x, v + h - 0.3)); x += 1.4 }

@@ -8,7 +8,7 @@ import Foundation
 // hall where the soldiers drill, lit by tall round-headed windows between
 // pilasters, under a hipped roof of slate with iron cresting and a ventilator
 // on its ridge. Its front is castellated in the manner of the age: an arched
-// doorway with doors of navy plank between two towers of brick with stone
+// doorway with doors of bottle-green plank between two towers of brick with stone
 // battlements and slits for rifles, a great banner of the owner's colour
 // hung between them, and shields of the owner's colour along the wall. In
 // the yard stand a rack of rifles, a target on its frame, and the owner's

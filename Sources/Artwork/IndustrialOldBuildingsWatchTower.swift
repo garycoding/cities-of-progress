@@ -113,8 +113,8 @@ extension IndustrialOldBuildingsPainter {
                 for v in stride(from: 1.4, to: 5.4, by: 1.3) { boards.move(p.uv(0, v)); boards.line(p.uv(w, v)) }
                 p.svg.path(boards, stroke: .colour(I.line), width: 0.35, opacity: 0.45)
                 p.paintedBand(0, w, 5.4, 7)
-                for u in [0.9, w - 0.9] { p.shape(p.panel(u - 0.9, 0, u + 0.9, eaves - deck), .colour(I.navy), width: 0.5) }
-                p.casement(3.2, 8.6, w: w - 6.4, h: 6.4, lights: 2, frame: I.navy)
+                for u in [0.9, w - 0.9] { p.shape(p.panel(u - 0.9, 0, u + 0.9, eaves - deck), .colour(I.green), width: 0.5) }
+                p.casement(3.2, 8.6, w: w - 6.4, h: 6.4, lights: 2, frame: I.green)
             }
         }
         railing(-e + 0.03, e - 0.03, e - 0.03, e - 0.03, on: deck, height: 6, step: 2.6)

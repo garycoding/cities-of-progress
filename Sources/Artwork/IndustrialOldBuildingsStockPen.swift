@@ -186,11 +186,11 @@ extension IndustrialOldBuildingsPainter {
         line([iso(x0 + 0.2, y0 + 0.1, 6), iso(x0 + 0.45, y0 + 0.1, 6)], width: 0.5, opacity: 0.7)
         // The pump of cast iron at the trough's end: a fluted barrel, a spout, a handle.
         let foot = iso(x1 + 0.1, (y0 + y1) / 2, 1.5)
-        shape([foot + P(-1.8, 0), foot + P(-1.4, -15), foot + P(1.4, -15), foot + P(1.8, 0)], .colour(I.navy), width: 0.7)
-        svg.line([foot + P(-0.6, -1), foot + P(-0.5, -14)], stroke: .colour(I.navyLight), width: 0.5)
-        svg.ellipse(foot - P(0, 15.6), 2.2, 1, fill: .colour(I.navyShade), stroke: .colour(I.line), width: 0.5)
-        svg.circle(foot - P(0, 17), 1, fill: .colour(I.navy), stroke: .colour(I.line), width: 0.4)
-        shape([foot + P(-1.4, -10), foot + P(-5, -8.6), foot + P(-5.4, -7.2), foot + P(-1.4, -8.6)], .colour(I.navy), width: 0.5)
+        shape([foot + P(-1.8, 0), foot + P(-1.4, -15), foot + P(1.4, -15), foot + P(1.8, 0)], .colour(I.green), width: 0.7)
+        svg.line([foot + P(-0.6, -1), foot + P(-0.5, -14)], stroke: .colour(I.greenLight), width: 0.5)
+        svg.ellipse(foot - P(0, 15.6), 2.2, 1, fill: .colour(I.greenShade), stroke: .colour(I.line), width: 0.5)
+        svg.circle(foot - P(0, 17), 1, fill: .colour(I.green), stroke: .colour(I.line), width: 0.4)
+        shape([foot + P(-1.4, -10), foot + P(-5, -8.6), foot + P(-5.4, -7.2), foot + P(-1.4, -8.6)], .colour(I.green), width: 0.5)
         line([foot + P(1.2, -14), foot + P(6, -19), foot + P(7.4, -18.4)], width: 1)
     }
 

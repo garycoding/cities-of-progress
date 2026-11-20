@@ -288,7 +288,7 @@ enum IndustrialOldBuildingsLoad: Sendable {
 
 extension IndustrialOldBuildingsPainter {
     /// A two-wheeled cart standing on the map at (x, y) on `h`, its bed
-    /// running along x, `length` tiles long: a bed of boards painted navy
+    /// running along x, `length` tiles long: a bed of boards painted bottle green
     /// with sideboards, a pair of tall wheels of spoked timber with iron
     /// tyres, shafts reaching forward to the right, a prop under them, and
     /// `load` heaped in it.
@@ -307,7 +307,7 @@ extension IndustrialOldBuildingsPainter {
         pole(iso(x0 + 0.1, y0 + 0.03, bed), tipA, width: 1.4, colour: I.timber)
         pole(iso(x1 + 0.42, (y0 + y1) / 2, h), iso(x1 + 0.42, (y0 + y1) / 2, h + 4), width: 1.1, colour: I.timberDark)
         // The bed and its sideboards.
-        block(x0, y0, x1, y1, bed, bed + 1.6, top: .colour(I.timberLight), left: .colour(I.navy), right: .colour(I.navyShade),
+        block(x0, y0, x1, y1, bed, bed + 1.6, top: .colour(I.timberLight), left: .colour(I.green), right: .colour(I.greenShade),
               width: 0.8)
         switch load {
         case .empty: break
@@ -324,7 +324,7 @@ extension IndustrialOldBuildingsPainter {
             crate(x0 + 0.27, y0 + 0.02, x1 - 0.04, y1 - 0.02, from: bed + 1.6, height: 4)
             barrel(at: iso(x0 + 0.38, y, bed + 5.6), size: 0.65)
         }
-        for (a, b, paint) in [(iso(x0, y1, bed + 1.6), iso(x1, y1, bed + 1.6), I.navyLight)] {
+        for (a, b, paint) in [(iso(x0, y1, bed + 1.6), iso(x1, y1, bed + 1.6), I.greenLight)] {
             shape([a, b, b - P(0, side), a - P(0, side)], .colour(paint), width: 0.7)
             var slats = PathData()
             for k in 1..<5 {
@@ -334,7 +334,7 @@ extension IndustrialOldBuildingsPainter {
             svg.path(slats, stroke: .colour(I.line), width: 0.4, opacity: 0.6)
         }
         shape([iso(x1, y1, bed + 1.6), iso(x1, y0, bed + 1.6), iso(x1, y0, bed + 1.6 + side), iso(x1, y1, bed + 1.6 + side)],
-              .colour(I.navyShade), width: 0.7)
+              .colour(I.greenShade), width: 0.7)
         pole(iso(x0 + 0.1, y1 + 0.01, bed), tipB, width: 1.5, colour: I.timberLight)
         // The near wheel: an iron tyre, a felloe of timber, twelve spokes and a hub.
         wall(.left, from: x, y1 + 0.03, at: h) { p in

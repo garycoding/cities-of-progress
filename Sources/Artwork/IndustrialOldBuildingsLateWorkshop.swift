@@ -100,7 +100,7 @@ extension IndustrialOldBuildingsLatePainter {
     mutating func frontWindow(_ u: Double, _ v: Double, width w: Double, height h: Double) {
         typealias I = IndustrialOldBuildingsLateInk
         shape(panel(u - 1.6, v - 0.4, u + w + 1.6, v + h + 1.8), .colour(I.stoneTop), width: 0.7)
-        shape(panel(u, v, u + w, v + h), .colour(I.navyDark), width: 0.8)
+        shape(panel(u, v, u + w, v + h), .colour(I.greenDark), width: 0.8)
         // A glimmer of the furnace's light on the room's far wall.
         colour(panel(u + w * 0.62, v + 0.6, u + w - 0.6, v + h - 0.6), .colour(I.fire), opacity: 0.35)
         // A shelf across the back, with jars on it.
@@ -135,7 +135,7 @@ extension IndustrialOldBuildingsLatePainter {
         let f = uv(u + w - 2.6, v + 0.6)
         shape([f + P(-1.6, 0), f + P(1.6, 0), f + P(0.6, -3.6), f + P(0.6, -7), f + P(-0.6, -7), f + P(-0.6, -3.6)], .colour(I.glass),
               width: 0.55)
-        colour([f + P(-1.4, -0.2), f + P(1.4, -0.2), f + P(0.8, -2.6), f + P(-0.8, -2.6)], .colour(I.navyLight))
+        colour([f + P(-1.4, -0.2), f + P(1.4, -0.2), f + P(0.8, -2.6), f + P(-0.8, -2.6)], .colour(I.greenLight))
         // The sill.
         shape(panel(u - 2.2, v - 1.4, u + w + 2.2, v), .colour(I.stoneTop), width: 0.6)
         // Mullion and transom of the window.
@@ -144,11 +144,11 @@ extension IndustrialOldBuildingsLatePainter {
 
     /// The open door of the furnace room on a wall drawn with `wall`, centred
     /// on `u`: an arch of voussoirs over the dark within, where the furnace's
-    /// mouth glows, its door of navy planks folded back against the wall.
+    /// mouth glows, its door of bottle-green planks folded back against the wall.
     mutating func furnaceDoor(_ u: Double, width w: Double, height h: Double) {
         typealias I = IndustrialOldBuildingsLateInk
         // The door leaf, folded back against the wall at the left.
-        shape(panel(u - w / 2 - w * 0.7, 0, u - w / 2, h - w / 2), .colour(I.navy), width: 0.8)
+        shape(panel(u - w / 2 - w * 0.7, 0, u - w / 2, h - w / 2), .colour(I.green), width: 0.8)
         for k in 1...2 {
             let x = u - w / 2 - w * 0.7 * Double(k) / 3
             line([uv(x, 0.4), uv(x, h - w / 2 - 0.4)], width: 0.4, opacity: 0.7)
@@ -185,8 +185,8 @@ extension IndustrialOldBuildingsLatePainter {
     mutating func casement(_ u: Double, _ v: Double, width w: Double, height h: Double) {
         typealias I = IndustrialOldBuildingsLateInk
         shape(panel(u - 0.5, v, u + w + 0.5, v + h), .colour(I.light), width: 0.6)
-        colour(panel(u + 0.4, v + 0.5, u + w - 0.4, v + h - 0.5), .colour(I.navyDark))
-        colour([uv(u + 0.4, v + h * 0.55), uv(u + w * 0.5, v + h - 0.5), uv(u + 0.4, v + h - 0.5)], .colour(I.navyLight), opacity: 0.6)
+        colour(panel(u + 0.4, v + 0.5, u + w - 0.4, v + h - 0.5), .colour(I.greenDark))
+        colour([uv(u + 0.4, v + h * 0.55), uv(u + w * 0.5, v + h - 0.5), uv(u + 0.4, v + h - 0.5)], .colour(I.greenLight), opacity: 0.6)
         var bars = PathData()
         bars.move(uv(u + w / 2, v + 0.5)); bars.line(uv(u + w / 2, v + h - 0.5))
         bars.move(uv(u, v + h / 2)); bars.line(uv(u + w, v + h / 2))
@@ -221,7 +221,7 @@ extension IndustrialOldBuildingsLatePainter {
             }
             p.svg.path(d, stroke: .colour(I.line), width: 0.35, opacity: 0.3)
             p.svg.circle(p.uv(w / 2, rise * 0.4), 3.6, fill: .colour(I.stoneTop), stroke: .colour(I.line), width: 0.6)
-            p.svg.circle(p.uv(w / 2, rise * 0.4), 2.4, fill: .colour(I.navyDark), stroke: .colour(I.line), width: 0.45)
+            p.svg.circle(p.uv(w / 2, rise * 0.4), 2.4, fill: .colour(I.greenDark), stroke: .colour(I.line), width: 0.45)
             p.svg.line([p.uv(w / 2 - 2.4, rise * 0.4), p.uv(w / 2 + 2.4, rise * 0.4)], stroke: .colour(I.light), width: 0.45)
             p.svg.line([p.uv(w / 2, rise * 0.4 - 2.4), p.uv(w / 2, rise * 0.4 + 2.4)], stroke: .colour(I.light), width: 0.45)
         }

@@ -363,7 +363,7 @@ extension IndustrialOldBuildingsPainter {
     /// a wall drawn with `wall`, `w` wide and `h` tall to the crown of its
     /// round head: four sunk panels, a brass knob, and a fanlight of glass
     /// with radiating bars in the head, in a surround of `surround`.
-    mutating func door(_ u: Double, _ v: Double, w: Double, h: Double, paint: String = IndustrialOldBuildingsInk.navy,
+    mutating func door(_ u: Double, _ v: Double, w: Double, h: Double, paint: String = IndustrialOldBuildingsInk.green,
                        surround: String = IndustrialOldBuildingsInk.stoneTop) {
         typealias I = IndustrialOldBuildingsInk
         let r = w / 2
@@ -659,7 +659,7 @@ extension IndustrialOldBuildingsPainter {
     /// centred on `u` and standing on `v`, `w` wide and `h` tall: planked,
     /// painted `paint`, with iron straps, and a fanlight in the head, in an
     /// archway of `surround` with a keystone. A cart or a horse passes through.
-    mutating func archedDoors(_ u: Double, _ v: Double, w: Double, h: Double, paint: String = IndustrialOldBuildingsInk.navy,
+    mutating func archedDoors(_ u: Double, _ v: Double, w: Double, h: Double, paint: String = IndustrialOldBuildingsInk.green,
                               surround: String = IndustrialOldBuildingsInk.stoneTop, open: Bool = false) {
         typealias I = IndustrialOldBuildingsInk
         let r = w / 2, spring = v + h - r

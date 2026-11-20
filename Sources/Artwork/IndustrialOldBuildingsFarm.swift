@@ -99,7 +99,7 @@ extension IndustrialOldBuildingsPainter {
 
     /// The granary at the back corner: painted weatherboard on staddle
     /// stones, banded in the owner's colour, its door and corner boards
-    /// painted navy, under a roof of slate, with a ladder to its door; or,
+    /// painted bottle green, under a roof of slate, with a ladder to its door; or,
     /// being built, its stones set and its floor's frame laid on them.
     private mutating func granary(complete: Bool) {
         typealias I = IndustrialOldBuildingsInk
@@ -121,14 +121,14 @@ extension IndustrialOldBuildingsPainter {
         wall(.left, from: x0 + 0.03, y1 - 0.03, at: floor) { p in
             p.weatherboard(width, eave - floor)
             p.paintedBand(0, width, 8, 10)
-            p.shape(p.panel(width / 2 - 3.4, 0, width / 2 + 3.4, 7.4), .colour(I.navy), width: 0.8)
+            p.shape(p.panel(width / 2 - 3.4, 0, width / 2 + 3.4, 7.4), .colour(I.green), width: 0.8)
             p.line([p.uv(width / 2 - 2.8, 0.6), p.uv(width / 2 + 2.8, 6.8)], width: 0.5)
-            for u in [0.9, width - 0.9] { p.shape(p.panel(u - 0.9, 0, u + 0.9, eave - floor), .colour(I.navy), width: 0.45) }
+            for u in [0.9, width - 0.9] { p.shape(p.panel(u - 0.9, 0, u + 0.9, eave - floor), .colour(I.green), width: 0.45) }
         }
         wall(.right, from: x1 - 0.03, y1 - 0.03, at: floor) { p in
             p.weatherboard(width, eave - floor)
             p.paintedBand(0, width, 8, 10)
-            p.shape(p.panel(width - 1.8, 0, width, eave - floor), .colour(I.navyShade), width: 0.45)
+            p.shape(p.panel(width - 1.8, 0, width, eave - floor), .colour(I.greenShade), width: 0.45)
         }
         gableAlongX(x0 + 0.03, y0 + 0.03, x1 - 0.03, y1 - 0.03, eave: eave, ridge: ridge, over: 0.07,
                     gableWall: .colour(I.plasterShade)) { p, w, r in
@@ -140,7 +140,7 @@ extension IndustrialOldBuildingsPainter {
                 v += 1.6
             }
             p.svg.path(boards, stroke: .colour(I.line), width: 0.35, opacity: 0.45)
-            p.svg.circle(p.uv(w / 2, r * 0.36), 1.6, fill: .colour(I.navy), stroke: .colour(I.line), width: 0.5)
+            p.svg.circle(p.uv(w / 2, r * 0.36), 1.6, fill: .colour(I.green), stroke: .colour(I.line), width: 0.5)
         }
         let mid = (x0 + x1) / 2
         let feet = (iso(mid - 0.05, y1 + 0.22, h0), iso(mid + 0.05, y1 + 0.22, h0))
@@ -306,8 +306,8 @@ extension IndustrialOldBuildingsPainter {
         let axle = (x: x + 0.12, h: deck + 11.0), rr = 0.15, rh = 6.4
         func reelPoint(_ a: Double, _ yy: Double) -> P { iso(axle.x + rr * cos(a), yy, axle.h + rh * sin(a)) }
         pole(iso(px1 - 0.02, py0 + 0.02, deck), iso(axle.x, py0 + 0.02, axle.h), width: 1.2, colour: I.timberDark)
-        // The platform: boards painted navy on a frame of iron, its cutter bar along the front edge.
-        block(px0, py0, px1, py1, deck - 3.4, deck, top: .colour(I.timberLight), left: .colour(I.light), right: .colour(I.navyShade),
+        // The platform: boards painted bottle green on a frame of iron, its cutter bar along the front edge.
+        block(px0, py0, px1, py1, deck - 3.4, deck, top: .colour(I.timberLight), left: .colour(I.light), right: .colour(I.greenShade),
               width: 0.8)
 
         let bar = [iso(px0 - 0.04, py0 - 0.04, deck - 1.6), iso(px0 - 0.04, py1 + 0.04, deck - 1.6)]
@@ -386,7 +386,7 @@ extension IndustrialOldBuildingsPainter {
         svg.ellipse(p + P(-21, -6.6), 2.2, 3, fill: .colour(I.ironLight), stroke: .colour(I.line), width: 0.7)
         pole(p + P(0, -1.6), p + P(7.6, -12.6), width: 1.2, colour: I.timberLight)
         pole(p + P(2.4, -1.2), p + P(10.2, -11.2), width: 1.2, colour: I.timberLight)
-        shape([p + P(-3, -3), p + P(4.4, -4.2), p + P(8.4, 0.2), p + P(1, 0.8)], .colour(I.navy), width: 0.8)
+        shape([p + P(-3, -3), p + P(4.4, -4.2), p + P(8.4, 0.2), p + P(1, 0.8)], .colour(I.green), width: 0.8)
         shape([p + P(-3, -1), p + P(1, 0.8), p + P(-4.6, 0.6)], .colour(I.ironLight), width: 0.6)
     }
 }

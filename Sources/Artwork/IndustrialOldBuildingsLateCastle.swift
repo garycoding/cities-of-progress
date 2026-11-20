@@ -276,17 +276,17 @@ extension IndustrialOldBuildingsLatePainter {
     }
 
     /// An arched window on a wall drawn with `wall`: its foot at (`u`, `v`),
-    /// glazed in sashes, and its shutters of navy folded open when `shutters` is true.
+    /// glazed in sashes, and its shutters of bottle green folded open when `shutters` is true.
     mutating func window(_ u: Double, _ v: Double, width w: Double, height h: Double, shutters: Bool) {
         typealias I = IndustrialOldBuildingsLateInk
         if shutters {
             for (a, b) in [(u - w / 2 - w * 0.48, u - w / 2), (u + w / 2, u + w / 2 + w * 0.48)] {
-                shape(panel(a, v, b, v + h - w / 2), .colour(I.navy), width: 0.6)
+                shape(panel(a, v, b, v + h - w / 2), .colour(I.green), width: 0.6)
                 line([uv(a + 0.4, v + (h - w / 2) * 0.5), uv(b - 0.4, v + (h - w / 2) * 0.5)], width: 0.4, opacity: 0.8)
             }
         }
         voussoirs(u, v, width: w, height: h, depth: 1.6, count: 5)
-        arch(u, v, width: w, height: h, .colour(I.navyDark), line: 0.8)
+        arch(u, v, width: w, height: h, .colour(I.greenDark), line: 0.8)
         // The sash bars, painted the light colour.
         var bars = PathData()
         bars.move(uv(u, v + 0.3)); bars.line(uv(u, v + h - 0.3))

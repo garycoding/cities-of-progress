@@ -191,7 +191,7 @@ extension IndustrialOldBuildingsPainter {
                 p.shape(p.panel(length / 2 - 0.9, stage - base - 3.6 + r * 0.3, length / 2 + 0.9, stage - base - 1.2),
                         .colour(I.stoneTop), width: 0.45)
                 // Louvres of painted board across the foot of the opening.
-                for v in [1.4, 3.4, 5.4] { p.timber(p.uv(3.5, v), p.uv(length - 3.5, v + 0.8), width: 1, paint: I.navyLight) }
+                for v in [1.4, 3.4, 5.4] { p.timber(p.uv(3.5, v), p.uv(length - 3.5, v + 0.8), width: 1, paint: I.greenLight) }
             }
         }
         line([iso(s0, r1, stage), iso(s0, r1, base), iso(s1, r1, base), iso(s1, r0, base), iso(s1, r0, stage)], width: 1.1)
