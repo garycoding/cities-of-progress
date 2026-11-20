@@ -11,11 +11,13 @@ import Foundation
 // sprite is drawn at two pixels a point. The Industrial age adds brick laid in
 // courses, cast iron, glass in iron bars, riveted plate, and coal smoke.
 
-/// The Industrial age's palette (docs/art-style.md, "Palettes"): brick, navy,
-/// soot and the light, with the line every age shares, and the shades of them
-/// that brick, slate, iron, glass, timber, oil and smoke need. The owner's
-/// colour is never laid next to the brick or the navy: every part that carries
-/// it is framed in the light colour or set on soot.
+/// The Industrial age's palette (docs/art-style.md, "Palettes"), its navy
+/// replaced by bottle green (ruled 2026-11-19: the navy was nearly Shang's
+/// colour): brick, bottle green, soot and the light, with the line every age
+/// shares, and the shades of them that brick, slate, iron, glass, timber, oil
+/// and smoke need. The owner's colour is never laid next to the brick or the
+/// bottle green: every part that carries it is framed in the light colour or
+/// set on soot.
 enum IndustrialNewBuildingsInk {
     static let line = "#2a2420"
     /// Brick: its lit face, its shaded face, its darkest, and fresh brick on a site.
@@ -25,11 +27,11 @@ enum IndustrialNewBuildingsInk {
     static let brickDark = "#7c3d23"
     static let freshBrick = "#d4855a"
     static let freshBrickShade = "#b06a43"
-    /// Navy: slate roofs, painted iron, doors and window frames.
-    static let navy = "#3f5f7a"
-    static let navyLit = "#5b7b96"
-    static let navyShade = "#2f4a61"
-    static let navyDark = "#22364a"
+    /// Bottle green: slate roofs, painted iron, doors and window frames.
+    static let green = "#2f5a46"
+    static let greenLit = "#4a7a61"
+    static let greenShade = "#234836"
+    static let greenDark = "#183428"
     /// Soot: cast iron, engines, coal and cinders.
     static let soot = "#6b6258"
     static let sootLit = "#867c70"
@@ -57,9 +59,14 @@ enum IndustrialNewBuildingsInk {
     /// Glass in the light, and the sky in it.
     static let glass = "#cbdbe0"
     static let glassShade = "#9fb6c2"
-    /// Crude oil, and its sheen.
+    /// Crude oil, its lighter edge, and the sheen on it.
     static let oil = "#1f1a17"
+    static let oilShade = "#3b3433"
     static let oilSheen = "#5a5560"
+    static let oilViolet = "#776a86"
+    /// Reeds by an oil field: green, and dried.
+    static let reed = "#7e8a52"
+    static let reedDry = "#b39a5c"
     /// The fire of a furnace or a firebox.
     static let fire = "#e0913a"
     static let fireCore = "#f8dc8c"
@@ -240,7 +247,7 @@ struct IndustrialNewBuildingsPainter {
     }
 
     /// A window on a wall drawn with `wall`, its foot at (`u`, `v`), under a
-    /// segmental arch of brick on end: a sill of stone, a frame of navy and
+    /// segmental arch of brick on end: a sill of stone, a frame of bottle green and
     /// small panes of glass in iron bars.
     mutating func archedWindow(_ u: Double, _ v: Double, width w: Double, height h: Double, lit: Bool = true) {
         typealias I = IndustrialNewBuildingsInk
@@ -265,7 +272,7 @@ struct IndustrialNewBuildingsPainter {
         for k in 1..<3 { let x = u + w * Double(k) / 3; bars.move(uv(x, v)); bars.line(uv(x, v + h + rise)) }
         var y = v + h / 4
         while y < v + h + rise * 0.6 { bars.move(uv(u, y)); bars.line(uv(u + w, y)); y += h / 4 }
-        svg.path(bars, stroke: .colour(I.navy), width: 0.55)
+        svg.path(bars, stroke: .colour(I.green), width: 0.55)
         line(width: 0.8) { d in d = outline(0, P(0, 0)) }
         shape(panel(u - 1.4, v - 1.6, u + w + 1.4, v - 0.3), .colour(I.lightTop), width: 0.55)
     }
@@ -278,7 +285,7 @@ struct IndustrialNewBuildingsPainter {
         var bars = PathData()
         bars.move(uv(u + w / 2, v)); bars.line(uv(u + w / 2, v + h))
         bars.move(uv(u, v + h / 2)); bars.line(uv(u + w, v + h / 2))
-        svg.path(bars, stroke: .colour(I.navy), width: 0.6)
+        svg.path(bars, stroke: .colour(I.green), width: 0.6)
         line(panel(u, v, u + w, v + h), closed: true, width: 0.7)
         shape(panel(u - 1, v + h, u + w + 1, v + h + 1.6), .colour(I.lightTop), width: 0.5)
         shape(panel(u - 0.8, v - 1.2, u + w + 0.8, v - 0.1), .colour(I.lightTop), width: 0.5)
@@ -451,8 +458,8 @@ struct IndustrialNewBuildingsPainter {
 
     /// A drum of oil standing at `p` on the screen, `size` across: a cylinder of
     /// painted iron with two rolling hoops and a bung on its lid.
-    mutating func drum(at p: P, size s: Double = 1, paint: String = IndustrialNewBuildingsInk.navy,
-                       lit litPaint: String = IndustrialNewBuildingsInk.navyLit) {
+    mutating func drum(at p: P, size s: Double = 1, paint: String = IndustrialNewBuildingsInk.green,
+                       lit litPaint: String = IndustrialNewBuildingsInk.greenLit) {
         typealias I = IndustrialNewBuildingsInk
         let w = 3.6 * s, h = 8.4 * s
         svg.ellipse(p + P(0.8, 0.4), w * 1.15, 1.6 * s, fill: .colour("#000000"), opacity: 0.16)

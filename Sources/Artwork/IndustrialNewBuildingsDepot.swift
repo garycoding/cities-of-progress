@@ -3,9 +3,9 @@
 
 import Foundation
 
-// The Industrial-age railway depot: a station of brick under a roof of navy
+// The Industrial-age railway depot: a station of brick under a roof of bottle-green
 // slate, a clock in its gable and the owner's flag on its peak; before it a
-// platform under a canopy of iron on slender navy columns, its edge hung with
+// platform under a canopy of iron on slender bottle-green columns, its edge hung with
 // a fretted valance; and along the platform a short length of track on
 // ballast, closed at its far end by buffers, a tank engine standing at the
 // platform, and a semaphore signal whose arm is painted in the owner's
@@ -52,7 +52,7 @@ extension IndustrialNewBuildingsPainter {
     }
 
     /// The station: walls of brick with windows and doors under the canopy, a
-    /// roof of navy slate with two chimneys, a clock in the gable, and the
+    /// roof of bottle-green slate with two chimneys, a clock in the gable, and the
     /// owner's flag on the gable's peak.
     private mutating func station() {
         typealias I = IndustrialNewBuildingsInk
@@ -76,16 +76,16 @@ extension IndustrialNewBuildingsPainter {
         gableRoof(x0, y0, x1, y1, eave: eave, ridge: Depot.ridge, over: 0.08)
     }
 
-    /// A pair of doors of navy panels on a wall drawn with `wall`, from `u`,
+    /// A pair of doors of bottle-green panels on a wall drawn with `wall`, from `u`,
     /// under a fanlight and a hood of stone.
     fileprivate mutating func doubleDoor(_ u: Double, width w: Double, height h: Double) {
         typealias I = IndustrialNewBuildingsInk
         shape(panel(u - 1.4, 0, u + w + 1.4, h + 2.2), .colour(I.lightShade), width: 0.6)
-        shape(panel(u, 0, u + w, h - 4), .colour(I.navy), width: 0.8)
+        shape(panel(u, 0, u + w, h - 4), .colour(I.green), width: 0.8)
         for k in 0..<2 {
             let a = u + Double(k) * w / 2
-            colour(panel(a + 0.9, 1, a + w / 2 - 0.9, h * 0.42), .colour(I.navyLit))
-            colour(panel(a + 0.9, h * 0.42 + 1.2, a + w / 2 - 0.9, h - 5), .colour(I.navyLit))
+            colour(panel(a + 0.9, 1, a + w / 2 - 0.9, h * 0.42), .colour(I.greenLit))
+            colour(panel(a + 0.9, h * 0.42 + 1.2, a + w / 2 - 0.9, h - 5), .colour(I.greenLit))
         }
         line([uv(u + w / 2, 0.3), uv(u + w / 2, h - 4.2)], width: 0.6)
         shape(panel(u, h - 3.6, u + w, h), .colour(I.glass), width: 0.6)
@@ -93,7 +93,7 @@ extension IndustrialNewBuildingsPainter {
         shape(panel(u - 2.2, h + 2.2, u + w + 2.2, h + 3.6), .colour(I.lightTop), width: 0.6)
     }
 
-    /// A gabled roof of navy slate over a box from (x0, y0) to (x1, y1), its
+    /// A gabled roof of bottle-green slate over a box from (x0, y0) to (x1, y1), its
     /// eaves at `eave` and its ridge along x at `ridge`, overhanging by `over`
     /// tiles; a gable end of brick facing +x with a clock in it; two chimneys
     /// on the ridge; and the owner's flag on the gable's peak.
@@ -102,7 +102,7 @@ extension IndustrialNewBuildingsPainter {
         let ym = (y0 + y1) / 2
         let (a0, a1, b0, b1) = (x0 - over, x1 + over, y0 - over, y1 + over)
         let drop = (ridge - eave) * over / (ym - y0)
-        colour([iso(a0, ym, ridge), iso(a1, ym, ridge), iso(a1, b0, eave - drop), iso(a0, b0, eave - drop)], .colour(I.navyShade))
+        colour([iso(a0, ym, ridge), iso(a1, ym, ridge), iso(a1, b0, eave - drop), iso(a0, b0, eave - drop)], .colour(I.greenShade))
         // The gable's end wall, in brick, with the clock.
         let triangle = [iso(x1, y1, eave), iso(x1, y0, eave), iso(x1, ym, ridge)]
         colour(triangle, .colour(I.brickShade))
@@ -123,8 +123,8 @@ extension IndustrialNewBuildingsPainter {
         colour([iso(a1, b1, eave - drop), iso(a1, ym, ridge), iso(a1, b0, eave - drop), iso(a1, b0, eave - drop) + edge,
                 iso(a1, ym, ridge) + edge, iso(a1, b1, eave - drop) + edge], .colour(I.lightTop))
         let front = [iso(a0, ym, ridge), iso(a1, ym, ridge), iso(a1, b1, eave - drop), iso(a0, b1, eave - drop)]
-        colour([front[3], front[2], front[2] + edge, front[3] + edge], .colour(I.navyDark))
-        colour(front, .colour(I.navy))
+        colour([front[3], front[2], front[2] + edge, front[3] + edge], .colour(I.greenDark))
+        colour(front, .colour(I.green))
         var courses = PathData(), joints = PathData(), lit = PathData()
         let rows = 7
         for k in 1..<rows {
@@ -145,9 +145,9 @@ extension IndustrialNewBuildingsPainter {
                 x += 0.16
             }
         }
-        svg.path(courses, stroke: .colour(I.navyDark), width: 0.75)
-        svg.path(joints, stroke: .colour(I.navyDark), width: 0.42, opacity: 0.8)
-        svg.path(lit, stroke: .colour(I.navyLit), width: 0.5, opacity: 0.8)
+        svg.path(courses, stroke: .colour(I.greenDark), width: 0.75)
+        svg.path(joints, stroke: .colour(I.greenDark), width: 0.42, opacity: 0.8)
+        svg.path(lit, stroke: .colour(I.greenLit), width: 0.5, opacity: 0.8)
         line(front, closed: true, width: 1.1)
         line([front[3], front[3] + edge, front[2] + edge, front[2]], width: 0.9)
         line([iso(a1, ym, ridge), iso(a1, ym, ridge) + edge, iso(a1, b0, eave - drop) + edge, iso(a1, b0, eave - drop)], width: 0.9)
@@ -164,15 +164,15 @@ extension IndustrialNewBuildingsPainter {
         }
         // The ridge's capping, and the flag on the gable's peak.
         svg.line([iso(a0, ym, ridge), iso(a1, ym, ridge)], stroke: .colour(I.line), width: 3)
-        svg.line([iso(a0, ym, ridge), iso(a1, ym, ridge)], stroke: .colour(I.navyLit), width: 1.5)
+        svg.line([iso(a0, ym, ridge), iso(a1, ym, ridge)], stroke: .colour(I.greenLit), width: 1.5)
         flag(at: iso(a1, ym, ridge), height: 18, length: 16)
     }
 
     /// A clock at `c` on a wall drawn with `wall`: a face of the light colour
-    /// in a ring of navy, its hours marked, its hands of brass at ten to two.
+    /// in a ring of bottle green, its hours marked, its hands of brass at ten to two.
     fileprivate mutating func clock(at c: P, radius r: Double) {
         typealias I = IndustrialNewBuildingsInk
-        svg.circle(c + shift * 0.5, r + 1, fill: .colour(I.navy))
+        svg.circle(c + shift * 0.5, r + 1, fill: .colour(I.green))
         svg.circle(c, r + 1, fill: .none, stroke: .colour(I.line), width: 0.8)
         svg.circle(c, r - 0.2, fill: .colour(I.lightTop), stroke: .colour(I.line), width: 0.5)
         var hours = PathData()
@@ -210,7 +210,7 @@ extension IndustrialNewBuildingsPainter {
     }
 
     /// The canopy over the platform: a lean-to roof of iron sheet with a band
-    /// of glass, carried on navy columns with brackets, its front and end hung
+    /// of glass, carried on bottle-green columns with brackets, its front and end hung
     /// with a fretted valance of the light colour; and the platform's shade under it.
     private mutating func canopy() {
         typealias I = IndustrialNewBuildingsInk
@@ -227,7 +227,7 @@ extension IndustrialNewBuildingsPainter {
         }
         for x in Depot.columns { column(x, cy, from: deck, to: front - 1) }
         // The beam along the columns' heads.
-        pole(iso(x0, cy, front - 1), iso(x1, cy, front - 1), width: 1.6, colour: I.navy)
+        pole(iso(x0, cy, front - 1), iso(x1, cy, front - 1), width: 1.6, colour: I.green)
         // The roof: iron sheet, ribbed down its slope, with a band of glass.
         let roof = [iso(x0, y0, back), iso(x1, y0, back), iso(x1, y1, front), iso(x0, y1, front)]
         colour(roof, .colour(I.sootLit))
@@ -245,11 +245,11 @@ extension IndustrialNewBuildingsPainter {
             x += 0.09
         }
         svg.path(ribs, stroke: .colour(I.sootShade), width: 0.5, opacity: 0.8)
-        // The glazing bars over the glass, in navy.
+        // The glazing bars over the glass, in bottle green.
         var bars = PathData()
         x = x0 + 0.06
         while x < x1 - 0.02 { bars.move(iso(x, ga, ha)); bars.line(iso(x, gb, hb)); x += 0.09 }
-        svg.path(bars, stroke: .colour(I.navy), width: 0.6)
+        svg.path(bars, stroke: .colour(I.green), width: 0.6)
         line(glassBand, closed: true, width: 0.6)
         line(roof, closed: true, width: 1)
         // The valance along the front, and down the end.
@@ -260,15 +260,15 @@ extension IndustrialNewBuildingsPainter {
         }
     }
 
-    /// A column of cast iron, painted navy, standing at (x, y) from `h0` to
+    /// A column of cast iron, painted bottle-green, standing at (x, y) from `h0` to
     /// `h1`, with a base, a capital, and (unless `brackets` is false, whilst
     /// nothing rests on it) a bracket each way along the beam.
     private mutating func column(_ x: Double, _ y: Double, from h0: Double, to h1: Double, brackets: Bool = true) {
         typealias I = IndustrialNewBuildingsInk
         let foot = iso(x, y, h0), head = iso(x, y, h1)
-        pole(foot, head, width: 1.5, colour: I.navy)
-        svg.line([foot + P(-0.3, 0), head + P(-0.3, 0)], stroke: .colour(I.navyLit), width: 0.5)
-        shape([foot + P(-1.6, 0), foot + P(1.6, 0), foot + P(1.2, -2), foot + P(-1.2, -2)], .colour(I.navyShade), width: 0.6)
+        pole(foot, head, width: 1.5, colour: I.green)
+        svg.line([foot + P(-0.3, 0), head + P(-0.3, 0)], stroke: .colour(I.greenLit), width: 0.5)
+        shape([foot + P(-1.6, 0), foot + P(1.6, 0), foot + P(1.2, -2), foot + P(-1.2, -2)], .colour(I.greenShade), width: 0.6)
         shape([head + P(-1.8, 0), head + P(1.8, 0), head + P(1.2, 1.6), head + P(-1.2, 1.6)], .colour(I.lightShade), width: 0.6)
         // Brackets: quarter circles of iron to the beam either side.
         for side in [-1.0, 1.0] where brackets {
@@ -541,7 +541,7 @@ extension IndustrialNewBuildingsPainter {
         // Three columns of the canopy, a beam between the first two.
         let deck = g + Depot.platform.top, cy = Depot.canopy.y1 - 0.06
         for x in Depot.columns.prefix(3) { column(x, cy, from: deck, to: Depot.canopy.front - 1, brackets: false) }
-        pole(iso(Depot.columns[0], cy, Depot.canopy.front - 1), iso(Depot.columns[1], cy, Depot.canopy.front - 1), width: 1.6, colour: I.navy)
+        pole(iso(Depot.columns[0], cy, Depot.canopy.front - 1), iso(Depot.columns[1], cy, Depot.canopy.front - 1), width: 1.6, colour: I.green)
         track(laidTo: 0.5, railsTo: 0.1)
         // Rails and sleepers waiting, and brick.
         girders(0.35, 1.3, 1.34, on: g, count: 2)

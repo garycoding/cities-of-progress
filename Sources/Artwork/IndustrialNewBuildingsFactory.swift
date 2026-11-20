@@ -4,7 +4,7 @@
 import Foundation
 
 // The Industrial-age factory: a shed of brick under a saw-tooth roof, its
-// teeth of navy slate each ending in a steep face of glass turned to the
+// teeth of bottle-green slate each ending in a steep face of glass turned to the
 // viewer. A tall round stack of brick rises from the yard and gives off coal
 // smoke. Wide doors in the shed's end stand open on a field gun within; a
 // signboard in the owner's colour runs along the front, under the glass, and
@@ -111,12 +111,12 @@ extension IndustrialNewBuildingsPainter {
         courses(u, u + 3.2, 2.6, height - 2.2, opacity: 0.3)
     }
 
-    /// A small door of navy planks on a wall drawn with `wall`, from `u`, with a fanlight.
+    /// A small door of bottle-green planks on a wall drawn with `wall`, from `u`, with a fanlight.
     fileprivate mutating func smallDoor(_ u: Double, width w: Double, height h: Double) {
         typealias I = IndustrialNewBuildingsInk
         shape(panel(u - 1.2, 0, u + w + 1.2, h + 1.6), .colour(I.brickDark), width: 0.6)
-        shape(panel(u, 0, u + w, h - 3), .colour(I.navy), width: 0.8)
-        colour(panel(u + 0.6, 0.6, u + w * 0.45, h - 3.6), .colour(I.navyLit))
+        shape(panel(u, 0, u + w, h - 3), .colour(I.green), width: 0.8)
+        colour(panel(u + 0.6, 0.6, u + w * 0.45, h - 3.6), .colour(I.greenLit))
         line([uv(u + w / 2, 0.4), uv(u + w / 2, h - 3.4)], width: 0.5)
         shape(panel(u, h - 2.6, u + w, h), .colour(I.glass), width: 0.6)
         svg.circle(uv(u + w * 0.82, h * 0.42), 0.55, fill: .colour(I.brass))
@@ -124,14 +124,14 @@ extension IndustrialNewBuildingsPainter {
     }
 
     /// The great doors in the shed's end, on a wall drawn with `wall`, from
-    /// `u0` to `u1`: an opening, its two leaves of navy planks folded back
+    /// `u0` to `u1`: an opening, its two leaves of bottle-green planks folded back
     /// against the wall, and the dusk of the shop within.
     fileprivate mutating func greatDoors(_ u0: Double, _ u1: Double, height h: Double) {
         typealias I = IndustrialNewBuildingsInk
         let w = u1 - u0, leaf = w / 2 - 0.6
         // The leaves, folded back.
         for (a, b) in [(u0 - leaf, u0), (u1, u1 + leaf)] {
-            shape(panel(a, 0.3, b, h - 0.8), .colour(I.navy), width: 0.8)
+            shape(panel(a, 0.3, b, h - 0.8), .colour(I.green), width: 0.8)
             for k in 1..<4 {
                 let x = a + (b - a) * Double(k) / 4
                 line([uv(x, 0.8), uv(x, h - 1.3)], width: 0.4, opacity: 0.7)
@@ -215,7 +215,7 @@ extension IndustrialNewBuildingsPainter {
     }
 
     /// The saw-tooth roof over the shed: teeth running along x, each rising
-    /// toward the viewer in navy slate and ending in a steep face of glass, the
+    /// toward the viewer in bottle-green slate and ending in a steep face of glass, the
     /// zigzag of their ends seen on the shed's end. Being built, it is iron
     /// trusses only, over the back of the shed.
     private mutating func sawtoothRoof(rising: Bool) {
@@ -239,19 +239,19 @@ extension IndustrialNewBuildingsPainter {
             }
             // The slope of slate, from the low back edge up to the glass.
             let slope = [iso(x0 - over, a, eave), iso(x1 + over, a, eave), iso(x1 + over, b, eave + rise), iso(x0 - over, b, eave + rise)]
-            colour(slope, .colour(I.navy))
+            colour(slope, .colour(I.green))
             var courses = PathData()
             for t in stride(from: 0.2, to: 0.95, by: 0.2) {
                 courses.move(iso(x0 - over, a + w * t, eave + rise * t)); courses.line(iso(x1 + over, a + w * t, eave + rise * t))
             }
-            svg.path(courses, stroke: .colour(I.navyDark), width: 0.6, opacity: 0.85)
+            svg.path(courses, stroke: .colour(I.greenDark), width: 0.6, opacity: 0.85)
             var lit = PathData()
             for t in stride(from: 0.18, to: 0.95, by: 0.2) {
                 lit.move(iso(x0 - over + 0.02, a + w * t, eave + rise * t)); lit.line(iso(x1 + over - 0.02, a + w * t, eave + rise * t))
             }
-            svg.path(lit, stroke: .colour(I.navyLit), width: 0.5, opacity: 0.8)
+            svg.path(lit, stroke: .colour(I.greenLit), width: 0.5, opacity: 0.8)
             line(slope, closed: true, width: 1)
-            // The glass, in iron bars, facing the viewer; its frame of navy.
+            // The glass, in iron bars, facing the viewer; its frame of bottle green.
             let glassLength = (x1 - x0 + 2 * over) * 32
             wall(.left, from: x0 - over, b, at: eave) { p in
                 p.shape(p.panel(0, 0, glassLength, rise), .colour(I.glass), width: 0.9)
@@ -260,9 +260,9 @@ extension IndustrialNewBuildingsPainter {
                 var u = 3.0
                 while u < glassLength - 1 { bars.move(p.uv(u, 0)); bars.line(p.uv(u, rise)); u += 3.6 }
                 bars.move(p.uv(0, rise / 2)); bars.line(p.uv(glassLength, rise / 2))
-                p.svg.path(bars, stroke: .colour(I.navyShade), width: 0.55)
+                p.svg.path(bars, stroke: .colour(I.greenShade), width: 0.55)
                 p.line(p.panel(0, 0, glassLength, rise), closed: true, width: 0.9)
-                p.colour(p.panel(0, rise - 1.4, glassLength, rise), .colour(I.navyDark))
+                p.colour(p.panel(0, rise - 1.4, glassLength, rise), .colour(I.greenDark))
                 p.line([p.uv(0, rise - 1.4), p.uv(glassLength, rise - 1.4)], width: 0.6)
             }
             // The tooth's end, in brick, where the zigzag shows.

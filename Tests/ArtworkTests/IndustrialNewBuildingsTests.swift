@@ -17,6 +17,9 @@ import Testing
         [SpriteKey(.building(kind, .industrial), .complete), SpriteKey(.building(kind, .industrial), .underConstruction)]
     }
 
+    /// The oil field the well stands on, keyed as the terrain's sites are.
+    private static let oilField = SpriteKey(.site(.oilField), .complete)
+
     @Test func theBatchIsTheIndustrialAgesNewBuildings() {
         let industrial = Catalogue.standard.buildings.filter { $0.age == .industrial }.map(\.kind)
         #expect(Set(industrial) == Set(IndustrialNewBuildingsArt.kinds))
@@ -38,8 +41,10 @@ import Testing
             keys.append(SpriteKey(key.subject, .standing))
             keys.append(SpriteKey(key.subject, .working))
         }
+        keys.append(SpriteKey(.site(.oilField), .complete, frame: 1))
+        keys.append(SpriteKey(.site(.oilField), .standing))
         let supplied = Set(keys.filter { Self.source.sprite($0) != nil })
-        #expect(supplied == Set(Self.batch))
+        #expect(supplied == Set(Self.batch + [Self.oilField]))
     }
 
     /// A factory, depot or well is drawn from here for its owner in the
@@ -110,6 +115,34 @@ import Testing
         }
     }
 
+    /// The oil field is drawn as the terrain's sites are: on their canvas,
+    /// anchored at the tile's centre, with no team's colour; it lies within
+    /// its tile's diamond, rising above it only by its reeds, so that a well
+    /// standing over it covers it.
+    @Test func theOilFieldIsASiteWithinItsTile() throws {
+        let sprite = try #require(Self.source.sprite(Self.oilField))
+        #expect(sprite.teamMask == nil)
+        let canvas = TerrainSprites.siteCanvas
+        #expect(sprite.anchor == canvas.anchor)
+        #expect(sprite.base.width == canvas.pixelWidth && sprite.base.height == canvas.pixelHeight)
+        let pixels = IndustrialNewBuildingsPixels(sprite.base)
+        let centreX = sprite.anchor.x * Double(pixels.width), centreY = (1 - sprite.anchor.y) * Double(pixels.height)
+        let drawn = try #require(pixels.bounds(alphaAbove: 128), "the oil field is empty")
+        // Two pixels a point: the tile's diamond is 128 by 64 pixels.
+        #expect(Double(drawn.minX) >= centreX - 64 && Double(drawn.maxX + 1) <= centreX + 64, "\(drawn)")
+        #expect(Double(drawn.maxY + 1) <= centreY + 32, "\(drawn)")
+        #expect(Double(drawn.minY) >= centreY - 48, "the reeds stand \(centreY - Double(drawn.minY)) pixels tall")
+        // The pool is dark: crude oil shows against the grass.
+        var dark = 0
+        for y in 0..<pixels.height {
+            for x in 0..<pixels.width where pixels.alpha(x, y) > 250 {
+                let i = (y * pixels.width + x) * 4
+                if Int(pixels.bytes[i]) + Int(pixels.bytes[i + 1]) + Int(pixels.bytes[i + 2]) < 3 * 70 { dark += 1 }
+            }
+        }
+        #expect(dark >= 400, "only \(dark) dark pixels")
+    }
+
     @Test func theSameKeyGivesTheSamePixels() throws {
         let first = IndustrialNewBuildingSprites(), second = IndustrialNewBuildingSprites()
         for key in Self.batch {
@@ -119,12 +152,14 @@ import Testing
             #expect(IndustrialNewBuildingsPixels(maskA).bytes == IndustrialNewBuildingsPixels(maskB).bytes, "\(key)")
             #expect(a.anchor == b.anchor)
         }
+        let a = try #require(first.sprite(Self.oilField)), b = try #require(second.sprite(Self.oilField))
+        #expect(IndustrialNewBuildingsPixels(a.base).bytes == IndustrialNewBuildingsPixels(b.base).bytes)
     }
 
     @Test func theBatchRendersInUnderThreeSeconds() {
         let fresh = IndustrialNewBuildingSprites()
         let elapsed = ContinuousClock().measure {
-            for key in Self.batch { _ = fresh.sprite(key) }
+            for key in Self.batch + [Self.oilField] { _ = fresh.sprite(key) }
         }
         #expect(elapsed < .seconds(3), "the batch took \(elapsed)")
     }
@@ -199,7 +234,7 @@ struct IndustrialNewBuildingsRenders {
             (.railwayDepot, [("Stable", SpriteKey(.building(.stable, .alchemy), .complete))]),
             (.oilWell, [("Watch tower", SpriteKey(.building(.watchTower, .alchemy), .complete))]),
         ]
-        let width = cellW * columns, height = (cellH + label) * rows.count + 70
+        let width = cellW * columns, height = (cellH + label) * (rows.count + 1) + 70
         let context = try #require(Raster.bitmap(width: width, height: height))
         context.setFillColor(CGColor(srgbRed: 0xef / 255.0, green: 0xe0 / 255.0, blue: 0xc2 / 255.0, alpha: 1))
         context.fill(CGRect(x: 0, y: 0, width: width, height: height))
@@ -232,13 +267,48 @@ struct IndustrialNewBuildingsRenders {
                 Preview.label(text, in: context, at: CGPoint(x: Double(column * cellW + 10), y: Double(top - label + 6)), size: 16)
             }
         }
-        try Preview.writePNG(try #require(context.makeImage()), to: directory.appendingPathComponent("industrial-new-buildings-sheet.png"))
+        // The last row: the oil field alone, under a well (complete, and being
+        // built), beside the terrain's stone and gold sites, and enlarged.
+        let top = height - 70 - rows.count * (cellH + label)
+        let field = try #require(source.sprite(SpriteKey(.site(.oilField), .complete)))
+        let captions = ["Oil field, alone", "Oil field under Rome's well", "Under Angkor's well, being built",
+                        "Beside: stone and gold sites", "Oil field, enlarged three times"]
+        for column in 0..<columns {
+            let rect = CGRect(x: column * cellW + 6, y: top - label - cellH + 6, width: cellW - 12, height: cellH - 12)
+            ground(context, rect)
+            let centre = CGPoint(x: rect.midX, y: rect.minY + 150)
+            switch column {
+            case 0:
+                Preview.place(field.base, anchor: field.anchor, at: centre, in: context)
+            case 1, 2:
+                // The field on the back tile of the well's footprint, under the well.
+                Preview.place(field.base, anchor: field.anchor, at: CGPoint(x: centre.x, y: centre.y + 32), in: context)
+                let pose: SpritePose = column == 1 ? .complete : .underConstruction
+                let civilization = civilizations[column - 1]
+                let well = try #require(source.sprite(SpriteKey(.building(.oilWell, .industrial), pose)))
+                Preview.place(Preview.tinted(base: well.base, mask: well.teamMask, colour: TeamColour.of(civilization)), anchor: well.anchor,
+                              at: centre, in: context)
+            case 3:
+                for (k, key) in [SpriteKey(.site(.stone), .complete), SpriteKey(.site(.oilField), .complete),
+                                 SpriteKey(.site(.gold), .complete)].enumerated() {
+                    guard let sprite = source.sprite(key) ?? others.sprite(key) else { continue }
+                    Preview.place(sprite.base, anchor: sprite.anchor, at: CGPoint(x: centre.x + Double(k - 1) * 130, y: centre.y + 60),
+                                  in: context)
+                }
+            default:
+                let large = try #require(IndustrialNewBuildingsArt.renderOilField(pixelsPerPoint: 6))
+                Preview.place(large.base, anchor: large.anchor, at: CGPoint(x: centre.x, y: centre.y), in: context)
+            }
+            Preview.label(captions[column], in: context, at: CGPoint(x: Double(column * cellW + 10), y: Double(top - label + 6)), size: 16)
+        }
+        try Preview.writePNG(try #require(context.makeImage()), to: directory.appendingPathComponent("industrial-new-buildings-sheet-v2.png"))
     }
 
     /// An Industrial-age town at game size on the ground's tiles: Rome's
     /// factory, depot and two oil wells (one being built), Angkor's factory
     /// being built and its depot, with the town's other buildings and people
-    /// in the Alchemy age's look until the Industrial age's own are drawn, and trees.
+    /// in the Alchemy age's look until the Industrial age's own are drawn, oil
+    /// fields under the wells and beside them, and trees.
     @Test func townScene() throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let width = 2000, height = 1200
@@ -270,6 +340,12 @@ struct IndustrialNewBuildingsRenders {
             (SpriteKey(.building(.factory, .industrial), .underConstruction), 17.5, 4.5, .angkor),
             (SpriteKey(.building(.railwayDepot, .industrial), .complete), 21, 10.5, .angkor),
             (SpriteKey(.building(.oilWell, .industrial), .complete), 22, 16, .angkor),
+            // Oil fields: one on the back tile of each well's footprint, and two not yet pumped.
+            (SpriteKey(.site(.oilField), .complete), 6.5, 16.5, nil),
+            (SpriteKey(.site(.oilField), .complete), 6.5, 19.5, nil),
+            (SpriteKey(.site(.oilField), .complete), 21.5, 15.5, nil),
+            (SpriteKey(.site(.oilField), .complete), 9.5, 22.5, nil),
+            (SpriteKey(.site(.oilField), .complete), 25.5, 15.5, nil),
             (SpriteKey(.site(.tree), .complete), 3.5, 4.5, nil),
             (SpriteKey(.site(.tree), .complete), 4.5, 2.5, nil),
             (SpriteKey(.site(.tree), .complete), 2.5, 13.5, nil),
@@ -284,7 +360,7 @@ struct IndustrialNewBuildingsRenders {
             let image = civilization.map { Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: .of($0)) } ?? sprite.base
             Preview.place(image, anchor: sprite.anchor, at: screen(x, y), in: context)
         }
-        try Preview.writePNG(try #require(context.makeImage()), to: directory.appendingPathComponent("industrial-new-buildings-town.png"))
+        try Preview.writePNG(try #require(context.makeImage()), to: directory.appendingPathComponent("industrial-new-buildings-town-v2.png"))
     }
 
     /// Each drawing three times larger than in the game, in Rome's and
@@ -307,7 +383,7 @@ struct IndustrialNewBuildingsRenders {
                     context.fill(rect)
                     context.draw(image, in: rect)
                     try Preview.writePNG(try #require(context.makeImage()), to: directory.appendingPathComponent(
-                        "industrial-\(kind)-\(complete ? "complete" : "under-construction")-\(civilization)-enlarged.png"))
+                        "industrial-\(kind)-\(complete ? "complete" : "under-construction")-\(civilization)-enlarged-v2.png"))
                 }
             }
         }

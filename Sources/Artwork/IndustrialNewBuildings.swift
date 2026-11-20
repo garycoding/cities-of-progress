@@ -8,16 +8,25 @@ import Synchronization
 /// The buildings the Industrial age brings, complete and under construction
 /// (the factory, the railway depot and the oil well), drawn in the Industrial
 /// age's palette in the manner of the Alchemy-age buildings (docs/art-style.md).
-/// Each carries the owner's colour in a mask. Every other key gives nil.
+/// Each carries the owner's colour in a mask. It also draws the oil field the
+/// well stands on, as the terrain's sites are drawn, with no mask. Every other
+/// key gives nil.
 public struct IndustrialNewBuildingSprites: SpriteSource {
     private let store = Store()
 
     public init() {}
 
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
-        guard let subject = IndustrialNewBuildingsArt.subject(of: key) else { return nil }
+        let draw: () -> SpriteImage?
+        if let subject = IndustrialNewBuildingsArt.subject(of: key) {
+            draw = { IndustrialNewBuildingsArt.render(subject) }
+        } else if IndustrialNewBuildingsArt.isOilField(key) {
+            draw = { IndustrialNewBuildingsArt.renderOilField() }
+        } else {
+            return nil
+        }
         if let known = store.made.withLock({ $0[key] }) { return known }
-        guard let made = IndustrialNewBuildingsArt.render(subject) else { return nil }
+        guard let made = draw() else { return nil }
         return store.made.withLock { cache in
             if let known = cache[key] { return known }
             cache[key] = made
@@ -50,6 +59,24 @@ enum IndustrialNewBuildingsArt {
         if key.pose == .complete { return IndustrialNewBuildingsSubject(kind: kind, complete: true) }
         if key.pose == .underConstruction { return IndustrialNewBuildingsSubject(kind: kind, complete: false) }
         return nil
+    }
+
+    /// Whether the key is the oil field's: the site, complete, at frame 0, as
+    /// the terrain's sites are keyed.
+    static func isOilField(_ key: SpriteKey) -> Bool {
+        key == SpriteKey(.site(.oilField), .complete)
+    }
+
+    /// The oil field drawn as a site: on the terrain's sites' canvas, anchored
+    /// at the tile's centre on the ground, grained, with no team's colour.
+    static func renderOilField(pixelsPerPoint: Double = 2) -> SpriteImage? {
+        let canvas = TerrainSprites.siteCanvas.scaled(to: pixelsPerPoint)
+        let rendered = Raster.render(on: canvas) { svg in
+            var painter = IndustrialNewBuildingsPainter(layer: svg.layer)
+            painter.oilField()
+            svg = painter.svg
+        }
+        return rendered?.sprite(anchor: canvas.anchor)
     }
 
     /// The area a building's sprite covers, in points with the origin on the
