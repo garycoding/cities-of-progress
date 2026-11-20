@@ -55,7 +55,7 @@ enum IronPeopleLooks {
         case .scholar: IronPeoplePhilosopher()
         case .engineer: IronPeopleEngineer()
         case .merchant: IronPeopleTrader()
-        case .founder, .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon: nil
+        case .founder, .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar: nil
         }
     }
 

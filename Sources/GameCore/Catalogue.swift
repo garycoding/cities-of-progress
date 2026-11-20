@@ -304,6 +304,16 @@ public struct Catalogue: Hashable, Codable, Sendable {
             UnitStats(kind: .cannon, age: .alchemy, cost: cost([.wood: 120, .iron: 80, .gunpowder: 60]), trainTime: s(35),
                       health: 160, armour: 2, speed: 0.6, sight: 9, attack: Attack(damage: 30, range: 10, interval: s(5), area: 1.5),
                       trainedAt: [.siegeWorkshop, .castle], population: 3),
+            // The Industrial age's warfighters. Their figures are provisional until the Industrial age's rules are built.
+            UnitStats(kind: .rifleman, age: .industrial, cost: cost([.food: 60, .gold: 20, .gunpowder: 20]), trainTime: s(16),
+                      health: 70, armour: 1, speed: 1.1, sight: 8, attack: Attack(damage: 14, range: 7, interval: s(2.5)),
+                      trainedAt: [.barracks]),
+            UnitStats(kind: .fieldGun, age: .industrial, cost: cost([.iron: 100, .gunpowder: 60, .oil: 20]), trainTime: s(35),
+                      health: 180, armour: 2, speed: 0.8, sight: 10, attack: Attack(damage: 32, range: 12, interval: s(5), area: 1.5),
+                      trainedAt: [.factory], population: 3),
+            UnitStats(kind: .armouredCar, age: .industrial, cost: cost([.iron: 120, .gold: 40, .oil: 60]), trainTime: s(30),
+                      health: 220, armour: 5, speed: 2.4, sight: 8, attack: Attack(damage: 12, range: 4, interval: s(1.5)),
+                      trainedAt: [.factory], population: 3),
         ]
         let allStone: [Resource] = [.food, .wood, .stone, .bronze, .gold, .iron, .gunpowder]
         let buildings: [BuildingStats] = [
@@ -318,7 +328,7 @@ public struct Catalogue: Hashable, Codable, Sendable {
             BuildingStats(kind: .stockPen, age: .bronze, cost: cost([.wood: 60]), buildTime: s(25), health: 250, armour: 0,
                           footprint: GridPoint(3, 3), sight: 3, accepts: [.food]),
             BuildingStats(kind: .barracks, age: .bronze, cost: cost([.wood: 100]), buildTime: s(40), health: 500, armour: 1,
-                          footprint: GridPoint(3, 3), sight: 4, trains: [.clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .musketeer],
+                          footprint: GridPoint(3, 3), sight: 4, trains: [.clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .musketeer, .rifleman],
                           researches: [.bronzeWeapons, .shields, .ironWeapons, .mail]),
             BuildingStats(kind: .watchTower, age: .bronze, cost: cost([.stone: 80, .wood: 20]), buildTime: s(40), health: 400,
                           armour: 2, footprint: GridPoint(1, 1), sight: 9, attack: Attack(damage: 4, range: 7, interval: s(2))),
@@ -339,6 +349,13 @@ public struct Catalogue: Hashable, Codable, Sendable {
                           housing: 10, trains: [.knight, .musketeer, .cannon], researches: [.betterPowder, .plateArmour]),
             BuildingStats(kind: .alchemistsWorkshop, age: .alchemy, cost: cost([.wood: 150, .stone: 100, .gold: 50]),
                           buildTime: s(50), health: 600, armour: 1, footprint: GridPoint(3, 3), sight: 4),
+            // The Industrial age's buildings. Their figures are provisional until the Industrial age's rules are built.
+            BuildingStats(kind: .factory, age: .industrial, cost: cost([.wood: 150, .stone: 100, .iron: 150]), buildTime: s(70),
+                          health: 900, armour: 2, footprint: GridPoint(3, 3), sight: 4, trains: [.fieldGun, .armouredCar]),
+            BuildingStats(kind: .railwayDepot, age: .industrial, cost: cost([.wood: 120, .stone: 50, .iron: 80]), buildTime: s(50),
+                          health: 600, armour: 1, footprint: GridPoint(3, 3), sight: 5),
+            BuildingStats(kind: .oilWell, age: .industrial, cost: cost([.wood: 80, .iron: 40]), buildTime: s(30), health: 300,
+                          armour: 1, footprint: GridPoint(2, 2), sight: 3),
         ]
         let improvements: [ImprovementStats] = [
             ImprovementStats(improvement: .betterTools, age: .stone, cost: cost([.food: 80, .wood: 60]), work: s(40),

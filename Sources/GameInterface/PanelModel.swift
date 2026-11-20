@@ -375,6 +375,9 @@ public struct PanelModel: Sendable {
         case .knight: "k"
         case .musketeer: "m"
         case .cannon: "j"
+        case .rifleman: "f"
+        case .fieldGun: "d"
+        case .armouredCar: "v"
         case .founder: nil
         }
     }
@@ -394,6 +397,9 @@ public struct PanelModel: Sendable {
         case .stoneWall: "o"
         case .castle: "c"
         case .alchemistsWorkshop: "a"
+        case .factory: "y"
+        case .railwayDepot: "d"
+        case .oilWell: "n"
         }
     }
 
