@@ -7,19 +7,21 @@ import CoreGraphics
 import Foundation
 import Testing
 
-/// The combined source draws every key the Alchemy age needs, and each key of
-/// the Iron and Alchemy ages from the batch approved for it rather than from an
+/// The combined source draws every key the Industrial age needs, and each key of
+/// the Iron, Alchemy and Industrial ages from the batch approved for it rather than from an
 /// earlier batch or a placeholder.
-@Test func everyKeyThroughTheAlchemyAgeComesFromItsApprovedBatch() {
+@Test func everyKeyThroughTheIndustrialAgeComesFromItsApprovedBatch() {
     let all = GameSprites()
     let approved: [Age: [any SpriteSource]] = [
         .iron: [IronOldBuildingSprites(), IronNewBuildingSprites(), IronPeopleSprites(), IronWarriorSprites()],
         .alchemy: [AlchemyOldBuildingSprites(), AlchemyNewBuildingSprites(), AlchemyPeopleSprites(), AlchemyWarriorSprites()],
+        .industrial: [IndustrialOldBuildingSprites(), IndustrialNewBuildingSprites(), IndustrialPeopleSprites(),
+                      IndustrialWarriorSprites()],
     ]
     var missing: [SpriteKey] = []
     var wrong: [SpriteKey] = []
     // A warfighter at work is drawn standing (`SpriteCache`), so its working pose need not be drawn.
-    let keys = SpriteKey.required(through: .alchemy).filter { key in
+    let keys = SpriteKey.required(through: .industrial).filter { key in
         if case .unit(let kind, _) = key.subject, kind.isWarfighter, key.pose == .working { return false }
         return true
     }
@@ -28,7 +30,7 @@ import Testing
         let age: Age? = {
             switch key.subject {
             case .unit(_, let age), .building(_, let age): return age
-            case .site(let kind): return kind == .iron ? .iron : nil
+            case .site(let kind): return kind == .iron ? .iron : kind == .oilField ? .industrial : nil
             default: return nil
             }
         }()
