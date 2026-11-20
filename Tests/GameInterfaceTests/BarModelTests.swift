@@ -60,12 +60,12 @@ import Testing
     #expect(m.advanceOffer?.unavailable?.explanation == "Short of 120 Food")
 }
 
-@Test func theCatalogueHasNoStepFromAlchemyYet() {
+@Test func theCatalogueHasNoStepFromIndustrialYet() {
     var view = Samples.bronzeAgeSkirmish()
-    view.age = .alchemy
+    view.age = .industrial
     let m = AgeProgressModel(view: view, catalogue: .standard)
     #expect(m.advanceOffer == nil && !m.showsAdvance)
-    #expect(m.caption == "The Industrial age is not yet part of the game")
+    #expect(m.caption == "The Silicon age is not yet part of the game")
 }
 
 @Test func progressIsHeldWithinZeroAndOne() {

@@ -65,6 +65,8 @@ public enum Order: Hashable, Codable, Sendable {
     /// The player's own people leave the match at once, freeing their places;
     /// nothing is returned. A founder cannot be dismissed (requirement 30).
     case dismiss(units: [EntityID])
+    /// Sow a farm that has run dry again, paying `GatheringStats.farmReseed`.
+    case reseed(farm: EntityID)
 }
 
 /// Why an order was refused. The interface shows it to the player.

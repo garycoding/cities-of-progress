@@ -45,6 +45,7 @@ extension Simulation {
         case .upgrade(let units, let to, let at): return upgrade(units, to: to, at: at, player: player)
         case .stop(let units): return stop(units, player: player)
         case .dismiss(let units): return dismiss(units, player: player)
+        case .reseed(let farm): return reseed(farm, player: player)
         case .setPaused: return .accepted
         }
     }
@@ -174,13 +175,16 @@ extension Simulation {
 
     /// `Placement`'s rule, applied to the full state and the team's exploration.
     func canPlace(_ kind: BuildingKind, at origin: GridPoint, team: Int) -> Bool {
-        var occupied = Set<GridPoint>()
+        var occupied = Set<GridPoint>(), wanted = Set<GridPoint>()
+        let needed = Placement.site(for: kind)
         for t in Placement.footprint(kind, at: origin, catalogue: catalogue) where inMap(t) {
             let k = tileIndex(t)
             if buildingAt[k] >= 0 || siteAt[k] >= 0 { occupied.insert(t) }
+            if buildingAt[k] < 0, siteAt[k] >= 0, let needed, sites[Int(siteAt[k])].kind == needed,
+               sites[Int(siteAt[k])].remaining > 0 { wanted.insert(t) }
         }
         return Placement.canPlace(kind, at: origin, width: width, height: height, terrain: terrain, occupied: occupied,
-                                  explored: { isExplored($0, by: team) }, catalogue: catalogue)
+                                  explored: { isExplored($0, by: team) }, catalogue: catalogue, wanted: wanted)
     }
 
     mutating func attack(_ ids: [EntityID], target: EntityID, player: PlayerID) -> OrderResult {
@@ -306,6 +310,19 @@ extension Simulation {
         for k in 0..<catalogue.founderPeople {
             spawnPerson(k == 0 ? .engineer : .worker, owner: player, at: freeTile(besideBuilding: centre, index: k).centre)
         }
+        return .accepted
+    }
+
+    /// A farm that has run dry is sown again, at `GatheringStats.farmReseed`.
+    mutating func reseed(_ farm: EntityID, player: PlayerID) -> OrderResult {
+        guard let b = index(of: farm), entities[b].owner == player else { return .refused(.notYours) }
+        guard entities[b].buildingKind == .farm, entities[b].complete, let full = catalogue.gathering.farmYield,
+              (entities[b].farmUsed ?? 0) >= full else { return .refused(.invalidTarget) }
+        let cost = catalogue.gathering.farmReseed ?? ResourceAmounts()
+        let held = players[player.rawValue].resources
+        guard held.covers(cost) else { return .refused(.notEnough(held.shortfall(for: cost))) }
+        players[player.rawValue].resources = held - cost
+        entities[b].farmUsed = 0
         return .accepted
     }
 }

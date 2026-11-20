@@ -19,7 +19,7 @@ public struct Unavailability: Hashable, Sendable {
 /// (`perform(in:)`), and its tooltip and refusal line say why.
 public struct ActionOffer: Identifiable, Hashable, Sendable {
     public enum Section: Int, Hashable, Sendable {
-        case train, research, build, upgrade, age, demolish, dismiss, trade, carry
+        case train, research, build, upgrade, age, demolish, dismiss, trade, carry, reseed
 
         public var heading: String {
             switch self {
@@ -32,6 +32,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
             case .dismiss: "Dismiss"
             case .trade: "Trade for"
             case .carry: "Send to"
+            case .reseed: "Farm"
             }
         }
     }
@@ -47,6 +48,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case dismiss(units: [EntityID])
         case exchange(merchants: [EntityID], give: Resource, take: Resource)
         case carry(merchants: [EntityID], resource: Resource, to: EntityID)
+        case reseed(farm: EntityID)
     }
 
     public var id: String
@@ -78,6 +80,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case .dismiss(let units): .dismiss(units: units)
         case .exchange(let merchants, let give, let take): .exchange(merchants: merchants, give: give, take: take)
         case .carry(let merchants, let resource, let building): .carry(merchants: merchants, resource: resource, to: building)
+        case .reseed(let farm): .reseed(farm: farm)
         }
     }
 
@@ -157,12 +160,13 @@ public struct PanelModel: Sendable {
     public var dismiss: [ActionOffer] = []
     public var trade: [ActionOffer] = []
     public var carry: [ActionOffer] = []
+    public var reseed: [ActionOffer] = []
     /// A building the player is placing, for the panel's hint.
     public var placing: BuildingKind?
 
-    public var actions: [ActionOffer] { train + research + build + upgrade + trade + carry + demolish + dismiss }
+    public var actions: [ActionOffer] { train + research + reseed + build + upgrade + trade + carry + demolish + dismiss }
     public var sections: [(section: ActionOffer.Section, offers: [ActionOffer])] {
-        [(.train, train), (.research, research), (.build, build), (.upgrade, upgrade), (.trade, trade), (.carry, carry), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
+        [(.train, train), (.research, research), (.reseed, reseed), (.build, build), (.upgrade, upgrade), (.trade, trade), (.carry, carry), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
     }
 
     /// The offer that a key press does, if any.
@@ -241,6 +245,18 @@ public struct PanelModel: Sendable {
                     action: .research(at: b.id, improvement: improvement), unavailable: why,
                     shortcut: Self.researchKey(improvement), icon: nil, iconSubject: nil)
             }
+        }
+
+        // Reseed a single own farm that has run dry (ruled 2026-11-19); its farmer
+        // does so on his own, so the button serves a farm left without one.
+        if selected.count == 1, let b = own.first, b.kind == .building(.farm), let left = b.remaining,
+           let cost = catalogue.gathering.farmReseed {
+            var why = planner.check(cost: cost, age: catalogue.stats(.farm).age)
+            if left > 0 { why = Unavailability(.invalidTarget, "\(left) food left to harvest") }
+            reseed = [ActionOffer(
+                id: "reseed", section: .reseed, title: "Reseed",
+                detail: "Sows the field again once it has run dry; a farmer at work there does so on his own.",
+                cost: cost, action: .reseed(farm: b.id), unavailable: why, shortcut: "e", icon: nil, iconSubject: nil)]
         }
 
         // Demolish a single own building (requirement 28): the player's idle
@@ -399,7 +415,7 @@ public struct PanelModel: Sendable {
         case .alchemistsWorkshop: "a"
         case .factory: "y"
         case .railwayDepot: "d"
-        case .oilWell: "n"
+        case .oilWell: "r"
         }
     }
 
@@ -416,6 +432,10 @@ public struct PanelModel: Sendable {
         case .plateArmour: "a"
         case .guilds: "g"
         case .banking: "b"
+        case .machineTools: "k"
+        case .rifling: "r"
+        case .steelPlate: "s"
+        case .refining: "o"
         }
     }
 

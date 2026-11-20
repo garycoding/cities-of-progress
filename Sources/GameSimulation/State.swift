@@ -111,6 +111,17 @@ enum Task: Codable, Sendable, Hashable {
 }
 
 /// The way a person is following toward its goal.
+/// A person's journey by railway (ruled 2026-11-19): walking to the depot
+/// `board`, then waiting there `RailwayStats.journeyTime` from `departed`,
+/// then coming out beside `alight`, on the way to the goal whose anchor is
+/// `goal`.
+struct RailTrip: Codable, Sendable, Hashable {
+    var board: EntityID
+    var alight: EntityID
+    var departed: Int?
+    var goal: GridPoint
+}
+
 struct Route: Codable, Sendable, Hashable {
     /// Tiles whose centres are to be passed, the next one last.
     var waypoints: [GridPoint] = []
@@ -158,6 +169,8 @@ struct Entity: Codable, Sendable, Hashable {
     var cargo: Cargo?
     /// What a merchant carries to an ally; optional so that older saves open.
     var goods: Int?
+    /// A journey by railway under way; optional so that older saves open.
+    var rail: RailTrip?
     /// The building a worker is carrying its load to.
     var dropOff: EntityID?
     /// Part of a unit gathered or herded, carried over between ticks.
@@ -170,6 +183,8 @@ struct Entity: Codable, Sendable, Hashable {
     var complete = true
     /// Health owed by construction or repair, in units of 1 / buildTime.
     var healthCredit = 0
+    /// Food a farm has yielded since it was last sown; optional so that older saves open, nil being none.
+    var farmUsed: Int?
     /// Engineer-ticks of demolition done.
     var demolished = 0
     var queue: [UnitKind] = []

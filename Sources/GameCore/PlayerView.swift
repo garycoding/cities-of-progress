@@ -44,11 +44,15 @@ public struct EntityView: Hashable, Codable, Sendable {
     public var health: Int
     public var maxHealth: Int
     public var activity: Activity
+    /// For a farm, the food it has left before it must be reseeded; for an oil
+    /// well, the oil left beneath it; nil for everything else.
+    public var remaining: Int?
 
     public init(id: EntityID, owner: PlayerID, kind: EntityKind, position: MapPosition, tile: GridPoint,
-                facing: Facing, health: Int, maxHealth: Int, activity: Activity) {
+                facing: Facing, health: Int, maxHealth: Int, activity: Activity, remaining: Int? = nil) {
         self.id = id; self.owner = owner; self.kind = kind; self.position = position; self.tile = tile
         self.facing = facing; self.health = health; self.maxHealth = maxHealth; self.activity = activity
+        self.remaining = remaining
     }
 }
 

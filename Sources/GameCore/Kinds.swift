@@ -119,6 +119,14 @@ public enum Improvement: Int, CaseIterable, Codable, Sendable, Hashable {
     case guilds
     /// Merchants' exchanges give more.
     case banking
+    /// Workers gather faster and workshops make more (Industrial age).
+    case machineTools
+    /// Warfighters strike harder.
+    case rifling
+    /// Warfighters take less harm.
+    case steelPlate
+    /// Oil wells pump more.
+    case refining
 }
 
 /// Which way a person faces on the screen. Artwork is drawn facing right; the

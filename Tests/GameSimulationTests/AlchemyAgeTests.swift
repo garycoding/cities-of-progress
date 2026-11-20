@@ -6,15 +6,14 @@ import Testing
 @testable import GameSimulation
 
 @Suite struct AlchemyAge {
-    @Test func theIronAgeLeadsToTheAlchemyAgeAndNoFurther() {
+    @Test func theIronAgeLeadsToTheAlchemyAge() {
         var sim = duel()
         sim.players[0].age = .iron
         sim.players[0].study = Catalogue.standard.advance(from: .iron)!.study
         sim.give(me, [.food: 1000, .iron: 1000, .gold: 1000])
         #expect(sim.apply(.advanceAge, from: me) == .accepted)
         #expect(sim.players[0].age == .alchemy)
-        #expect(Catalogue.standard.lastAge == .alchemy)
-        #expect(sim.apply(.advanceAge, from: me) != .accepted)
+        #expect(Catalogue.standard.advance(from: .alchemy) != nil)
         #expect(UnitKind.worker.stageName(at: .alchemy) == "Craftsman")
     }
 

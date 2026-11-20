@@ -67,6 +67,8 @@ enum OrderCheck {
                 command(units, "exchange") { $0 == .merchant }
             case .carry(let units, _, _):
                 command(units, "carry") { $0 == .merchant }
+            case .reseed(let farm):
+                if building(farm)?.entity.remaining != 0 { problems.append("reseed: \(farm) is not a farm of its own that has run dry") }
             case .gather(let units, let site):
                 command(units, "gather") { $0 == .worker }
                 if !view.sites.contains(where: { $0.id == site && $0.remaining > 0 }) {
@@ -81,7 +83,7 @@ enum OrderCheck {
                 let researching: Bool = { if case .researching = place.entity.activity { return true }; return false }()
                 command(units, "work at \(place.kind)") { kind in
                     switch kind {
-                    case .worker: (place.kind == .stockPen || place.kind == .farm) && isComplete(place.entity)
+                    case .worker: [.stockPen, .farm, .alchemistsWorkshop].contains(place.kind) && isComplete(place.entity)
                     case .engineer: true
                     case .scholar: place.kind == .townCentre || researching
                     default: false

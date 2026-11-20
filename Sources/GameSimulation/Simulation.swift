@@ -69,6 +69,8 @@ public struct Simulation: GameSimulating {
     var searchBudget = Rule.searchesPerTick
     var searchesLeft = 0
     var deathsPending = false
+    /// The railway depots, by index into `entities`, rebuilt at each tick; not saved.
+    var depots: [Int] = []
 
     // MARK: Starting a match
 
@@ -138,9 +140,10 @@ public struct Simulation: GameSimulating {
         indexOfSite = Array(repeating: -1, count: (sites.map(\.id.rawValue).max() ?? -1) + 1)
         for (i, site) in sites.enumerated() {
             indexOfSite[site.id.rawValue] = Int32(i)
-            if site.kind.blocksTile && site.remaining > 0 && inMap(site.tile) {
+            // Oil fields are looked up too, for the wells that stand on them, but do not block.
+            if (site.kind.blocksTile || site.kind == .oilField) && site.remaining > 0 && inMap(site.tile) {
                 siteAt[tileIndex(site.tile)] = Int32(i)
-                blocked[tileIndex(site.tile)] = true
+                if site.kind.blocksTile { blocked[tileIndex(site.tile)] = true }
             }
         }
         indexOfEntity = Array(repeating: -1, count: nextEntity)
@@ -173,6 +176,7 @@ public struct Simulation: GameSimulating {
         tick += 1
         searchesLeft = searchBudget
         buckets.rebuild(entities: entities, width: width, height: height)
+        depots = catalogue.railway == nil ? [] : entities.indices.filter { entities[$0].alive && entities[$0].buildingKind == .railwayDepot }
         let count = entities.count
         for i in 0..<count where entities[i].alive {
             if entities[i].isPerson { updatePerson(i) } else { updateBuilding(i) }

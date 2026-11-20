@@ -112,7 +112,19 @@ extension Simulation {
     func entityView(_ e: Entity) -> EntityView {
         EntityView(id: e.id, owner: e.owner, kind: e.kind, position: e.position,
                    tile: e.isPerson ? e.position.tile : e.origin, facing: e.facing, health: max(0, e.health),
-                   maxHealth: e.maxHealth, activity: activity(of: e))
+                   maxHealth: e.maxHealth, activity: activity(of: e),
+                   remaining: remaining(of: e))
+    }
+
+    /// For a farm, the food left before it must be reseeded; for an oil well,
+    /// the oil left beneath it; nil for everything else.
+    func remaining(of e: Entity) -> Int? {
+        guard e.complete else { return nil }
+        switch e.buildingKind {
+        case .farm: return catalogue.gathering.farmYield.map { max(0, $0 - (e.farmUsed ?? 0)) }
+        case .oilWell: return index(of: e.id).map { oilLeft(under: $0) }
+        default: return nil
+        }
     }
 
     func activity(of e: Entity) -> Activity {

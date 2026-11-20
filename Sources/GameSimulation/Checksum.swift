@@ -85,6 +85,10 @@ extension Simulation {
         d.add(e.dropOff?.rawValue ?? -1)
         // A merchant's goods; nothing is added for others, so that matches without merchants keep their checksums.
         if let goods = e.goods { d.add(goods) }
+        // A farm's food yielded since sowing; likewise nothing for others.
+        if let used = e.farmUsed { d.add(used) }
+        // A railway journey; likewise nothing for others.
+        if let trip = e.rail { d.add(trip.board.rawValue); d.add(trip.alight.rawValue); d.add(trip.departed ?? -1) }
         d.add(e.fraction)
         if let u = e.upgrade { d.add(u.to.rawValue); d.add(u.remaining) } else { d.add(-1) }
         d.add(e.built); d.add(e.complete); d.add(e.healthCredit); d.add(e.demolished)
