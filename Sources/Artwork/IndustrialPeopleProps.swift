@@ -72,7 +72,7 @@ enum IndustrialPeopleKit {
             seat.move(P(8.2, -22)); seat.line(P(-10.4, -22))
             seat.cubic(P(-10.2, -18.4), P(-8.8, -14.4), P(-6, -12.6))
             seat.line(P(8.4, -12.6)); seat.close()
-            svg.path(seat, fill: .colour(colour), stroke: .colour(Ink.line), width: 1.2)
+            svg.path(seat, fill: .colour(colour))
             for (hip, knee, foot, cloth) in legs {
                 // The trouser leg ends a little above the foot, where the boot begins.
                 let ankle = foot + (knee - foot) * (2.2 / Joints.shin)
@@ -226,6 +226,38 @@ enum IndustrialPeopleProps {
         }
     }
 
+    /// The inside of a coal skip on the ground from `left`, `width` wide and
+    /// `height` high: its far wall and the coal heaped in it, drawn before
+    /// what falls into it. `skipFront` draws the rest over it.
+    static func skipBack(_ svg: inout SVG, left: Double, width w: Double, height h: Double) {
+        svg.ellipse(P(left + w / 2, 0.4), w / 2 + 2, 2, fill: .colour("#000000"), opacity: 0.13)
+        BronzePeopleProps.shape(&svg, [P(left + 1.4, -h), P(left + w - 1.4, -h), P(left + w - 0.4, -h - 2.4), P(left + 2.4, -h - 2.4)],
+                                fill: .colour(IndustrialPeopleInk.ironDark), width: 1, shift: P(-0.3, 0.3))
+        // The coal heaped in it, above the rim.
+        var heap = PathData()
+        heap.move(P(left + 1.6, -h - 0.6))
+        heap.line(P(left + w * 0.3, -h - 3.6)); heap.line(P(left + w * 0.5, -h - 4.6)); heap.line(P(left + w * 0.72, -h - 3.4))
+        heap.line(P(left + w - 1.6, -h - 0.8)); heap.close()
+        svg.path(heap, fill: .colour(IndustrialPeopleInk.coal), stroke: ink, width: 1)
+        svg.path("M\(num(left + w * 0.36)),\(num(-h - 2.6)) l1,-0.8 M\(num(left + w * 0.6)),\(num(-h - 3)) l1,-0.6", stroke: .colour(IndustrialPeopleInk.coalSheen),
+                 width: 0.6)
+    }
+
+    /// The near side of the coal skip: an iron tub, wider at the rim, riveted, on two small wheels.
+    static func skipFront(_ svg: inout SVG, left: Double, width w: Double, height h: Double) {
+        let body = [P(left, -h), P(left + w, -h), P(left + w - 1.6, -3), P(left + 1.6, -3)]
+        BronzePeopleProps.shape(&svg, body, fill: .colour(IndustrialPeopleInk.iron), width: 1.2)
+        svg.line([P(left + 0.6, -h + 1.4), P(left + w - 0.6, -h + 1.4)], stroke: .colour(IndustrialPeopleInk.ironDark), width: 0.8)
+        svg.line([P(left + 2.4, -h + 2.6), P(left + 3, -4.2)], stroke: .colour(IndustrialPeopleInk.ironLight), width: 0.7)
+        // Rust streaks and rivets.
+        svg.line([P(left + w * 0.62, -h + 2), P(left + w * 0.6, -h + 5.4)], stroke: .colour(IndustrialPeopleInk.darkBrick), width: 0.8, opacity: 0.6)
+        for x in [left + 2, left + w * 0.5, left + w - 2] { svg.circle(P(x, -h + 1.4), 0.45, fill: .colour(IndustrialPeopleInk.ironLight)) }
+        for x in [left + 4, left + w - 4] {
+            svg.circle(P(x, -1.6), 1.6, fill: .colour(IndustrialPeopleInk.ironDark), stroke: ink, width: 0.9)
+            svg.circle(P(x, -1.6), 0.4, fill: .colour(IndustrialPeopleInk.ironLight))
+        }
+    }
+
     /// A spanner of forged steel: its open jaw at `jaw`, its handle running
     /// from it along `degrees` for `length`, a ring at the far end.
     static func spanner(_ svg: inout SVG, jaw: P, degrees: Double, length: Double = 17, size: Double = 1) {
@@ -278,17 +310,17 @@ enum IndustrialPeopleProps {
     static func engine(_ svg: inout SVG, left: Double, right: Double, nut: P, turn: Double, needle: Double) {
         let w = right - left
         svg.ellipse(P(left + w / 2, 0.4), w / 2 + 3, 2.4, fill: .colour("#000000"), opacity: 0.13)
-        // The bed: a plinth of iron painted brick-red, its feet bolted down.
-        BronzePeopleProps.shape(&svg, [P(left - 1.6, 0), P(right + 1.6, 0), P(right, -5), P(left, -5)], fill: .colour(IndustrialPeopleInk.brick), width: 1.2)
-        svg.line([P(left + 0.6, -3.8), P(right - 0.6, -3.8)], stroke: .colour(IndustrialPeopleInk.paleBrick), width: 0.7)
+        // The bed: a plinth of soot-black iron, its feet bolted down.
+        BronzePeopleProps.shape(&svg, [P(left - 1.6, 0), P(right + 1.6, 0), P(right, -5), P(left, -5)], fill: .colour(IndustrialPeopleInk.darkSoot), width: 1.2)
+        svg.line([P(left + 0.6, -3.8), P(right - 0.6, -3.8)], stroke: .colour(IndustrialPeopleInk.soot), width: 0.7)
         for x in [left + 1.6, right - 1.6] {
             svg.circle(P(x, -2.4), 0.8, fill: .colour(IndustrialPeopleInk.ironLight), stroke: ink, width: 0.5)
         }
-        // The cylinder's flange: a round face of iron, on a cast pedestal painted like the bed.
+        // The cylinder's flange: a round face of iron, on a cast pedestal like the bed.
         let r = min(w * 0.5, -nut.y - 5) - 0.4
         BronzePeopleProps.shape(&svg, [P(nut.x - r * 0.6, nut.y + r * 0.5), P(nut.x + r * 0.6, nut.y + r * 0.5), P(nut.x + r * 0.9, -5),
-                                       P(nut.x - r * 0.9, -5)], fill: .colour(IndustrialPeopleInk.brick), width: 1.2)
-        svg.line([P(nut.x - r * 0.5, -6.6), P(nut.x + r * 0.5, -6.6)], stroke: .colour(IndustrialPeopleInk.darkBrick), width: 0.8)
+                                       P(nut.x - r * 0.9, -5)], fill: .colour(IndustrialPeopleInk.darkSoot), width: 1.2)
+        svg.line([P(nut.x - r * 0.5, -6.6), P(nut.x + r * 0.5, -6.6)], stroke: .colour(IndustrialPeopleInk.soot), width: 0.8)
         svg.circle(nut + P(-0.6, 0.6), r, fill: .colour(IndustrialPeopleInk.iron))
         svg.circle(nut, r, fill: .none, stroke: ink, width: 1.4)
         svg.circle(nut, r * 0.74, fill: .none, stroke: .colour(IndustrialPeopleInk.ironDark), width: 0.9)
@@ -318,9 +350,8 @@ enum IndustrialPeopleProps {
         }
         BronzePeopleProps.shape(&svg, corners, fill: .colour(IndustrialPeopleInk.ironLight), width: 1, shift: P(-0.3, 0.3))
         svg.circle(c, r * 0.42, fill: .colour(IndustrialPeopleInk.iron), stroke: ink, width: 0.6)
-        // A chalk mark on one flat, so that its turning shows.
-        let mark = (corners[0] + corners[1]) * 0.5
-        svg.line([c + (mark - c) * 0.55, mark], stroke: .colour(IndustrialPeopleInk.light), width: 0.8)
+        // The light on the upper flats, which turns with the nut.
+        svg.line([corners[4] + (c - corners[4]) * 0.2, corners[5] + (c - corners[5]) * 0.2], stroke: .colour("#ffffff"), width: 0.6, opacity: 0.7)
     }
 
     /// A drop of oil, round below and pointed above.
@@ -386,12 +417,12 @@ enum IndustrialPeopleProps {
         svg.line([P(x - 5, -h - 0.1), P(x + 5, -h - 0.1)], stroke: .colour(IndustrialPeopleInk.ironLight), width: 0.7)
     }
 
-    /// A notebook bound in brick-red cloth, open at `c` and turned by
+    /// A notebook bound in black cloth, open at `c` and turned by
     /// `degrees`: two pages, the near one written over `written` (0 to 1) of
     /// its lines.
     static func notebook(_ svg: inout SVG, at c: P, degrees: Double, written: Double) {
         svg.group(at: c, turned: degrees) { svg in
-            svg.polygon([P(-7.2, -1.2), P(7.2, -1.2), P(7.6, 1.6), P(0, 2.2), P(-7.6, 1.6)], fill: .colour(IndustrialPeopleInk.darkBrick), stroke: ink, width: 0.9)
+            svg.polygon([P(-7.2, -1.2), P(7.2, -1.2), P(7.6, 1.6), P(0, 2.2), P(-7.6, 1.6)], fill: .colour(IndustrialPeopleInk.black), stroke: ink, width: 0.9)
             for side in [-1.0, 1.0] {
                 var page = PathData()
                 page.move(P(0, 1)); page.quad(P(side * 3.4, -0.9), P(side * 6.8, -0.5))
@@ -421,9 +452,9 @@ enum IndustrialPeopleProps {
             svg.polygon([P(-w / 2 + 1, -h / 2 + 1), P(w / 2 + 1.1, -h / 2 + 1), P(w / 2 + 1.1, h / 2 + 0.6), P(-w / 2 + 1, h / 2 + 0.6)],
                         fill: .colour(IndustrialPeopleInk.light), stroke: ink, width: 0.8)
             svg.path(BronzePeopleProps.rounded(P(0, 0), width: w, height: h, radius: 0.9, degrees: 0, shift: P(-0.5, 0.4)),
-                     fill: .colour(IndustrialPeopleInk.brick))
+                     fill: .colour(IndustrialPeopleInk.black))
             svg.path(BronzePeopleProps.rounded(P(0, 0), width: w, height: h, radius: 0.9, degrees: 0, shift: P(0, 0)), stroke: ink, width: 1)
-            svg.line([P(w * 0.22, -h / 2 + 0.3), P(w * 0.22, h / 2 - 0.3)], stroke: .colour(IndustrialPeopleInk.darkSoot), width: 0.8)
+            svg.line([P(w * 0.22, -h / 2 + 0.3), P(w * 0.22, h / 2 - 0.3)], stroke: .colour(IndustrialPeopleInk.paleSoot), width: 0.8)
             svg.line([P(-w / 2 + 0.8, -h / 2 + 0.4), P(-w / 2 + 0.8, h / 2 - 0.4)], stroke: ink, width: 1.1, opacity: 0.5)
         }
     }

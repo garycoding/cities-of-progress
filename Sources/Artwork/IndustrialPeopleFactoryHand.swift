@@ -23,7 +23,7 @@ import GameCore
 /// navy tweed; brown sideburns and a bushy moustache; nose F. He carries his
 /// coal shovel at the trail, leaning on it when he stands; at work he
 /// shovels coal: he drives the blade into the heap, lifts the load and pitches
-/// it forward, the lumps flying; fighting, he swings the shovel.
+/// it into the skip beyond, the lumps flying; fighting, he swings the shovel.
 struct IndustrialPeopleFactoryHand: PersonLook {
     func rig(_ pose: SpritePose, _ frame: Int) -> Rig? {
         switch pose {
@@ -69,10 +69,10 @@ struct IndustrialPeopleFactoryHand: PersonLook {
     /// near hand holds the shaft, and the lean. He drives the blade in (0 to
     /// 2), levers and lifts (3 to 5), pitches the load forward (6 and 7), and
     /// comes down to the heap again (8 to 11).
-    static let grips: [P] = [P(6.4, -31.6), P(7.6, -30.6), P(6.6, -31.8), P(4.6, -34), P(3.2, -36), P(3, -37.6),
-                             P(4.6, -39), P(6, -39.6), P(6.2, -37.4), P(5.8, -34.6), P(5.6, -32.8), P(6, -31.8)]
-    static let holds: [P] = [P(15.8, -23.4), P(17.2, -22.4), P(16, -25), P(15, -29.6), P(14.8, -33.4), P(16, -37.6),
-                             P(18.4, -42.6), P(19.4, -45.4), P(18.4, -39.4), P(17, -31.6), P(16.2, -26.4), P(15.8, -24)]
+    static let grips: [P] = [P(2.8, -31.6), P(4, -30.6), P(3.0, -31.8), P(1, -34), P(-0.4, -36), P(-0.6, -37.6),
+                             P(1, -39), P(2.4, -39.6), P(2.6, -37.4), P(2.2, -34.6), P(2.0, -32.8), P(2.4, -31.8)]
+    static let holds: [P] = [P(12.2, -23.4), P(13.6, -22.4), P(12.4, -25), P(11.4, -29.6), P(11.2, -33.4), P(12.4, -37.6),
+                             P(14.8, -42.6), P(15.8, -45.4), P(14.8, -39.4), P(13.4, -31.6), P(12.6, -26.4), P(12.2, -24)]
     static let leans: [Double] = [24, 25.4, 23.6, 18, 13, 8, 4, 3, 7, 14, 20, 23.4]
     /// The frames on which the load sits on the blade, and the frame on which it leaves it.
     static let loaded: Set<Int> = [2, 3, 4, 5, 6]
@@ -105,29 +105,25 @@ struct IndustrialPeopleFactoryHand: PersonLook {
     }()
 
     /// The heap of coal, its peak just beyond the bite.
-    static var heapLeft: Double { bite.x - 10 }
-    static var heapRight: Double { bite.x + 12 }
-    static var heapHeight: Double { -bite.y + 2.6 }
+    static var heapLeft: Double { bite.x - 13 }
+    static var heapRight: Double { bite.x + 7.4 }
+    static var heapHeight: Double { -bite.y + 1.6 }
 
-    /// The height of the heap's surface above the ground at `x`.
-    static func heapSurface(_ x: Double) -> Double {
-        let peak = heapLeft + (heapRight - heapLeft) * 0.46
-        let side = x < peak ? peak - heapLeft : heapRight - peak
-        return max(0, heapHeight * (1 - abs(x - peak) / side))
-    }
+    /// The coal skip he pitches the coal into, beyond the heap: its left edge, width and height.
+    static var skipLeft: Double { heapRight + 0.8 }
+    static let skipWidth = 11.0, skipHeight = 10.0
 
     /// The lumps of a pitched load in a frame after the release, thrown up
-    /// and falling back onto the heap; nil when none is out of the heap.
+    /// and falling into the skip; nil when none is in the air.
     static func flying(_ frame: Int) -> [(P, Double)]? {
         let k = frame - release
         guard k >= 0, k < 5 else { return nil }
         let s = shovelAt(release)
         let start = IndustrialPeopleProps.shovelEdge(grip: s.grip, degrees: s.degrees) + P(-2, -2)
         let t = Double(k + 1)
-        return [(P(1.4, -3.4), 1.7), (P(0.8, -4), 1.4), (P(1.9, -2.8), 1.2), (P(0.4, -3), 1.5)].map { velocity, size in
-            let p = start + P(velocity.x * t, velocity.y * t + 3 * t * t)
-            // A lump that has come down lies on the heap.
-            return (P(p.x, min(p.y, -heapSurface(p.x) - size * 0.6)), size)
+        return [(P(3, -3.4), 1.7), (P(2.6, -4), 1.4), (P(3.4, -2.8), 1.2), (P(2.2, -3), 1.5)].map { velocity, size in
+            // A lump that has come down lies hidden in the skip.
+            (P(start.x + velocity.x * t, min(start.y + velocity.y * t + 3 * t * t, -6)), size)
         }
     }
 
@@ -137,11 +133,13 @@ struct IndustrialPeopleFactoryHand: PersonLook {
         let sway = d.rig.sway
         if pose == .working {
             IndustrialPeopleProps.coalHeap(&d.svg, left: Self.heapLeft, right: Self.heapRight, height: Self.heapHeight)
+            IndustrialPeopleProps.skipBack(&d.svg, left: Self.skipLeft, width: Self.skipWidth, height: Self.skipHeight)
             if let lumps = Self.flying(frame) {
                 for (i, (at, size)) in lumps.enumerated() {
                     IndustrialPeopleProps.coalLump(&d.svg, at: at, size: size, turn: Double(frame * 40 + i * 70))
                 }
             }
+            IndustrialPeopleProps.skipFront(&d.svg, left: Self.skipLeft, width: Self.skipWidth, height: Self.skipHeight)
             // The dust and the chips flung up as the blade bites.
             if frame == 1 { d.burst(at: Self.bite + P(1, -2), from: 140, to: 220, size: 0.7) }
         }
@@ -167,9 +165,9 @@ struct IndustrialPeopleFactoryHand: PersonLook {
                 d.hand(grip)
             case .fighting:
                 let degrees = d.rig.frontArm.upper - 4
-                IndustrialPeopleProps.shovel(&d.svg, grip: hand - P.direction(degrees) * 5, degrees: degrees)
+                IndustrialPeopleProps.shovel(&d.svg, grip: hand - P.direction(degrees) * 7, degrees: degrees)
                 if frame == 7 { d.swish(around: d.joints.frontShoulder, radius: 30, from: 165, to: 75) }
-                if frame == 8 { d.impact(at: IndustrialPeopleProps.shovelEdge(grip: hand - P.direction(degrees) * 5, degrees: degrees), size: 0.9) }
+                if frame == 8 { d.impact(at: IndustrialPeopleProps.shovelEdge(grip: hand - P.direction(degrees) * 7, degrees: degrees), size: 0.9) }
             default:
                 break
             }
