@@ -8,7 +8,7 @@ import GameCore
 
 /// A scientist in a long laboratory coat of undyed drill to the knee, open at
 /// the chest on a waistcoat of the team's colour, a winged collar and a bow tie
-/// of the team's colour, navy trousers; bald on the crown with ginger tufts and mutton-chop
+/// of the team's colour, bottle-green trousers; bald on the crown with ginger tufts and mutton-chop
 /// whiskers, oval spectacles; nose B. He carries a conical flask by its neck
 /// and his notebook under his arm; at work the flask simmers on a tripod over a
 /// spirit lamp, and he writes his observations in the notebook, looking up
@@ -90,7 +90,7 @@ struct IndustrialPeopleScientist: PersonLook {
         }
         d.figure { d in
             if pose != .working { IndustrialPeopleKit.arm(&d, front: false, fill: .colour(IndustrialPeopleInk.shadeLight), width: 4.4) }
-            IndustrialPeopleKit.trousers(&d, colour: IndustrialPeopleInk.navy, shade: IndustrialPeopleInk.darkNavy)
+            IndustrialPeopleKit.trousers(&d, colour: IndustrialPeopleInk.green, shade: IndustrialPeopleInk.darkGreen)
             Self.coat(&d, sway: sway)
             let hand = d.joints.frontHand
             switch pose {
@@ -178,7 +178,7 @@ struct IndustrialPeopleScientist: PersonLook {
         d.svg.line([d.up(P(2.4, -42)), d.up(P(0.6, -40.4))], stroke: .colour(Ink.line), width: 0.7)
         // The breast pocket with two pencils in it, and a hip pocket.
         d.svg.line([d.up(P(-5.6, -40.8)), d.up(P(-5.4, -44.6))], stroke: .colour(Ink.line), width: 1.7)
-        d.svg.line([d.up(P(-5.6, -40.8)), d.up(P(-5.4, -44.6))], stroke: .colour(IndustrialPeopleInk.navy), width: 0.8)
+        d.svg.line([d.up(P(-5.6, -40.8)), d.up(P(-5.4, -44.6))], stroke: .colour(IndustrialPeopleInk.green), width: 0.8)
         d.svg.line([d.up(P(-3.8, -40.8)), d.up(P(-3.2, -43.8))], stroke: .colour(Ink.line), width: 1.7)
         d.svg.line([d.up(P(-3.8, -40.8)), d.up(P(-3.2, -43.8))], stroke: .colour(IndustrialPeopleInk.brick), width: 0.8)
         d.svg.polygon([P(-7.6, -41.6), P(-1.6, -41.6), P(-1.8, -37.4), P(-7.4, -37.4)].map(d.up), fill: .colour(IndustrialPeopleInk.light),

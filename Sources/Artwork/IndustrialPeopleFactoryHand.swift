@@ -5,11 +5,11 @@ import Foundation
 import GameCore
 
 // The peaceful sectors in their Industrial-age looks wear the dress of the
-// nineteenth century in the age's colours (brick, navy and soot on the light),
+// nineteenth century in the age's colours (brick, bottle green and soot on the light),
 // each with a nose of its own (docs/art-style.md, "Noses") different from his
 // Alchemy, Iron and Bronze stages', and move on the shared skeleton. The
 // team's colour is where the earlier ages put it for the same sector, or as
-// near to it as the dress allows, and never beside the age's brick or navy, so
+// near to it as the dress allows, and never beside the age's brick or green, so
 // that Rome's red, Angkor's orange and the bluer colours stay distinct from
 // them: the factory hand's shirt, the scientist's waistcoat (in the opening of
 // his coat, where the alchemist wore his stole), the mechanic's cap, and the
@@ -20,7 +20,7 @@ import GameCore
 /// A factory hand in a collarless shirt of the team's colour with its sleeves
 /// rolled to the elbow, braces of black leather, soot-grey trousers, a leather
 /// apron from the waist to the knee, a soot-grey neckerchief and a flat cap of
-/// navy tweed; brown sideburns and a bushy moustache; nose F. He carries his
+/// bottle-green tweed; brown sideburns and a bushy moustache; nose F. He carries his
 /// coal shovel at the trail, leaning on it when he stands; at work he
 /// shovels coal: he drives the blade into the heap, lifts the load and pitches
 /// it into the skip beyond, the lumps flying; fighting, he swings the shovel.
@@ -237,9 +237,9 @@ struct IndustrialPeopleFactoryHand: PersonLook {
         d.svg.line([P(-11.6, -24.6), P(12.8, -24.6)], stroke: .colour(IndustrialPeopleInk.paleLeather), width: 0.6)
     }
 
-    /// A flat cap of navy tweed: its crown pulled forward over a short peak, a button on top.
+    /// A flat cap of bottle-green tweed: its crown pulled forward over a short peak, a button on top.
     static func cap(_ d: inout Drawing) {
-        BronzePeopleProps.shape(&d.svg, fill: .colour(IndustrialPeopleInk.navy), width: 1.5) { o in
+        BronzePeopleProps.shape(&d.svg, fill: .colour(IndustrialPeopleInk.green), width: 1.5) { o in
             var p = PathData()
             p.move(P(-11.6, -61.8) + o)
             p.cubic(P(-13.4, -67.6) + o, P(-8, -72.4) + o, P(0, -72) + o)
@@ -250,13 +250,13 @@ struct IndustrialPeopleFactoryHand: PersonLook {
             return p
         }
         // The peak's shadow under the crown, the tweed's flecks, the seam and the button.
-        d.svg.path("M7.6,-64.4 q4.4,-1.4 8.6,-0.2", stroke: .colour(IndustrialPeopleInk.darkNavy), width: 1.1)
+        d.svg.path("M7.6,-64.4 q4.4,-1.4 8.6,-0.2", stroke: .colour(IndustrialPeopleInk.darkGreen), width: 1.1)
         var flecks = PathData()
         for (x, y) in [(-8.0, -66.6), (-4.4, -69.4), (-0.6, -67.2), (3.2, -69.6), (6.6, -67.4), (-6.6, -63.8), (10, -66.4), (0.8, -70.6)] {
             flecks.move(P(x, y)); flecks.line(P(x + 0.7, y - 0.3))
         }
-        d.svg.path(flecks, stroke: .colour(IndustrialPeopleInk.paleNavy), width: 0.6)
-        d.svg.path("M-1.4,-71.8 q2.6,3.4 7.4,5.6", stroke: .colour(IndustrialPeopleInk.darkNavy), width: 0.8)
-        d.svg.ellipse(P(-1.2, -72.2), 1.6, 0.9, fill: .colour(IndustrialPeopleInk.darkNavy), stroke: .colour(Ink.line), width: 0.7)
+        d.svg.path(flecks, stroke: .colour(IndustrialPeopleInk.paleGreen), width: 0.6)
+        d.svg.path("M-1.4,-71.8 q2.6,3.4 7.4,5.6", stroke: .colour(IndustrialPeopleInk.darkGreen), width: 0.8)
+        d.svg.ellipse(P(-1.2, -72.2), 1.6, 0.9, fill: .colour(IndustrialPeopleInk.darkGreen), stroke: .colour(Ink.line), width: 0.7)
     }
 }

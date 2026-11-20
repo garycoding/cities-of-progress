@@ -10,18 +10,20 @@ import Foundation
 // outline, along a direction in degrees from straight down, positive toward
 // the front.
 
-/// The colours of the Industrial age (brick, navy, soot and the light), with
+/// The colours of the Industrial age (brick, bottle green, soot and the light), with
 /// the shades that cloth, leather, coal, iron, brass and glass need. The line,
 /// the skin and the eye are the ones every age shares (`Ink`).
 enum IndustrialPeopleInk {
     static let brick = "#c2683c"
-    static let navy = "#3f5f7a"
+    /// Bottle green, in place of the palette's navy (#3f5f7a), which was Shang's
+    /// team colour to within a step (ruled 2026-11-19).
+    static let green = "#2f5a46"
     static let soot = "#6b6258"
     static let light = "#efe0c2"
     static let darkBrick = "#8a4426"
     static let paleBrick = "#e0a07a"
-    static let darkNavy = "#2a4258"
-    static let paleNavy = "#8aa3b8"
+    static let darkGreen = "#1f3d30"
+    static let paleGreen = "#86a894"
     static let darkSoot = "#47413b"
     static let paleSoot = "#a39a8e"
     /// Linen in shadow: the light's own shade.
@@ -441,7 +443,7 @@ enum IndustrialPeopleProps {
                 let length = min(1, rows - Double(row)) * 4.2
                 lines.move(P(1.4, y + 0.2)); lines.line(P(1.4 + length, y - 0.1 * length / 4.2))
             }
-            svg.path(lines, stroke: .colour(IndustrialPeopleInk.navy), width: 0.5)
+            svg.path(lines, stroke: .colour(IndustrialPeopleInk.green), width: 0.5)
             svg.line([P(0, 1), P(0, -4)], stroke: ink, width: 0.7)
         }
     }
@@ -464,7 +466,7 @@ enum IndustrialPeopleProps {
         let u = P.direction(degrees)
         let back = hand - u * 2.4, point = hand + u * length
         svg.line([back, point - u * 1.4], stroke: ink, width: 1.9)
-        svg.line([back, point - u * 1.4], stroke: .colour(IndustrialPeopleInk.navy), width: 0.9)
+        svg.line([back, point - u * 1.4], stroke: .colour(IndustrialPeopleInk.green), width: 0.9)
         svg.line([point - u * 1.6, point], stroke: .colour(IndustrialPeopleInk.paleWood), width: 1)
         svg.circle(point, 0.35, fill: ink)
     }
@@ -484,20 +486,20 @@ enum IndustrialPeopleProps {
         svg.circle(top - u * 0.6 + P(-0.6, -0.6), 0.5, fill: .colour(IndustrialPeopleInk.paleBrass))
     }
 
-    /// Plans rolled up and tied: a roll of navy blueprint paper centred on
+    /// Plans rolled up and tied: a roll of bottle-green paper centred on
     /// `c` along `degrees`, `length` long, its pale curl showing at each end.
     static func plans(_ svg: inout SVG, at c: P, degrees: Double, length: Double = 15) {
         let u = P.direction(degrees), a = P(-u.y, u.x)
         let r = 1.9
         let start = c - u * (length / 2), end = c + u * (length / 2)
-        BronzePeopleProps.shape(&svg, [start + a * r, end + a * r, end - a * r, start - a * r], fill: .colour(IndustrialPeopleInk.navy), width: 1,
+        BronzePeopleProps.shape(&svg, [start + a * r, end + a * r, end - a * r, start - a * r], fill: .colour(IndustrialPeopleInk.green), width: 1,
                                 shift: P(-0.4, 0.3))
         // The fine white lines of the drawing showing on the outer turn.
-        svg.line([start + u * 2 + a * 0.6, end - u * 3 + a * 0.6], stroke: .colour(IndustrialPeopleInk.paleNavy), width: 0.5)
+        svg.line([start + u * 2 + a * 0.6, end - u * 3 + a * 0.6], stroke: .colour(IndustrialPeopleInk.paleGreen), width: 0.5)
         // The ends of the roll, curled.
         for p in [start, end] {
             svg.ellipse(p, 1, r, fill: .colour(IndustrialPeopleInk.light), stroke: ink, width: 0.7)
-            svg.circle(p, 0.5, fill: .none, stroke: .colour(IndustrialPeopleInk.navy), width: 0.4)
+            svg.circle(p, 0.5, fill: .none, stroke: .colour(IndustrialPeopleInk.green), width: 0.4)
         }
         // The tape tied round its middle.
         svg.line([c + a * (r + 0.3) + u * 1, c - a * (r + 0.3) + u * 1], stroke: .colour(IndustrialPeopleInk.paleBrick), width: 1.1)

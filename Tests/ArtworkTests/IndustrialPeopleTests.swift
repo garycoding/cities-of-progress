@@ -124,6 +124,8 @@ struct IndustrialPeopleRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["INDUSTRIAL_PEOPLE_RENDERS"] ?? "/", isDirectory: true)
     private let sprites = IndustrialPeopleSprites()
     private static let kinds: [UnitKind] = [.worker, .scholar, .engineer, .merchant]
+    /// Added to the name of every file written, from `INDUSTRIAL_PEOPLE_RENDER_SUFFIX`, so that a later round keeps the earlier files.
+    private let suffix = ProcessInfo.processInfo.environment["INDUSTRIAL_PEOPLE_RENDER_SUFFIX"] ?? ""
 
     /// A kind's Industrial-age name, with the sector's name.
     private static func name(_ kind: UnitKind, _ age: Age = .industrial) -> String { "\(kind.stageName(at: age)) (\(kind))" }
@@ -171,7 +173,7 @@ struct IndustrialPeopleRenders {
                     context.draw(smallImage, in: CGRect(x: Double(frame * (small.pixelWidth + 8) + 8), y: 10,
                                                         width: Double(small.pixelWidth), height: Double(small.pixelHeight)))
                 }
-                try Preview.writePNG(context.makeImage()!, to: folder.appendingPathComponent("\(kind)-\(pose.pose.rawValue).png"))
+                try Preview.writePNG(context.makeImage()!, to: folder.appendingPathComponent("\(kind)-\(pose.pose.rawValue)\(suffix).png"))
             }
         }
     }
@@ -211,7 +213,8 @@ struct IndustrialPeopleRenders {
                     frames.append(context.makeImage()!)
                 }
             }
-            try Preview.writeGIF(frames, to: directory.appendingPathComponent("\(kind.stageName(at: .industrial).lowercased().replacingOccurrences(of: " ", with: "-")).gif"))
+            let name = kind.stageName(at: .industrial).lowercased().replacingOccurrences(of: " ", with: "-")
+            try Preview.writeGIF(frames, to: directory.appendingPathComponent("\(name)\(suffix).gif"))
         }
     }
 
@@ -220,8 +223,9 @@ struct IndustrialPeopleRenders {
     /// and beneath, as the sprites themselves at game size, standing and at work.
     @Test func contactSheets() throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        for (pair, file) in [([Civilization.rome, .angkor], "contact-sheet-rome-angkor.png"), ([.sumer, .egypt], "contact-sheet-sumer-egypt.png")] {
-            try contactSheet(pair, to: directory.appendingPathComponent(file))
+        for pair in [[Civilization.rome, .angkor], [.sumer, .egypt], [.shang, .olmec]] {
+            let names = pair.map { "\($0)" }.joined(separator: "-")
+            try contactSheet(pair, to: directory.appendingPathComponent("contact-sheet-\(names)\(suffix).png"))
         }
     }
 

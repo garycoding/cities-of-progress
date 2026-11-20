@@ -6,7 +6,7 @@ import GameCore
 
 // MARK: - The mechanic (engineer)
 
-/// A young mechanic in navy bib overalls with brass buckles, a grey rag
+/// A young mechanic in bottle-green bib overalls with brass buckles, a grey rag
 /// hanging from the pocket, over a striped shirt buttoned at the wrist;
 /// an engine driver's cap of the team's colour with a black peak; black hair
 /// curling at the neck, clean-shaven, a smear of oil on his cheek; nose A. He
@@ -102,7 +102,7 @@ struct IndustrialPeopleMechanic: PersonLook {
                 IndustrialPeopleProps.oilCan(&d.svg, hand: d.joints.backHand, swing: swing)
                 d.hand(d.joints.backHand)
             }
-            IndustrialPeopleKit.trousers(&d, colour: IndustrialPeopleInk.navy, shade: IndustrialPeopleInk.darkNavy)
+            IndustrialPeopleKit.trousers(&d, colour: IndustrialPeopleInk.green, shade: IndustrialPeopleInk.darkGreen)
             Self.overalls(&d, sway: sway)
             let hand = d.joints.frontHand
             switch pose {
@@ -171,14 +171,14 @@ struct IndustrialPeopleMechanic: PersonLook {
             p.close()
             return p
         }
-        d.svg.path(overallsPath(P(-0.7, 0.6)), fill: .colour(IndustrialPeopleInk.navy))
+        d.svg.path(overallsPath(P(-0.7, 0.6)), fill: .colour(IndustrialPeopleInk.green))
         // The bib's pocket with a pencil, the side seam, and the fly's stitching.
-        BronzePeopleProps.shape(&d.svg, [P(0.6, -38.6), P(7.6, -38.8), P(7.8, -33.4), P(0.8, -33.2)].map(d.up), fill: .colour(IndustrialPeopleInk.darkNavy),
+        BronzePeopleProps.shape(&d.svg, [P(0.6, -38.6), P(7.6, -38.8), P(7.8, -33.4), P(0.8, -33.2)].map(d.up), fill: .colour(IndustrialPeopleInk.darkGreen),
                                 width: 0.8)
         d.svg.line([d.up(P(2, -38.4)), d.up(P(2.6, -41.6))], stroke: .colour(Ink.line), width: 1.5)
         d.svg.line([d.up(P(2, -38.4)), d.up(P(2.6, -41.6))], stroke: .colour(IndustrialPeopleInk.paleWood), width: 0.7)
-        d.svg.path("M-6,-27 q-0.6,7 0.4,14.4", stroke: .colour(IndustrialPeopleInk.darkNavy), width: 0.9)
-        d.svg.path("M8.6,-26 q1.6,6 -0.4,13", stroke: .colour(IndustrialPeopleInk.paleNavy), width: 0.6, opacity: 0.7)
+        d.svg.path("M-6,-27 q-0.6,7 0.4,14.4", stroke: .colour(IndustrialPeopleInk.darkGreen), width: 0.9)
+        d.svg.path("M8.6,-26 q1.6,6 -0.4,13", stroke: .colour(IndustrialPeopleInk.paleGreen), width: 0.6, opacity: 0.7)
         // The rag hanging from the hip pocket.
         let rag = P(-9.4, -24)
         d.svg.path("M\(num(rag.x)),\(num(rag.y)) q-2.4,3 \(num(-1.6 - sway)),7 q1.2,0.6 2.4,-0.4 q0.4,1 1.8,0.6 q0.4,-4 -0.4,-7.4 Z",
@@ -187,7 +187,7 @@ struct IndustrialPeopleMechanic: PersonLook {
         // The straps over the shoulders and their brass buckles at the bib's corners.
         for (top, bottom) in [(P(-5.6, -47), P(-8.4, -41)), (P(4.6, -47.2), P(8.8, -41))] {
             d.svg.line([d.up(top), d.up(bottom)], stroke: .colour(Ink.line), width: 3)
-            d.svg.line([d.up(top), d.up(bottom)], stroke: .colour(IndustrialPeopleInk.navy), width: 1.6)
+            d.svg.line([d.up(top), d.up(bottom)], stroke: .colour(IndustrialPeopleInk.green), width: 1.6)
             d.svg.path(BronzePeopleProps.rounded(d.up(bottom + P(0, -0.4)), width: 2.4, height: 2, radius: 0.4, degrees: 0, shift: P(0, 0)),
                        fill: .colour(IndustrialPeopleInk.brass), stroke: .colour(Ink.line), width: 0.6)
         }
