@@ -246,6 +246,7 @@ extension Simulation {
         entities[i].position = spot.centre
         entities[i].route = Route()
         entities[i].rail = nil
+        restamp(i)
         return .moving
     }
 

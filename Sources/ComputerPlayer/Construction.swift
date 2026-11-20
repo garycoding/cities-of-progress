@@ -56,7 +56,7 @@ extension Turn {
             if pens > 0 && pens < 3 && herders >= 6 * pens { out.append(pen) }
         }
         if view.age >= .iron {
-            // Farms, which never run out, as the herds and prey thin; then the stable and the siege workshop.
+            // Farms, reseeded by their farmers when they run dry, as the herds and prey thin; then the stable and the siege workshop.
             // A farm is wanted once the pens are full and no prey is near, at most a quarter of the workers.
             let farms = count(.farm), wantedFarms = tuning.workers(at: view.age) / 4
             let herders = herders
@@ -172,7 +172,8 @@ extension Turn {
     /// four wells at a time.
     private func unclaimedOilField() -> MapPosition? {
         guard count(.oilWell) < 4, memory.plans.allSatisfy({ $0.kind != .oilWell }) else { return nil }
-        let wells = buildings.filter { $0.kind == .building(.oilWell) }
+        // A field under anyone's well, an ally's or an opponent's too, is taken.
+        let wells = view.entities.filter { $0.kind == .building(.oilWell) }
         let fields = view.sites.filter { site in
             site.kind == .oilField && site.remaining > 0 && site.tile.centre.distance(to: base) <= 40
                 && !wells.contains { $0.position.distance(to: site.tile.centre) < 1.5 }

@@ -28,6 +28,7 @@ extension Simulation {
         entities[i].task = .idle
         entities[i].doing = .idle
         entities[i].route = Route()
+        entities[i].rail = nil
     }
 
     /// Give a person a new task, forgetting its route.
@@ -36,6 +37,8 @@ extension Simulation {
         entities[i].task = task
         entities[i].route = Route()
         entities[i].dropOff = nil
+        // A railway journey belongs to the task it was taken for.
+        entities[i].rail = nil
     }
 
     // MARK: Moving
@@ -188,7 +191,8 @@ extension Simulation {
               hasWork(kind, at: b, person: i) else {
             // An engineer whose building is completed goes on to the next one under
             // construction nearby, as a gatherer goes on to the next site (ruled 2026-11-19).
-            if entities[i].unitKind == .engineer, entities[i].doing == .constructing, let next = nextConstruction(for: i) {
+            if entities[i].unitKind == .engineer, entities[i].doing == .constructing,
+               index(of: building).map({ entities[$0].complete }) == true, let next = nextConstruction(for: i) {
                 entities[i].task = .work(entities[next].id)
                 return
             }
@@ -295,8 +299,8 @@ extension Simulation {
         kill(b)
     }
 
-    /// Food per second a worker earns at a farm: farms never run out (ruled
-    /// 2026-11-18), and the plough makes them yield more.
+    /// Food per second a worker earns at a farm; the plough makes it more. A
+    /// farm runs dry after `GatheringStats.farmYield` and is reseeded (ruled 2026-11-19).
     func farmingRate(player: Int) -> Double {
         let plough = players[player].improvements.reduce(1.0) { $0 * (catalogue.stats($1).farmingMultiplier ?? 1) }
         return (catalogue.gathering.farmingPerSecond ?? 0) * plough

@@ -74,10 +74,11 @@ public enum Placement {
         }
         var occupied = occupied(buildings: buildings, sites: view.sites, catalogue: catalogue)
         for t in view.outcrops { occupied.insert(t) }
-        // An oil field holds nothing but a well.
+        // An oil field holds nothing but a well, and one well at that.
         let fields = view.sites.filter { $0.kind == .oilField && $0.remaining > 0 }.map(\.tile)
+        let built = Set(buildings.flatMap { footprint($0.kind, at: $0.origin, catalogue: catalogue) })
         for t in fields { occupied.insert(t) }
-        let wanted = site(for: kind) == .oilField ? Set(fields) : []
+        let wanted = site(for: kind) == .oilField ? Set(fields.filter { !built.contains($0) }) : []
         return canPlace(kind, at: origin, width: view.mapWidth, height: view.mapHeight, terrain: view.terrain,
                         occupied: occupied, explored: { view.visibility(at: $0) != .unexplored }, catalogue: catalogue,
                         wanted: wanted)

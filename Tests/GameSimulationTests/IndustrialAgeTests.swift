@@ -78,6 +78,37 @@ import Testing
         #expect(riding >= Catalogue.standard.railway!.journeyTime)
     }
 
+    @Test func aNewOrderEndsAJourneyAndAPersonsSightComesOutWithThem() {
+        var sim = duel()
+        sim.players[0].age = .industrial
+        sim.add(.railwayDepot, me, 4, 8)
+        sim.add(.railwayDepot, me, 32, 22)
+        let rifleman = sim.add(.rifleman, me, 6.5, 12.5)
+        #expect(sim.apply(.move(units: [rifleman], to: MapPosition(x: 33.5, y: 26.5)), from: me) == .accepted)
+        sim.step()
+        #expect(sim.living(rifleman).rail != nil)
+        // An order to attack close by forgets the journey, as does a stop.
+        let clubman = sim.add(.clubman, them, 8.5, 12.5)
+        #expect(sim.apply(.attack(units: [rifleman], target: clubman), from: me) == .accepted)
+        #expect(sim.living(rifleman).rail == nil)
+        #expect(sim.apply(.stop(units: [rifleman]), from: me) == .accepted)
+        // Ridden to the far depot, the person's sight goes with them.
+        #expect(sim.apply(.move(units: [rifleman], to: MapPosition(x: 33.5, y: 26.5)), from: me) == .accepted)
+        let out = sim.run(until: { $0.living(rifleman).position.x > 25 }, limit: 60 * Tick.rate)
+        #expect(out)
+        #expect(sim.living(rifleman).stamp == sim.living(rifleman).position.tile)
+    }
+
+    @Test func aSecondWellCannotBeOfferedOverAFieldThatHasOne() {
+        var sim = duel(sites: [(.oilField, 10, 10)])
+        sim.exploreAll(me)
+        sim.players[0].age = .industrial
+        sim.add(.oilWell, me, 10, 10)
+        let view = sim.view(for: me)
+        #expect(!Placement.canPlace(.oilWell, at: GridPoint(9, 9), in: view))
+        #expect(!Placement.canPlace(.oilWell, at: GridPoint(11, 11), in: view))
+    }
+
     @Test func aShortWalkDoesNotTakeTheTrain() {
         var sim = duel()
         sim.players[0].age = .industrial
