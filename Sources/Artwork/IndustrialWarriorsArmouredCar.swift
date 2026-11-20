@@ -83,7 +83,8 @@ struct IndustrialWarriorsArmouredCar: PersonLook {
     // MARK: Drawing
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
-        let spin = pose == .walking ? Double(frame) * Self.turn : 0
+        // The wheels roll forward as the car drives (a rolling wheel's angle falls).
+        let spin = pose == .walking ? -Double(frame) * Self.turn : 0
         let ride = Self.ride(pose, frame)
         d.svg.ellipse(P(0, 0.2), 52, 4.2, fill: .colour("#000000"), opacity: 0.14)
         Self.exhaust(&d.svg, pose: pose, frame: frame, ride: ride)

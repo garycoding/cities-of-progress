@@ -351,11 +351,12 @@ enum IndustrialWarriorsKit {
         if !far {
             svg.path(AlchemyWarriorsKit.arc(c, r - tyreWidth / 2, from: 150, to: 205), stroke: .colour(IndustrialWarriorsInk.paleSoot), width: 0.8, opacity: 0.8)
         }
-        // The hub, its bolts turning with the wheel, and the cap.
+        // The hub, a bolt at each spoke's root turning with the wheel (so that
+        // the bolts close their cycle whenever the spokes do), and the cap.
         svg.circle(c, 3.4, fill: .colour(far ? IndustrialWarriorsInk.darkSoot : felloe), stroke: ink, width: 1)
-        for i in 0..<5 {
-            let u = P.direction(degrees * 1 + Double(i) * 72 + 18)
-            svg.circle(c + u * 2.4, 0.42, fill: ink)
+        for i in 0..<spokes {
+            let u = P.direction(degrees + Double(i) * step)
+            svg.circle(c + u * 2.4, 0.36, fill: ink)
         }
         svg.circle(c, 1.5, fill: .colour(far ? IndustrialWarriorsInk.darkBrass : IndustrialWarriorsInk.brass), stroke: ink, width: 0.6)
     }
