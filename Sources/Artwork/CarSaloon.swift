@@ -87,9 +87,12 @@ enum CarSaloon {
 
     /// A frame of a pose (`standing` or `walking`) drawn as a sprite's picture
     /// and mask, grained alike, on `canvas` or another scale of it.
-    static func render(_ pose: SpritePose, frame: Int, canvas: Canvas = CarSaloon.canvas) -> Rendered? {
+    static func render(_ pose: SpritePose, frame: Int, canvas: Canvas = CarSaloon.canvas,
+                       view: SpriteView = .side) -> Rendered? {
         guard let pose = drawn(pose) else { return nil }
-        return Raster.render(on: canvas) { svg in draw(&svg, pose, frame) }
+        return Raster.render(on: canvas) { svg in
+            if view == .side { draw(&svg, pose, frame) } else { drawInView(&svg, pose, frame, view: view) }
+        }
     }
 
     // MARK: Drawing

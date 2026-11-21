@@ -16,18 +16,23 @@ struct FacingRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["FACING_RENDERS"] ?? "/",
                                 isDirectory: true)
 
-    @Test func theWorker() throws {
+    @Test func theWorker() throws { try sheet(.unit(.worker, .stone), name: "worker", title: "The hunter (worker)") }
+
+    @Test func theCar() throws { try sheet(.unit(.car, .stone), name: "car", title: "The car") }
+
+    private func sheet(_ subject: SpriteSubject, name: String, title: String) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let source = GameSprites()
-        let subject = SpriteSubject.unit(.worker, .stone)
         // The eight facings in the order of a turn, each its view and mirroring.
         let facings: [Facing] = [.right, .downRight, .down, .downLeft, .left, .upLeft, .up, .upRight]
-        let poses: [SpritePose] = [.standing, .walking, .working, .fighting]
-        let scale = 2.0, column = 150.0, row = 170.0, left = 140.0, top = 110.0
+        let poses: [SpritePose] = [.standing, .walking, .working, .fighting].filter {
+            source.sprite(SpriteKey(subject, $0)) != nil
+        }
+        let scale = 2.0, column = subject == .unit(.car, .stone) ? 230.0 : 150.0, row = 170.0, left = 140.0, top = 110.0
         let width = Int(left + column * Double(facings.count) + 40), height = Int(top + row * Double(poses.count + 3) + 40)
         let context = Raster.bitmap(width: width, height: height)!
         context.draw(Preview.ground(width: width, height: height, tile: 128), in: CGRect(x: 0, y: 0, width: width, height: height))
-        Preview.label("The hunter (worker) facing eight ways: five views drawn, three mirrored; standing, walking, working and fighting at frame 0, then the walk at frames 0, 3, 6 and 9",
+        Preview.label("\(title) facing eight ways: five views drawn, three mirrored; standing, walking, working and fighting at frame 0, then the walk at frames 0, 3, 6 and 9",
                       in: context, at: CGPoint(x: 20, y: Double(height) - 40), size: 15)
         for (i, facing) in facings.enumerated() {
             Preview.label("\(facing)", in: context, at: CGPoint(x: left + Double(i) * column + 30, y: Double(height) - 80), size: 14)
@@ -54,20 +59,24 @@ struct FacingRenders {
             }
         }
         _ = scale
-        try Preview.writePNG(context.makeImage()!, to: directory.appendingPathComponent("worker-facings.png"))
+        try Preview.writePNG(context.makeImage()!, to: directory.appendingPathComponent("\(name)-facings.png"))
     }
 
     /// The worker walking a circle of eight steps' length, one facing after
     /// another, at game size enlarged twice: 12 frames to each facing.
-    @Test func theWorkerWalkingRound() throws {
+    @Test func theWorkerWalkingRound() throws { try round(.unit(.worker, .stone), name: "worker-walking-round", stride: 1.6) }
+
+    @Test func theCarDrivingRound() throws { try round(.unit(.car, .stone), name: "car-driving-round", stride: 0.9) }
+
+    /// A subject walking or driving a circle, one facing after another.
+    private func round(_ subject: SpriteSubject, name: String, stride: Double) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let source = GameSprites()
-        let subject = SpriteSubject.unit(.worker, .stone)
         let walk: [(Facing, Double, Double)] = [(.right, 1, -1), (.downRight, 1, 0), (.down, 1, 1), (.downLeft, 0, 1),
                                                (.left, -1, 1), (.upLeft, -1, 0), (.up, -1, -1), (.upRight, 0, -1)]
-        let size = 360, k = 2.0
+        let size = subject == .unit(.car, .stone) ? 560 : 360, k = 2.0
         var frames: [CGImage] = []
-        let step = 1.6 / 12
+        let step = stride / 12
         // The path first, so that the circle can be centred in the picture.
         var path: [(Double, Double)] = []
         var px = 0.0, py = 0.0
@@ -95,6 +104,24 @@ struct FacingRenders {
                 frames.append(context.makeImage()!)
             }
         }
-        try Preview.writeGIF(frames, to: directory.appendingPathComponent("worker-walking-round.gif"))
+        try Preview.writeGIF(frames, to: directory.appendingPathComponent("\(name).gif"))
+    }
+
+    /// The car's five views close up, at four times game size.
+    @Test func theCarCloseUp() throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let canvas = CarSaloon.canvas.scaled(to: 5)
+        let views = SpriteView.allCases
+        let cell = Int(Double(canvas.width) * 5) + 20
+        let width = cell * views.count, height = Int(Double(canvas.height) * 5) + 80
+        let context = Raster.bitmap(width: width, height: height)!
+        context.draw(Preview.ground(width: width, height: height, tile: 256), in: CGRect(x: 0, y: 0, width: width, height: height))
+        for (i, view) in views.enumerated() {
+            let drawn = try #require(CarSaloon.render(.standing, frame: 0, canvas: canvas, view: view))
+            let image = Preview.tinted(base: drawn.base, mask: drawn.mask, colour: .of(.sumer))
+            Preview.place(image, anchor: canvas.anchor, at: CGPoint(x: Double(i * cell + cell / 2), y: 40), in: context)
+            Preview.label(view.rawValue, in: context, at: CGPoint(x: Double(i * cell + 20), y: Double(height) - 30), size: 22)
+        }
+        try Preview.writePNG(context.makeImage()!, to: directory.appendingPathComponent("car-close.png"))
     }
 }
