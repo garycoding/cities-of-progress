@@ -120,6 +120,8 @@ struct MapBuilder {
     private var sites: [ResourceSite?] = []
     /// The index in `sites` of the site on each tile, or -1.
     private var siteAt: [Int]
+    /// The tiles of the cluster `scatterCluster` last put.
+    private var lastCluster: [GridPoint] = []
     private var starts: [GridPoint] = []
     /// The centre of each start's town centre footprint, in tile units.
     private var centres: [(x: Double, y: Double)] = []
@@ -348,9 +350,8 @@ struct MapBuilder {
         return candidates.prefix(count).map(\.tile)
     }
 
-    /// Copper and tin deposits each player's start has; the map has no others,
-    /// so a match holds this many of each per player.
-    static let bronzeOrePerPlayer = 5
+    /// Copper, tin and iron deposits near each player's start.
+    static let nearDeposits = 5
 
     private mutating func giveKit(to s: Int) {
         let (cx, cy) = centres[s]
@@ -359,8 +360,8 @@ struct MapBuilder {
             KitItem(kind: .tree, count: 14, minDistance: 6, maxDistance: 8.5, radius: 3),
             KitItem(kind: .prey, count: 4, minDistance: 6.5, maxDistance: 9, radius: 2),
             KitItem(kind: .stone, count: 3, minDistance: 6.5, maxDistance: 9, radius: 2),
-            KitItem(kind: .copper, count: Self.bronzeOrePerPlayer, minDistance: 6.5, maxDistance: 9, radius: 2),
-            KitItem(kind: .tin, count: Self.bronzeOrePerPlayer, minDistance: 6.5, maxDistance: 9, radius: 2),
+            KitItem(kind: .copper, count: Self.nearDeposits, minDistance: 6.5, maxDistance: 9, radius: 2),
+            KitItem(kind: .tin, count: Self.nearDeposits, minDistance: 6.5, maxDistance: 9, radius: 2),
             KitItem(kind: .gold, count: 3, minDistance: 6.5, maxDistance: 9, radius: 2),
         ]
         var slots = Array(0..<items.count)
@@ -371,7 +372,7 @@ struct MapBuilder {
             place(item, aroundX: cx, y: cy, slotAngle: slotAngle, zone: near)
         }
         let far = Zone.near(x: cx, y: cy, maxSquared: 26 * 26)
-        let iron = KitItem(kind: .iron, count: 3, minDistance: 15, maxDistance: 22, radius: 2)
+        let iron = KitItem(kind: .iron, count: Self.nearDeposits, minDistance: 15, maxDistance: 22, radius: 2)
         let oil = KitItem(kind: .oilField, count: 2, minDistance: 16, maxDistance: 23, radius: 2)
         place(iron, aroundX: cx, y: cy, slotAngle: turn + 0.5, zone: far)
         place(oil, aroundX: cx, y: cy, slotAngle: turn + 0.5 + Double.pi, zone: far)
@@ -394,11 +395,17 @@ struct MapBuilder {
     }
 
     /// Clusters of every kind over the whole field, away from the starts.
-    /// Copper and tin are not scattered: each start's kit holds every one
-    /// (`bronzeOrePerPlayer` of each).
+    /// Copper and tin come in pairs of clusters of the same size, so that the
+    /// field holds as many tin deposits as copper.
     private mutating func scatter() {
         let area = Double(w * h) / 9216
         func clusters(_ n: Double) -> Int { max(2, Int((n * area).rounded())) }
+        for _ in 0..<clusters(6) {
+            let copper = scatterCluster(.copper, size: rng.int(3...4))
+            if copper > 0 && scatterCluster(.tin, size: copper, exactly: true, attempts: 120) == 0 {
+                removeLastCluster()
+            }
+        }
         let plan: [(SiteKind, Int, ClosedRange<Int>)] = [
             (.prey, clusters(14), 3...5),
             (.stone, clusters(7), 3...4),
@@ -407,18 +414,33 @@ struct MapBuilder {
             (.oilField, clusters(4), 2...3),
         ]
         for (kind, count, size) in plan {
-            for _ in 0..<count {
-                let n = rng.int(size)
-                for _ in 0..<30 {
-                    let x = rng.below(w), y = rng.below(h)
-                    let tiles = clusterTiles(kind, count: n, x: x, y: y, radius: 2, zone: .away)
-                    if tiles.count >= min(n, 2) {
-                        for t in tiles { put(kind, t.x, t.y) }
-                        break
-                    }
-                }
+            for _ in 0..<count { _ = scatterCluster(kind, size: rng.int(size)) }
+        }
+    }
+
+    /// Takes away the cluster `scatterCluster` last put (a copper cluster for
+    /// which no tin cluster of the same size was found).
+    private mutating func removeLastCluster() {
+        for t in lastCluster {
+            let i = t.y * w + t.x
+            if siteAt[i] >= 0 { sites[siteAt[i]] = nil; siteAt[i] = -1 }
+        }
+        lastCluster = []
+    }
+
+    /// Puts one cluster of up to `size` sites of `kind` somewhere away from the
+    /// starts (exactly `size` when `exactly`), and returns how many it put.
+    private mutating func scatterCluster(_ kind: SiteKind, size n: Int, exactly: Bool = false, attempts: Int = 30) -> Int {
+        for _ in 0..<attempts {
+            let x = rng.below(w), y = rng.below(h)
+            let tiles = clusterTiles(kind, count: n, x: x, y: y, radius: 2, zone: .away)
+            if exactly ? tiles.count == n : tiles.count >= min(n, 2) {
+                for t in tiles { put(kind, t.x, t.y) }
+                lastCluster = tiles
+                return tiles.count
             }
         }
+        return 0
     }
 
     /// A tree on most forest tiles that are not part of a start's open ground.

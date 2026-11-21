@@ -66,8 +66,8 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
 /// Stored values, which a second process reproduces. If a deliberate change to
 /// the generator alters the map, regenerate them and say so in the commit.
 @Test func storedChecksumsMatch() {
-    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 2, seed: 1))) == 4_662_548_284_319_497_114)
-    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 6, seed: 2))) == 16_320_667_955_007_480_761)
+    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 2, seed: 1))) == 11_248_579_691_421_863_391)
+    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 6, seed: 2))) == 7_832_412_196_117_367_643)
 }
 
 // MARK: - Shape
@@ -101,14 +101,19 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
     for kind in SiteKind.allCases { #expect(maps.allSatisfy { $0.sites.contains { $0.kind == kind } }, "a map has no \(kind)") }
 }
 
-@Test func copperAndTinAreFivePerPlayer() {
-    for (players, maps) in Maps.byPlayers { for map in maps {
-        #expect(map.sites.filter { $0.kind == .copper }.count == 5 * players)
-        #expect(map.sites.filter { $0.kind == .tin }.count == 5 * players)
-        for start in map.starts {
-            #expect(count(.copper, in: map, within: 14, of: start) == 5, "copper near \(start)")
-            #expect(count(.tin, in: map, within: 14, of: start) == 5, "tin near \(start)")
-        }
+@Test func copperAndTinAreEqualInNumber() {
+    for maps in Maps.byPlayers.values { for map in maps {
+        let copper = map.sites.filter { $0.kind == .copper }.count
+        #expect(copper == map.sites.filter { $0.kind == .tin }.count)
+        #expect(copper > 5 * map.starts.count, "no scattered copper and tin")
+    } }
+}
+
+@Test(arguments: 2...6) func everyStartHasFiveCopperTinAndIron(players: Int) {
+    for map in Maps.byPlayers[players]! { for start in map.starts {
+        #expect(count(.copper, in: map, within: 14, of: start) >= 5, "copper near \(start)")
+        #expect(count(.tin, in: map, within: 14, of: start) >= 5, "tin near \(start)")
+        #expect(count(.iron, in: map, within: 30, of: start) >= 5, "iron near \(start)")
     } }
 }
 
