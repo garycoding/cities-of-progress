@@ -7,6 +7,7 @@ import GameCore
 
 extension Simulation {
     mutating func updatePerson(_ i: Int) {
+        if entities[i].unitKind == .car { clearAround(i) }
         if entities[i].cooldown > 0 { entities[i].cooldown -= 1 }
         if let pending = entities[i].upgrade {
             if pending.remaining <= 1 { finishUpgrade(i, to: pending.to) } else { entities[i].upgrade?.remaining -= 1 }
@@ -466,5 +467,20 @@ extension Simulation {
             if s >= 0, sites[s].kind == .oilField { total += max(0, sites[s].remaining) }
         }
         return total
+    }
+
+    /// Every opponent's unit within a car's kill radius dies at once (ruled
+    /// 2026-11-21); founders and cars, which nothing harms, are spared, and
+    /// buildings are not touched.
+    mutating func clearAround(_ i: Int) {
+        guard let radius = catalogue.car?.killRadius else { return }
+        let owner = entities[i].owner, here = entities[i].position
+        for j in entities.indices where entities[j].alive && entities[j].isPerson && !entities[j].isUnharmable
+            && teamOf(entities[j].owner) != teamOf(owner) && entities[j].position.distance(to: here) <= radius {
+            let victim = entities[j].owner.rawValue
+            record(.destroyed(entities[j].id), for: victim)
+            record(.destroyed(entities[j].id), for: owner.rawValue)
+            kill(j)
+        }
     }
 }

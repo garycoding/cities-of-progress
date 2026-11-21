@@ -16,6 +16,10 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
     case swordsman, horseman, catapult
     case knight, musketeer, cannon
     case rifleman, fieldGun, armouredCar
+    /// A person's car (ruled 2026-11-21): one for each person, made with
+    /// Shift-C; it cannot be harmed, and every enemy unit within
+    /// `CarStats.killRadius` dies at once. It belongs to no sector.
+    case car
 
     public var sector: Sector? {
         switch self {
@@ -23,7 +27,7 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .scholar: .scholars
         case .engineer: .engineers
         case .merchant: .merchants
-        case .founder: nil
+        case .founder, .car: nil
         case .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon,
              .rifleman, .fieldGun, .armouredCar:
             .warfighters
@@ -40,6 +44,7 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .engineer: age >= .industrial ? "Mechanic" : age >= .alchemy ? "Gunsmith" : age >= .iron ? "Siege engineer" : age >= .bronze ? "Mason" : "Builder"
         case .merchant: age >= .industrial ? "Industrialist" : age >= .alchemy ? "Banker" : age >= .iron ? "Caravan trader" : "Trader"
         case .founder: "Founder"
+        case .car: "Car"
         case .clubman: "Clubman"
         case .slinger: "Slinger"
         case .spearman: "Spearman"

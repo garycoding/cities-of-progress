@@ -55,6 +55,9 @@ struct PlayerState: Codable, Sendable, Hashable {
     var resources: ResourceAmounts
     /// Scholar-ticks of study toward the next age.
     var study = 0
+    /// Whether this person has made their car (ruled 2026-11-21: one each);
+    /// optional so that older saves open, nil being not yet.
+    var hasCar: Bool?
     /// In the order researched.
     var improvements: [Improvement] = []
     /// Copper and tin ore delivered but not yet paired into bronze; at most one load of each.
@@ -198,6 +201,8 @@ struct Entity: Codable, Sendable, Hashable {
     var buildingKind: BuildingKind? { if case .building(let k) = kind { k } else { nil } }
     var isPerson: Bool { if case .unit = kind { true } else { false } }
     var isFounder: Bool { unitKind == .founder }
+    /// Nothing harms a founder or a person's car, and neither is a target.
+    var isUnharmable: Bool { unitKind == .founder || unitKind == .car }
 }
 
 /// The catalogue's figures by kind, in arrays indexed by raw value, for the tick's hot loops.

@@ -381,6 +381,26 @@ import Testing
 
     // MARK: Groups
 
+    @Test func shiftCAsksForTheCarAndACarGlowsOutToItsRadius() {
+        var view = Samples.stoneAgeOpening()
+        let car = EntityID(9200)
+        view.entities.append(EntityView(id: car, owner: view.player, kind: .unit(.car), position: MapPosition(x: 12.5, y: 12.5),
+                                        tile: GridPoint(12, 12), facing: .right, health: 1, maxHealth: 1, activity: .idle))
+        let (scene, _, log) = scene(view)
+        scene.handleKeyDown(.summonCar)
+        #expect(log.orders == [.summonCar])
+        let glow = scene.entityNodes[car]?.glow
+        #expect(glow != nil)
+        // The glow reaches the kill radius: its outer band spans 2 × 11 tiles across the diamond.
+        let outer = glow?.children.first as? SKShapeNode
+        let width = outer?.path?.boundingBox.width ?? 0
+        #expect(abs(width - 2 * 11 * Projection.tileWidth / 2 * 2.squareRoot()) < Projection.tileWidth)
+        // Beneath every person and building.
+        #expect((glow?.zPosition ?? 0) + (scene.entityNodes[car]?.zPosition ?? 0) < 0)
+        // Nobody else glows.
+        #expect(scene.entityNodes[EntityID(2)]?.glow == nil)
+    }
+
     @Test func commandNumberSetsAGroupAndTheNumberAloneRecallsIt() {
         let (scene, session, _) = scene(Samples.stoneAgeOpening())
         session.selection = [EntityID(2), EntityID(4)]

@@ -32,6 +32,7 @@ public final class GameSprites: SpriteSource {
             IndustrialNewBuildingSprites(),
             IndustrialPeopleSprites(catalogue: catalogue),
             IndustrialWarriorSprites(catalogue: catalogue),
+            CarSprites(),
         ]
     }
 

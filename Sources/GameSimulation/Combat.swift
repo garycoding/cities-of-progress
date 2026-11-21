@@ -16,7 +16,7 @@ extension Simulation {
     /// Whether people of a player may strike an entity.
     func canStrike(_ attacker: PlayerID, _ target: Int) -> Bool {
         let t = entities[target]
-        return t.alive && !t.isFounder && teamOf(t.owner) != teamOf(attacker)
+        return t.alive && !t.isUnharmable && teamOf(t.owner) != teamOf(attacker)
     }
 
     /// How far a blow reaches, at least to the next tile.

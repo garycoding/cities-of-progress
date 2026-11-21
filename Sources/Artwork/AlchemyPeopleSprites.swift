@@ -54,7 +54,7 @@ enum AlchemyPeopleLooks {
         case .scholar: AlchemyPeopleAlchemist()
         case .engineer: AlchemyPeopleGunsmith()
         case .merchant: AlchemyPeopleBanker()
-        case .founder, .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar: nil
+        case .founder, .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car: nil
         }
     }
 }

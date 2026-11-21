@@ -46,6 +46,7 @@ extension Simulation {
         case .stop(let units): return stop(units, player: player)
         case .dismiss(let units): return dismiss(units, player: player)
         case .reseed(let farm): return reseed(farm, player: player)
+        case .summonCar: return summonCar(player: player)
         case .setPaused: return .accepted
         }
     }
@@ -197,7 +198,7 @@ extension Simulation {
         guard let t = index(of: target), seesEverything(player.rawValue) || isVisible(entities[t], to: team) else {
             return .refused(.invalidTarget)
         }
-        guard teamOf(entities[t].owner) != team, !entities[t].isFounder else { return .refused(.cannotAttack) }
+        guard teamOf(entities[t].owner) != team, !entities[t].isUnharmable else { return .refused(.cannotAttack) }
         for i in able { assign(i, .attack(target)) }
         return .accepted
     }
@@ -326,6 +327,23 @@ extension Simulation {
         guard held.covers(cost) else { return .refused(.notEnough(held.shortfall(for: cost))) }
         players[player.rawValue].resources = held - cost
         entities[b].farmUsed = 0
+        return .accepted
+    }
+
+    /// A person's car, once, beside the player's first standing town centre
+    /// (ruled 2026-11-21); computer players have none.
+    mutating func summonCar(player: PlayerID) -> OrderResult {
+        let p = player.rawValue
+        guard catalogue.car != nil, players[p].isHuman else { return .refused(.notYours) }
+        guard players[p].hasCar != true else { return .refused(.notNow) }
+        guard let centre = entities.indices.first(where: {
+            entities[$0].alive && entities[$0].owner == player && entities[$0].buildingKind == .townCentre && entities[$0].complete
+        }) else { return .refused(.invalidTarget) }
+        let spot = freeTile(besideBuilding: centre, index: entities[centre].spawned)
+        entities[centre].spawned += 1
+        let id = spawnPerson(.car, owner: player, at: spot.centre)
+        players[p].hasCar = true
+        record(.trained(id, .car), for: p)
         return .accepted
     }
 }

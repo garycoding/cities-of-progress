@@ -193,6 +193,14 @@ public struct RailwayStats: Hashable, Codable, Sendable {
     public init(journeyTime: Int) { self.journeyTime = journeyTime }
 }
 
+/// A person's car (ruled 2026-11-21): every enemy unit within `killRadius`
+/// tiles of it dies at once.
+public struct CarStats: Hashable, Codable, Sendable {
+    public var killRadius: Double
+
+    public init(killRadius: Double) { self.killRadius = killRadius }
+}
+
 /// How merchants trade: at a town centre a merchant takes `exchangePerSecond`
 /// of one resource from the stock each second and adds `exchangeRate` as much
 /// of another; carrying to an ally, a merchant takes `load` at a time.
@@ -258,12 +266,14 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public var oilWell: OilWellStats?
     /// How the railway carries people between depots; optional so that older saves open.
     public var railway: RailwayStats?
+    /// What a person's car does; optional so that older saves open, and then there is no car.
+    public var car: CarStats?
 
     public init(units: [UnitStats], buildings: [BuildingStats], improvements: [ImprovementStats],
                 advances: [AdvanceStats], gathering: GatheringStats, bonuses: [Bonus], upgrades: [UpgradeStats],
                 startingResources: ResourceAmounts, startingPeople: Int, populationMaximum: Int, founderPeople: Int, merchants: MerchantStats? = nil, workshop: WorkshopStats? = nil,
-                oilWell: OilWellStats? = nil, railway: RailwayStats? = nil) {
-        self.workshop = workshop; self.oilWell = oilWell; self.railway = railway
+                oilWell: OilWellStats? = nil, railway: RailwayStats? = nil, car: CarStats? = nil) {
+        self.workshop = workshop; self.oilWell = oilWell; self.railway = railway; self.car = car
         self.merchants = merchants
         self.units = units; self.buildings = buildings; self.improvements = improvements; self.advances = advances
         self.gathering = gathering; self.bonuses = bonuses; self.upgrades = upgrades
@@ -308,6 +318,9 @@ public struct Catalogue: Hashable, Codable, Sendable {
                       speed: 1.3, sight: 5, attack: nil, trainedAt: [.townCentre]),
             UnitStats(kind: .founder, age: .stone, cost: cost([:]), trainTime: 0, health: 1, armour: 0,
                       speed: 1.2, sight: 5, attack: nil, trainedAt: [], population: 0),
+            // A person's car (ruled 2026-11-21): free, outside the population, twice a worker's speed.
+            UnitStats(kind: .car, age: .stone, cost: cost([:]), trainTime: 0, health: 1, armour: 0,
+                      speed: 2.0, sight: 8, attack: nil, trainedAt: [], population: 0),
             UnitStats(kind: .clubman, age: .stone, cost: cost([.food: 50, .wood: 10]), trainTime: s(12), health: 40, armour: 0,
                       speed: 1.1, sight: 5, attack: Attack(damage: 4, range: 1, interval: s(1.5)), trainedAt: [.townCentre, .barracks]),
             UnitStats(kind: .slinger, age: .stone, cost: cost([.food: 40, .stone: 15]), trainTime: s(12), health: 28, armour: 0,
@@ -474,6 +487,7 @@ public struct Catalogue: Hashable, Codable, Sendable {
                          merchants: MerchantStats(exchangePerSecond: 1, exchangeRate: 2.0 / 3.0, load: 20),
                          workshop: WorkshopStats(perSecond: 0.5, woodPerUnit: 2, workers: 3),
                          oilWell: OilWellStats(perSecond: 0.5),
-                         railway: RailwayStats(journeyTime: s(5)))
+                         railway: RailwayStats(journeyTime: s(5)),
+                         car: CarStats(killRadius: 11))
     }()
 }
