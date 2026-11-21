@@ -72,6 +72,7 @@ struct IndustrialPeopleIndustrialist: PersonLook {
     // MARK: Drawing
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let sway = d.rig.sway
         d.figure { d in
             let working = pose == .working
@@ -219,6 +220,210 @@ struct IndustrialPeopleIndustrialist: PersonLook {
             p.cubic(P(15.4, -64.4) + o, P(13, -63.6) + o, P(10.6, -64.6) + o)
             p.cubic(P(3, -65.6) + o, P(-5, -64.8) + o, P(-11.4, -62.4) + o)
             p.cubic(P(-13.2, -62) + o, P(-14.8, -62.8) + o, P(-14.6, -64.4) + o)
+            p.close()
+            return p
+        }
+    }
+}
+
+// MARK: - The industrialist in the other views
+
+extension IndustrialPeopleIndustrialist {
+    /// A frame in a view other than the side: the same dress, the cane, the
+    /// plans and the watch.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let sway = d.rig.sway
+        d.figure { d in
+            let far = IndustrialViews.arm(d, front: false), near = IndustrialViews.arm(d, front: true)
+            let ink = Paint.colour(Ink.line)
+            // The cane: under the near hand, swung as he walks, or planted behind him in the far hand.
+            let cane: (top: IndustrialPoint, degrees: Double, length: Double)
+            switch pose {
+            case .standing:
+                let knob = IndustrialPeopleKit.body(Self.caneKnob, d.rig), tip = IndustrialPeopleKit.body(Self.caneTip, d.rig)
+                cane = (near.held + IndustrialPoint(0, -0.6, 0), IndustrialPeopleKit.degrees(from: knob, to: tip), BronzePeopleKit.length(tip - knob) + 0.4)
+            case .walking:
+                let degrees = 18 + 14 * IndustrialPeopleKit.wave(frame, 0.5)
+                cane = (near.held - IndustrialViews.vector(degrees) * 4.4, degrees, 30)
+            default:
+                let hand = IndustrialPeopleKit.body(Self.restingHand, d.rig), tip = IndustrialPeopleKit.body(Self.restingTip, d.rig)
+                let degrees = IndustrialPeopleKit.degrees(from: hand, to: tip)
+                cane = (far.held - IndustrialViews.vector(degrees) * 3, degrees, BronzePeopleKit.length(tip - hand) + 3)
+            }
+            func drawCane(_ d: inout Drawing) {
+                IndustrialViews.prop(&d, at: IndustrialViews.screen(d, cane.top), degrees: cane.degrees) { svg, at, degrees in
+                    IndustrialPeopleProps.cane(&svg, top: at, degrees: degrees, length: cane.length)
+                }
+            }
+            let caneBehind = IndustrialViews.depth(d, cane.top + IndustrialViews.vector(cane.degrees) * 15) < -3
+            // The watch, held up before him in the near hand.
+            let watch = pose == .working ? IndustrialPeopleKit.body(Self.watchAt(frame), d.rig) : nil
+            let watchAt = watch.map { IndustrialPoint($0.x - 4, $0.y, 3.4) }
+            let watchArm = watchAt.map { IndustrialViews.reach(d, front: true, to: $0 + IndustrialPoint(-1, 3, 0.6)) } ?? near
+            func drawWatch(_ d: inout Drawing) {
+                guard let watchAt else { return }
+                let c = IndustrialViews.screen(d, watchAt)
+                if let pocket = IndustrialViews.front(d, -31, 3.4) {
+                    IndustrialPeopleProps.chain(&d.svg, from: pocket, to: c + P(0, 2.6), sag: 4)
+                }
+                if IndustrialViews.seesFront(d) {
+                    // The case's back toward us, the lid thrown up behind it.
+                    let open = Self.lid[frame]
+                    if open > 0.05 { d.svg.ellipse(c + P(0, -3.4 - 3.2 * open), 3.4, 3.2 * open, fill: .colour(IndustrialPeopleInk.brass), stroke: ink, width: 0.8) }
+                    d.svg.circle(c + P(-0.3, 0.3), 3.4, fill: .colour(IndustrialPeopleInk.brass))
+                    d.svg.circle(c, 3.4, fill: .none, stroke: ink, width: 0.9)
+                    d.svg.circle(c + P(-0.9, -0.9), 0.6, fill: .colour(IndustrialPeopleInk.paleBrass))
+                } else {
+                    IndustrialPeopleProps.watch(&d.svg, at: c, open: Self.lid[frame], minutes: 12 + Double(frame) * 0.6)
+                }
+            }
+            let front = IndustrialViews.seesFront(d)
+            if caneBehind { drawCane(&d) }
+            if !front { drawWatch(&d) }
+            if far.behind { IndustrialPeopleKit.arm(&d, shoulder: far.shoulder, elbow: far.elbow, hand: far.hand, fill: .colour(IndustrialPeopleInk.darkSoot), width: 4.6, cuff: Ink.eyeWhite) }
+            if watchArm.behind { IndustrialPeopleKit.arm(&d, shoulder: watchArm.shoulder, elbow: watchArm.elbow, hand: watchArm.hand, fill: .colour(IndustrialPeopleInk.soot), width: 4.8, cuff: Ink.eyeWhite) }
+            IndustrialViews.trousers(&d, colour: IndustrialPeopleInk.paleSoot, shade: IndustrialPeopleInk.soot, stripe: IndustrialPeopleInk.darkSoot)
+            Self.coatInView(&d, sway: sway, pose: pose)
+            // The plans under the far arm, held by the hand at their near end or pressed to his side.
+            let plans = pose == .working ? IndustrialPoint(-2, -36.4 - d.rig.lift, -10.8) : far.held + IndustrialPoint(-1.8, -1.8, -0.6)
+            if IndustrialViews.depth(d, plans) > -6 || pose != .working {
+                IndustrialViews.prop(&d, at: IndustrialViews.screen(d, plans), degrees: 64) { svg, at, degrees in
+                    IndustrialPeopleProps.plans(&svg, at: at, degrees: degrees, length: 15)
+                }
+            }
+            if !caneBehind { drawCane(&d) }
+            if !far.behind {
+                IndustrialPeopleKit.arm(&d, shoulder: far.shoulder, elbow: far.elbow, hand: far.hand, fill: .colour(IndustrialPeopleInk.darkSoot), width: 4.6, cuff: Ink.eyeWhite)
+            }
+            if front { drawWatch(&d) }
+            if !watchArm.behind {
+                IndustrialPeopleKit.arm(&d, shoulder: watchArm.shoulder, elbow: watchArm.elbow, hand: watchArm.hand, fill: .colour(IndustrialPeopleInk.soot), width: 4.8, cuff: Ink.eyeWhite)
+            }
+            Self.headInView(&d)
+        }
+    }
+
+    /// The frock coat in a view other than the side: from the front, open on
+    /// the waistcoat of the team's colour and cut away below the waist; from
+    /// behind, its back falling to the skirts, with the waistcoat's points
+    /// showing at the waist on either side.
+    static func coatInView(_ d: inout Drawing, sway: Double, pose: SpritePose) {
+        let ink = Paint.colour(Ink.line), lift = d.rig.lift
+        func at(_ x: Double, _ y: Double, _ z: Double) -> P { IndustrialViews.screen(d, IndustrialPoint(x, y, z)) }
+        let upper = d.turned([d.up(P(-9.6, -47.6)), d.up(P(9.4, -47.6)), d.up(P(13.6, -42)), P(15.6, -32), P(13.6, -24), P(9.6, -21),
+                              P(-15.2, -21), P(-15.4, -24), d.up(P(-13.6, -40))])
+        let skirt = d.turned([P(-15.2, -21.4), P(9.6, -21.4), P(9.6 - sway * 1.2, -9), P(-17 - sway * 1.4, -9)])
+        let front = IndustrialViews.seesFront(d)
+        let left = skirt.map(\.x).min() ?? -12, right = skirt.map(\.x).max() ?? 12
+        // The skirts: the whole width from behind; from the front, the flaps either side of the cut-away.
+        var flaps: [[P]] = []
+        if front {
+            let share: (Double, Double) = d.view == .front ? (0.3, 0.3) : (0.55, 0.16)
+            let w = right - left
+            flaps = [[P(left, -21.4), P(left + w * share.0, -21.4), P(left + w * share.0 * 0.7 - sway, -9), P(left - 1.4 - sway, -9)],
+                     [P(right - w * share.1, -21.4), P(right, -21.4), P(right + 1 - sway, -9), P(right - w * share.1 * 0.6 - sway, -9)]]
+        } else {
+            flaps = [skirt]
+        }
+        for flap in flaps { d.svg.polygon(flap.map { $0 + P(-0.8, 0.8) }, fill: .colour(IndustrialPeopleInk.soot)) }
+        d.svg.polygon(upper.map { $0 + P(-0.8, 0.8) }, fill: .colour(IndustrialPeopleInk.soot))
+        d.svg.line([P(left + 1, -22.6), P(right - 1, -22.6)], stroke: .colour(IndustrialPeopleInk.darkSoot), width: 1)
+        if front {
+            // The waistcoat over the belly, its buttons and its pockets; the velvet lapels over its edges.
+            let vest = [at(9.4, -47 - lift, -5), at(9.4, -47 - lift, 5), at(12.4, -34, 7), at(11.4, -24, 6.4), at(11.6, -20.6, 0),
+                        at(11.4, -24, -6.4), at(12.4, -34, -7)]
+            d.svg.polygon(vest.map { $0 + P(-0.6, 0.6) }, fill: .team)
+            var buttons = PathData()
+            for i in 0..<4 { let p = at(12.6, -41.4 + Double(i) * 4.4, 0); buttons.move(p); buttons.line(p + P(0.2, 0.2)) }
+            d.svg.path(buttons, stroke: ink, width: 1.6)
+            for z in [-4.0, 4.0] { let p = at(12.8, -31, z); d.svg.line([p + P(-1.6, 0), p + P(1.6, 0)], stroke: ink, width: 0.7) }
+            d.svg.polygon(vest, fill: .none, stroke: ink, width: 1)
+            for z in [-1.0, 1.0] {
+                d.svg.polygon([at(9.2, -47.8 - lift, 4.6 * z), at(9.2, -47.8 - lift, 8 * z), at(12.6, -40, 8.6 * z), at(13.6, -30, 8.8 * z), at(13, -29, 7.2 * z)],
+                              fill: .colour(IndustrialPeopleInk.black), stroke: ink, width: 0.9)
+            }
+            if pose != .working {
+                // The watch chain looped from a buttonhole across to the pocket.
+                IndustrialPeopleProps.chain(&d.svg, from: at(12.8, -37, 0), to: at(12.8, -31, 4), sag: 2.6)
+                IndustrialPeopleProps.chain(&d.svg, from: at(12.8, -37, 0), to: at(12.8, -31, -4), sag: 2.6)
+                d.svg.circle(at(12.8, -37, 0), 0.6, fill: .colour(IndustrialPeopleInk.brass), stroke: ink, width: 0.4)
+            }
+        } else {
+            // The waistcoat's points at the waist either side, below the coat's cut-away fronts; the seam and the vent down the back.
+            for x in [left + 0.6, right - 3.6] {
+                d.svg.polygon([P(x, -23.6), P(x + 3, -23.6), P(x + 2.4, -20.8), P(x + 0.4, -21.4)], fill: .team, stroke: ink, width: 0.7)
+            }
+            if let top = IndustrialViews.back(d, -45 - lift, 0, half: 12) {
+                d.svg.line([top, P(top.x, -22.6)], stroke: .colour(IndustrialPeopleInk.darkSoot), width: 1)
+                d.svg.line([P(top.x, -22.6), P(top.x - sway, -9.4)], stroke: ink, width: 0.9)
+                for dx in [-3.0, 3.0] { d.svg.circle(P(top.x + dx, -22.4), 0.7, fill: .colour(IndustrialPeopleInk.darkSoot), stroke: ink, width: 0.4) }
+            }
+        }
+        for flap in flaps { d.svg.polygon(flap, fill: .none, stroke: ink, width: 1.8) }
+        d.svg.polygon(upper, fill: .none, stroke: ink, width: 1.8)
+        // The winged collar round the neck, and the black silk cravat with its pin.
+        d.svg.polygon([P(-5.8, -49 - lift), P(5.8, -49 - lift), P(5.6, -46.4 - lift), P(-5.6, -46.4 - lift)], fill: .colour(Ink.eyeWhite), stroke: ink, width: 0.8)
+        if front, let knot = IndustrialViews.front(d, -45.4 - lift, 0, half: 6.6) {
+            d.svg.path("M\(num(knot.x - 2.8)),\(num(knot.y - 1.4)) q2.8,-0.8 5.6,0 q0.6,2.6 -1,4.6 q-1.8,0.8 -3.6,0 q-1.6,-2 -1,-4.6 Z",
+                       fill: .colour(IndustrialPeopleInk.black), stroke: ink, width: 0.8)
+            d.svg.circle(knot + P(0, 0.8), 0.6, fill: .colour(IndustrialPeopleInk.paleBrass))
+        }
+    }
+
+    /// The head in a view other than the side: the grey hair below the hat,
+    /// the short beard and the heavy moustache where the face shows, and the top hat.
+    static func headInView(_ d: inout Drawing) {
+        let grey = Paint.colour(IndustrialPeopleInk.greyHair), ink = Paint.colour(Ink.line)
+        d.head(nose: .hook, hair: { d in
+            switch d.view {
+            case .front:
+                for s in [-1.0, 1.0] { d.svg.polygon([P(10.4 * s, -63), P(7.8 * s, -63), P(8.2 * s, -55.6), P(10.6 * s, -55)], fill: grey) }
+            case .frontQuarter:
+                d.svg.path("M-11.4,-63 C-12.8,-58 -12.2,-53.4 -10,-51 L-9.4,-62.6 Z", fill: grey, stroke: ink, width: 0.9)
+                d.svg.polygon([P(-5.6, -63), P(-3.8, -62.6), P(-3.4, -55), P(-4.8, -54)], fill: grey)
+            case .back:
+                d.svg.path(IndustrialViews.backHair(d, rim: -65), fill: grey)
+            case .backQuarter:
+                d.svg.path(IndustrialViews.backHair(d, rim: -65, right: 5.4), fill: grey)
+            case .side:
+                break
+            }
+        }, features: { d in
+            guard IndustrialViews.seesFront(d) else { return }
+            // A short grey beard round the jaw, and the heavy moustache over the mouth.
+            let beard = IndustrialViews.symmetric(d, [P(0, -45.2), P(4.6, -45.8), P(7.8, -48.6), P(9.4, -53.4), P(8.6, -55.4), P(7, -51.4), P(4.6, -49.6),
+                                                      P(0, -49.2)])
+            d.svg.polygon(beard, fill: grey, stroke: ink, width: 0.9)
+            let moustache = IndustrialViews.symmetric(d, [P(0, -54.4), P(2.8, -55.2), P(5.4, -54), P(6.4, -51.8), P(5.4, -50.4), P(3.6, -51.8), P(0, -51.4)])
+            d.svg.polygon(moustache, fill: grey, stroke: ink, width: 0.9)
+        }, brow: { d in
+            d.svg.path("M1.2,-64.2 q3.8,-2.4 7.8,-0.8", stroke: ink, width: 2.6)
+            d.svg.path("M1.2,-64.2 q3.8,-2.4 7.8,-0.8", stroke: grey, width: 1.3)
+        }, over: { d in
+            Self.hatInView(&d)
+        })
+    }
+
+    /// The tall black silk hat seen from this side: round, so much the same
+    /// from every side, the crown a little wider at the top, the soot band and the curled brim.
+    static func hatInView(_ d: inout Drawing) {
+        let ink = Paint.colour(Ink.line), black = Paint.colour(IndustrialPeopleInk.black)
+        BronzePeopleProps.shape(&d.svg, fill: black, width: 1.5) { o in
+            var p = PathData()
+            p.move(P(-9.6, -65.4) + o); p.line(P(-10.8, -86.6) + o); p.quad(P(0, -88.6) + o, P(10.8, -86.6) + o); p.line(P(9.6, -65.4) + o); p.close()
+            return p
+        }
+        d.svg.polygon([P(-9.6, -65.6), P(9.6, -65.6), P(9.8, -69.6), P(-9.8, -69.6)], fill: .colour(IndustrialPeopleInk.soot), stroke: ink, width: 0.8)
+        let sheen = d.view == .back || d.view == .backQuarter ? 3.0 : -3.0
+        d.svg.line([P(sheen - 1.6, -71.6), P(sheen - 2.2, -85.2)], stroke: .colour(IndustrialPeopleInk.blackSheen), width: 1.3)
+        d.svg.line([P(sheen + 0.8, -72), P(sheen + 0.6, -85.8)], stroke: .colour(IndustrialPeopleInk.blackSheen), width: 0.6)
+        BronzePeopleProps.shape(&d.svg, fill: black, width: 1.3) { o in
+            var p = PathData()
+            p.move(P(-14.6, -64.4) + o)
+            p.cubic(P(-12, -67.2) + o, P(12, -67.2) + o, P(14.6, -64.4) + o)
+            p.cubic(P(15.4, -62.6) + o, P(13, -62.2) + o, P(11, -63) + o)
+            p.cubic(P(4, -64.4) + o, P(-4, -64.4) + o, P(-11, -63) + o)
+            p.cubic(P(-13, -62.2) + o, P(-15.4, -62.6) + o, P(-14.6, -64.4) + o)
             p.close()
             return p
         }
