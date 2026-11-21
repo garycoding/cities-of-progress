@@ -13,11 +13,13 @@ import GameCore
 /// kinds in the poses standing, walking and fighting, each a cycle of 12 frames
 /// (`SpriteKey.frame` 0 to 11). The warfighters never work, and the drawing
 /// falls back to standing where a pose is missing, so the working pose is not
-/// supplied. Every other key returns nil.
+/// supplied. Every other key returns nil. The kinds in `viewed` are drawn in
+/// all five views (ruled 2026-11-21); the others in the side view alone.
 ///
 /// Each call draws its picture afresh, and the same key always gives the same
-/// pixels. Nothing is kept here: the drawing keeps what it is given.
-public struct IronWarriorSprites: SpriteSource {
+/// pixels. Nothing is kept here: the drawing keeps what it is given, by the
+/// whole key, its view included.
+public struct IronWarriorSprites: ViewedSpriteSource {
     /// The poses this source supplies, each at frame 0.
     public let poses: [SpriteKey]
     private let supplied: Set<SpriteKey>
@@ -35,13 +37,22 @@ public struct IronWarriorSprites: SpriteSource {
         poses.flatMap { pose in (0..<SpriteKey.framesPerPose).map { SpriteKey(pose.subject, pose.pose, frame: $0) } }
     }
 
+    /// The kinds drawn in all five views so far.
+    static let viewed: Set<UnitKind> = []
+
+    public func drawsViews(of subject: SpriteSubject) -> Bool {
+        if case .unit(let kind, .iron) = subject { return Self.viewed.contains(kind) }
+        return false
+    }
+
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
         guard (0..<SpriteKey.framesPerPose).contains(key.frame),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)),
+              key.view == .side || drawsViews(of: key.subject),
               case .unit(let kind, _) = key.subject,
               let look = IronWarriorsLooks.look(kind) else { return nil }
         let canvas = IronWarriorsLooks.canvas(kind)
-        return look.render(key.pose, frame: key.frame, canvas: canvas)?.sprite(anchor: canvas.anchor)
+        return look.render(key.pose, frame: key.frame, canvas: canvas, view: key.view)?.sprite(anchor: canvas.anchor)
     }
 }
 
@@ -202,4 +213,84 @@ enum IronWarriorsKit {
     }
 
     enum Crest { case none, brush, plume }
+}
+
+/// How the Iron age's people, their gear and their beasts show in a view other
+/// than the side (ruled 2026-11-21: five views drawn), with the figure kit's
+/// conventions (FigureViews.swift): the figure's own space has x toward its
+/// front, y downward and z toward its right side, and a view turns it by its
+/// yaw about the upright axis.
+enum IronViews {
+    /// The yaw's cosine and sine for a view.
+    static func turn(_ view: SpriteView) -> (c: Double, s: Double) {
+        let r = view.yaw * .pi / 180
+        return (cos(r), sin(r))
+    }
+
+    /// A point of the figure's space on the screen, and its depth toward the viewer.
+    static func project(_ view: SpriteView, _ p: P, z: Double) -> (point: P, depth: Double) {
+        let (c, s) = turn(view)
+        return (P(p.x * c - z * s, p.y), p.x * s + z * c)
+    }
+
+    /// A point of the figure's space on the screen.
+    static func at(_ view: SpriteView, _ p: P, z: Double = 0) -> P { project(view, p, z: z).point }
+
+    /// A run in the figure's upright plane as it shows: its part toward the front foreshortened.
+    static func flat(_ view: SpriteView, _ v: P) -> P { P(v.x * turn(view).c, v.y) }
+
+    /// A direction in the figure's upright plane (degrees from straight down,
+    /// positive toward the front) as it shows on the screen, and the share of
+    /// a length along it that shows.
+    static func tool(_ view: SpriteView, _ degrees: Double) -> (degrees: Double, share: Double) {
+        let v = flat(view, P.direction(degrees))
+        let share = (v.x * v.x + v.y * v.y).squareRoot()
+        guard share > 1e-6 else { return (0, 0) }
+        return (atan2(v.x, v.y) * 180 / .pi, share)
+    }
+
+    /// The centre of the face on the head, as the figure kit draws it: turned
+    /// toward the screen's right from a front quarter, toward its left from a back one.
+    static func face(_ view: SpriteView) -> Double {
+        switch view {
+        case .frontQuarter: 4.5
+        case .backQuarter: -4.5
+        default: 0
+        }
+    }
+
+    /// Whether the face shows.
+    static func seesFace(_ view: SpriteView) -> Bool { view == .front || view == .frontQuarter }
+
+    /// Whether the view looks at the figure from behind.
+    static func fromBehind(_ view: SpriteView) -> Bool { view == .back || view == .backQuarter }
+
+    /// A point outside the figure where it falls in the picture: `Drawing.world`
+    /// with the lean as the view shows it.
+    static func world(_ d: Drawing, _ p: P) -> P {
+        p.rotated(d.rig.lean * turn(d.view).c, about: Drawing.hips) + P(0, d.bob)
+    }
+
+    /// A leg's knee, foot and toe in this view (before the bob and the lean), as
+    /// the figure kit draws them: the right (front) leg or the left (back) one.
+    static func leg(_ d: Drawing, front: Bool) -> (knee: P, foot: P, toe: P, depth: Double) {
+        let limb = front ? d.rig.frontLeg : d.rig.backLeg
+        let hip = P(0.5, -16)
+        let knee = hip + P.direction(limb.upper) * Joints.thigh
+        let foot = knee + P.direction(limb.upper - limb.bend) * Joints.shin
+        let z = front ? Drawing.hipSpread : -Drawing.hipSpread
+        let k = d.project(knee.x, knee.y, z)
+        return (k.point, d.project(foot.x, foot.y, z).point, d.project(foot.x + 4.5, foot.y + 0.3, z).point, k.depth)
+    }
+
+    /// A shape drawn in profile round the body, turned as the kit turns a garment,
+    /// and raised by the breath.
+    static func around(_ d: Drawing, _ shape: [P]) -> [P] { d.turned(shape).map(d.up) }
+
+    /// The top and bottom edges of a band drawn in profile, as `around` turns it.
+    static func edges(_ d: Drawing, _ band: [P]) -> (top: [P], bottom: [P]) {
+        let ring = around(d, band)
+        let half = ring.count / 2
+        return ([ring[ring.count - 1], ring[0]], [ring[half], ring[half - 1]])
+    }
 }
