@@ -45,12 +45,14 @@ These come from the person for whom the game is made and are settled.
 22. The computer players have three levels of difficulty: easy, standard and hard.
 23. A match can be saved and resumed later.
 24. The map is seen at an angle, as in the original: buildings have height and people stand upright. The drawing [`art/view-sample-1.png`](art/view-sample-1.png) shows the view chosen, on its right-hand side.
-25. The first version has no ships. Water appears only as terrain that cannot be crossed.
+25. The first version has no ships. Water appears only as terrain that cannot be crossed, except over a bridge (requirement 31).
 26. A player all of whose people and buildings are destroyed, whilst an ally still lives, receives one person to control: a founder. The founder cannot attack. It can only build one new town centre, which comes with two workers, and it then becomes an engineer (ruled 2026-11-21), so that the player begins again as every player begins. The founder reappears whenever everything the player owns is again destroyed whilst an ally still lives.
 27. A founder cannot be killed. A team whose players have only founders is defeated, and the match ends for it.
 28. A player may have engineers demolish one of the player's own buildings. Demolition takes half the building's construction time, and when the building comes down the player receives half its cost. Training or research under way there is cancelled and refunded in full. A demolished house lowers the population limit; nobody already living is lost, but no one is trained whilst the population exceeds the limit.
 29. A player can speed the match up, and slow it back down to its normal pace.
 30. A player may dismiss any of the player's own people, who leave the match at once and free their places in the population; nothing is returned. A founder cannot be dismissed.
+31. Engineers build bridges from the Stone age on (ruled 2026-11-21). A bridge runs in a straight line across shallow or deep water, from a land tile on one bank to a land tile on the other, and is placed by dragging from one bank to the other. It is two tiles wide, a lane in each (the second row lies beside the one dragged, toward the foot of the screen), and its deck rises from each bank toward its middle; it costs wood for each water tile it covers. Each age's bridge follows the bridges of its period. Anyone may walk over a finished bridge, opponents too, and it can be attacked and destroyed like a palisade.
+32. Each person in a match may summon one car (ruled 2026-11-21), beside one of the person's town centres; computer players have none. It drives at twice a worker's speed, cannot be harmed, and every opponent's unit within 11 tiles of it dies at once. Its laser burns down an opponent's building, any building, in about four seconds from up to 8 tiles. It keeps nobody in the match.
 
 ## Consequences of the stated requirements
 

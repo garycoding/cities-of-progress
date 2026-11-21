@@ -98,7 +98,7 @@ extension IndustrialOldBuildingsPainter {
         case .siegeWorkshop: siegeWorkshop(complete: complete)
         case .stoneWall: stoneWall(complete: complete)
         // Drawn with the kit of the larger works, or by another batch.
-        case .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell: break
+        case .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: break
         }
     }
 }

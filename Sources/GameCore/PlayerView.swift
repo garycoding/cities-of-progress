@@ -67,6 +67,10 @@ public struct EntityView: Hashable, Codable, Sendable {
     /// For a farm, the food it has left before it must be reseeded; for an oil
     /// well, the oil left beneath it; nil for everything else.
     public var remaining: Int?
+    /// For a bridge piece, its place in its bridge; nil for everything else.
+    public var bridgePlace: BridgePlace?
+    /// For a car firing its laser, the centre of the building it burns.
+    public var laserTarget: MapPosition?
 
     public init(id: EntityID, owner: PlayerID, kind: EntityKind, position: MapPosition, tile: GridPoint,
                 facing: Facing, health: Int, maxHealth: Int, activity: Activity, remaining: Int? = nil) {

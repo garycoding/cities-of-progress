@@ -13,10 +13,10 @@ import Testing
 @Test func everyKeyThroughTheIndustrialAgeComesFromItsApprovedBatch() {
     let all = GameSprites()
     let approved: [Age: [any SpriteSource]] = [
-        .iron: [IronOldBuildingSprites(), IronNewBuildingSprites(), IronPeopleSprites(), IronWarriorSprites()],
-        .alchemy: [AlchemyOldBuildingSprites(), AlchemyNewBuildingSprites(), AlchemyPeopleSprites(), AlchemyWarriorSprites()],
+        .iron: [IronOldBuildingSprites(), IronNewBuildingSprites(), IronPeopleSprites(), IronWarriorSprites(), BridgeSprites()],
+        .alchemy: [AlchemyOldBuildingSprites(), AlchemyNewBuildingSprites(), AlchemyPeopleSprites(), AlchemyWarriorSprites(), BridgeSprites()],
         .industrial: [IndustrialOldBuildingSprites(), IndustrialNewBuildingSprites(), IndustrialPeopleSprites(),
-                      IndustrialWarriorSprites()],
+                      IndustrialWarriorSprites(), BridgeSprites()],
     ]
     var missing: [SpriteKey] = []
     var wrong: [SpriteKey] = []

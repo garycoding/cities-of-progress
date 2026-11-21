@@ -23,6 +23,7 @@ extension Simulation {
     func reach(of attack: Attack) -> Double { max(attack.range, 1) }
 
     mutating func attackTask(_ i: Int, target: EntityID) {
+        if entities[i].unitKind == .car { laserTask(i, target: target); return }
         guard let kind = entities[i].unitKind, let attack = tables.unit(kind).attack else { setIdle(i); return }
         let owner = entities[i].owner
         let team = teamOf(owner)
@@ -51,6 +52,30 @@ extension Simulation {
             strike(from: i, at: t, attack: attack)
             entities[i].cooldown = attack.interval
         }
+    }
+
+    /// A car drives to within `CarStats.laserRange` of an opponent's building and
+    /// burns it down in `CarStats.laserTime` ticks, whatever its size (ruled
+    /// 2026-11-21): each tick takes the building's full health divided by that time.
+    mutating func laserTask(_ i: Int, target: EntityID) {
+        guard let car = catalogue.car, let t = index(of: target), !entities[t].isPerson,
+              canStrike(entities[i].owner, t) else { setIdle(i); return }
+        switch approach(i, .tiles(entities[t].origin, entities[t].size, reach: car.laserRange)) {
+        case .moving: entities[i].doing = .moving; return
+        case .unreachable: setIdle(i); return
+        case .arrived: break
+        }
+        entities[i].doing = .fighting
+        face(i, dx: entities[t].position.x - entities[i].position.x, dy: entities[t].position.y - entities[i].position.y)
+        let burn = max(1, (entities[t].maxHealth + car.laserTime - 1) / max(1, car.laserTime))
+        entities[t].health -= burn
+        entities[t].lastHurt = tick
+        guard entities[t].health <= 0 else { return }
+        let owner = entities[t].owner.rawValue, killer = entities[i].owner.rawValue
+        kill(t)
+        record(.destroyed(entities[t].id), for: owner)
+        if killer != owner { record(.destroyed(entities[t].id), for: killer) }
+        setIdle(i)
     }
 
     /// The nearest opponent person a warfighter can see, within its sight.
@@ -131,6 +156,8 @@ extension Simulation {
                 buildingAt[k] = -1
                 blocked[k] = !terrain[k].isPassable || siteAt[k] >= 0 && sites[Int(siteAt[k])].kind.blocksTile
             }
+            // Whoever stood on a bridge piece that falls goes to the nearest open ground.
+            if kind == .bridge { moveAside(from: footprintTiles(origin: entities[i].origin, size: entities[i].size)) }
         }
         deathsPending = true
     }

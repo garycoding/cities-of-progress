@@ -199,6 +199,8 @@ struct EntityIcon: View {
         let pose: SpritePose
         switch kind {
         case .unit: pose = .standing
+        // A bridge has no single picture: the icon shows the near lane's middle piece of a bridge of five.
+        case .building(.bridge): pose = BridgePlace(run: .alongX, lane: 1, index: 2, count: 5).pose(complete: true)
         case .building: pose = .complete
         }
         return sprites.sprite(SpriteKey(subject, pose))
@@ -289,6 +291,8 @@ struct BuildingGlyph: View {
                 parts = [(rect(0.1, 0.4, 0.8, 0.4), wall), (roof(0.04, 0.18, 0.92, 0.24), Palette.inkSoft), (rect(0.02, 0.84, 0.96, 0.06), Palette.ink)]
             case .oilWell:
                 parts = [(rect(0.44, 0.1, 0.12, 0.8), Palette.ink), (rect(0.2, 0.8, 0.6, 0.1), Palette.inkSoft)]
+            case .bridge:
+                parts = [(rect(0.0, 0.4, 1.0, 0.2), Color(red: 0.55, green: 0.38, blue: 0.24))]
             case .palisade:
                 parts = [(rect(0.12, 0.3, 0.14, 0.6), Color(red: 0.55, green: 0.38, blue: 0.24)), (rect(0.43, 0.24, 0.14, 0.66), Color(red: 0.55, green: 0.38, blue: 0.24)), (rect(0.74, 0.3, 0.14, 0.6), Color(red: 0.55, green: 0.38, blue: 0.24))]
             }

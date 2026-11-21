@@ -404,7 +404,7 @@ enum Placeholders {
                 line(c, onRightFace(u, 0.05), onRightFace(u, 1), colour(0.2, 0.12, 0.05, 0.7), width: 1)
                 line(c, onLeftFace(u, 0.05), onLeftFace(u, 1), colour(0.2, 0.12, 0.05, 0.7), width: 1)
             }
-        case .storagePit, .stockPen, .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell:
+        case .storagePit, .stockPen, .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge:
             break
         }
     }

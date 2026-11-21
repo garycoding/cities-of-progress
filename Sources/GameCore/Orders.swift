@@ -69,6 +69,10 @@ public enum Order: Hashable, Codable, Sendable {
     case reseed(farm: EntityID)
     /// A person's car, made beside one of the player's town centres (ruled 2026-11-21).
     case summonCar
+    /// Engineers build a bridge in a straight line from the land tile `from` to
+    /// the land tile `to`, one piece on each water tile between, paying for every
+    /// piece at once; they build from the `from` bank outwards (ruled 2026-11-21).
+    case buildBridge(engineers: [EntityID], from: GridPoint, to: GridPoint)
 }
 
 /// Why an order was refused. The interface shows it to the player.

@@ -73,7 +73,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
 @Test func engineersOfferTheBuildingsOfTheAgesReached() {
     let view = Samples.stoneAgeOpening()
     let m = model(view, [view.id(of: .unit(.engineer))])
-    #expect(m.build.map(\.id) == ["build-townCentre", "build-house", "build-storagePit"])
+    #expect(m.build.map(\.id) == ["build-townCentre", "build-house", "build-storagePit", "build-bridge"])
     #expect(m.train.isEmpty && m.research.isEmpty)
     // 140 wood and 50 stone are held: a town centre wants 200 and 100.
     let centre = offer(m, "build-townCentre").unavailable
@@ -212,7 +212,7 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
 @Test func engineersAndWarfightersTogetherOfferBothSets() {
     let view = Samples.bronzeAgeSkirmish()
     let m = model(view, view.ids(ofUnits: [.engineer, .clubman, .slinger]))
-    #expect(m.build.count == 7)
+    #expect(m.build.count == 8)
     #expect(m.upgrade.count == 2)
     #expect(offer(m, "build-barracks").isAvailable)           // 100 wood of 310
     #expect(offer(m, "build-watchTower").isAvailable)         // 80 stone of 120

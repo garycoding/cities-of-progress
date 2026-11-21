@@ -100,6 +100,7 @@ enum Stature {
         case .factory: 40
         case .railwayDepot: 28
         case .oilWell: 34
+        case .bridge: 6
         }
     }
 

@@ -47,6 +47,7 @@ extension Simulation {
         case .dismiss(let units): return dismiss(units, player: player)
         case .reseed(let farm): return reseed(farm, player: player)
         case .summonCar: return summonCar(player: player)
+        case .buildBridge(let engineers, let from, let to): return buildBridge(engineers, from: from, to: to, player: player)
         case .setPaused: return .accepted
         }
     }
@@ -174,6 +175,41 @@ extension Simulation {
         return .accepted
     }
 
+    /// A bridge (ruled 2026-11-21): two tiles wide, a piece on each water tile
+    /// of both rows (`Placement.bridgeRows`), all paid for at once; the
+    /// engineers begin at the piece beside `from`, and each, on finishing a
+    /// piece, goes on to the next (`nextConstruction`).
+    mutating func buildBridge(_ ids: [EntityID], from: GridPoint, to: GridPoint, player: PlayerID) -> OrderResult {
+        guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
+        let engineers = people.filter { entities[$0].unitKind == .engineer }
+        guard !engineers.isEmpty else { return .refused(.notYours) }
+        let p = player.rawValue
+        let stats = tables.building(.bridge)
+        guard players[p].age >= stats.age else { return .refused(.ageNotReached(stats.age)) }
+        guard let rows = Placement.bridgeRows(from: from, to: to, width: width, height: height, terrain: terrain),
+              let run = BridgeRun.of(from: from, to: to),
+              (Placement.bridgeEnds(from: from, to: to) + rows.flatMap { $0 }).allSatisfy({ isExplored($0, byPlayer: p) }),
+              rows.flatMap({ $0 }).allSatisfy({ buildingAt[tileIndex($0)] < 0 })
+        else { return .refused(.placementBlocked) }
+        let pieces = rows.flatMap { $0 }
+        var cost = ResourceAmounts()
+        for r in Resource.allCases { cost[r] = stats.cost[r] * pieces.count }
+        if let short = pay(cost, p) { return .refused(short) }
+        var first: EntityID?
+        let count = rows[0].count
+        for (lane, row) in rows.enumerated() {
+            let low = row.map { run == .alongX ? $0.x : $0.y }.min()!
+            for t in row {
+                let b = placeBuilding(.bridge, owner: player, origin: t, complete: false)
+                entities[b].bridgePlace = BridgePlace(run: run, lane: lane, index: (run == .alongX ? t.x : t.y) - low,
+                                                      count: count)
+                if first == nil { first = entities[b].id }
+            }
+        }
+        for i in engineers { assign(i, .work(first!)) }
+        return .accepted
+    }
+
     /// `Placement`'s rule, applied to the full state and the team's exploration.
     func canPlace(_ kind: BuildingKind, at origin: GridPoint, player p: Int) -> Bool {
         var occupied = Set<GridPoint>(), wanted = Set<GridPoint>()
@@ -190,11 +226,20 @@ extension Simulation {
 
     mutating func attack(_ ids: [EntityID], target: EntityID, player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
+        let team = players[player.rawValue].teamIndex
+        // A car burns buildings with its laser (ruled 2026-11-21): an opponent's building only.
+        let cars = people.filter { entities[$0].unitKind == .car }
+        if !cars.isEmpty, let t = index(of: target), !entities[t].isPerson, teamOf(entities[t].owner) != team,
+           seesEverything(player.rawValue) || isVisible(entities[t], to: team) {
+            for i in cars { assign(i, .attack(target)) }
+        }
         let able = people.filter { i in entities[i].unitKind.map { tables.unit($0).attack != nil } ?? false }
+        if able.isEmpty && !cars.isEmpty {
+            return cars.contains(where: { entities[$0].task == .attack(target) }) ? .accepted : .refused(.cannotAttack)
+        }
         guard !able.isEmpty else {
             return .refused(people.contains { entities[$0].isFounder } ? .cannotAttack : .notYours)
         }
-        let team = players[player.rawValue].teamIndex
         guard let t = index(of: target), seesEverything(player.rawValue) || isVisible(entities[t], to: team) else {
             return .refused(.invalidTarget)
         }

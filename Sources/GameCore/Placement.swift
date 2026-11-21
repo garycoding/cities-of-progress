@@ -45,6 +45,68 @@ public enum Placement {
     /// built over an oil field.
     public static func site(for kind: BuildingKind) -> SiteKind? { kind == .oilWell ? .oilField : nil }
 
+    /// Whether a bridge may be built from `a` to `b` as the player sees the map:
+    /// the line of `bridgeWater`, every tile of it explored, and no building on
+    /// its water.
+    public static func canBridge(from a: GridPoint, to b: GridPoint, in view: PlayerView) -> Bool {
+        guard let rows = bridgeRows(from: a, to: b, width: view.mapWidth, height: view.mapHeight, terrain: view.terrain)
+        else { return false }
+        let built = Set(view.entities.compactMap { e -> GridPoint? in if case .building = e.kind { e.tile } else { nil } })
+        let water = rows.flatMap { $0 }
+        return (bridgeEnds(from: a, to: b) + water).allSatisfy { view.visibility(at: $0) != .unexplored }
+            && !water.contains(where: built.contains)
+    }
+
+    /// The four land tiles a bridge from `a` to `b` rests on: `a` and `b`, and
+    /// the tiles beside them on the second row's side.
+    public static func bridgeEnds(from a: GridPoint, to b: GridPoint) -> [GridPoint] {
+        guard let run = BridgeRun.of(from: a, to: b) else { return [a, b] }
+        let d = run.across
+        return [a, b, GridPoint(a.x + d.x, a.y + d.y), GridPoint(b.x + d.x, b.y + d.y)]
+    }
+
+    /// The water tiles of a bridge's two rows (ruled 2026-11-21: two tiles
+    /// wide): the row dragged from `a` to `b`, and the row beside it toward
+    /// the foot of the screen (`BridgeRun.across`), each in order from `a`'s
+    /// end; nil unless both rows are lines of `bridgeWater` of the same length.
+    public static func bridgeRows(from a: GridPoint, to b: GridPoint, width: Int, height: Int,
+                                  terrain: [Terrain]) -> [[GridPoint]]? {
+        guard let run = BridgeRun.of(from: a, to: b),
+              let first = bridgeWater(from: a, to: b, width: width, height: height, terrain: terrain) else { return nil }
+        let d = run.across
+        guard let second = bridgeWater(from: GridPoint(a.x + d.x, a.y + d.y), to: GridPoint(b.x + d.x, b.y + d.y),
+                                       width: width, height: height, terrain: terrain),
+              second.count == first.count else { return nil }
+        return [first, second]
+    }
+
+    /// The end of a bridge dragged from `start` toward `pointer`: the pointer's
+    /// tile, brought onto the straight line along the axis it is nearer.
+    public static func bridgeEnd(from start: GridPoint, toward pointer: GridPoint) -> GridPoint {
+        abs(pointer.x - start.x) >= abs(pointer.y - start.y) ? GridPoint(pointer.x, start.y) : GridPoint(start.x, pointer.y)
+    }
+
+    /// The water tiles a bridge from the land tile `a` to the land tile `b`
+    /// would cross, in order from `a`, or nil if no bridge may run there: the
+    /// line must be straight, both ends on passable ground, every tile between
+    /// them water, and at least one and at most `BridgeRule.maxWater` of them.
+    public static func bridgeWater(from a: GridPoint, to b: GridPoint, width: Int, height: Int,
+                                   terrain: [Terrain]) -> [GridPoint]? {
+        guard let run = BridgeRun.of(from: a, to: b) else { return nil }
+        func inside(_ t: GridPoint) -> Bool { t.x >= 0 && t.y >= 0 && t.x < width && t.y < height }
+        guard inside(a), inside(b), terrain[a.y * width + a.x].isPassable, terrain[b.y * width + b.x].isPassable
+        else { return nil }
+        let step = run == .alongX ? GridPoint(b.x > a.x ? 1 : -1, 0) : GridPoint(0, b.y > a.y ? 1 : -1)
+        var tiles: [GridPoint] = []
+        var t = GridPoint(a.x + step.x, a.y + step.y)
+        while t != b {
+            guard !terrain[t.y * width + t.x].isPassable, tiles.count < BridgeRule.maxWater else { return nil }
+            tiles.append(t)
+            t = GridPoint(t.x + step.x, t.y + step.y)
+        }
+        return tiles.isEmpty ? nil : tiles
+    }
+
     /// Whether a building of `kind` may be placed with its origin at `origin`.
     /// `explored` answers whether the placing player has explored a tile.
     /// `wanted` holds the tiles of the sites of `site(for: kind)` with

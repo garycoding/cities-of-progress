@@ -294,7 +294,9 @@ public struct PanelModel: Sendable {
         if own.contains(where: { $0.kind == .unit(.engineer) }) {
             build = catalogue.buildings.filter { $0.age <= view.age }.map { b in
                 ActionOffer(
-                    id: "build-\(b.kind)", section: .build, title: b.kind.name, detail: "Engineers construct it where you click.",
+                    id: "build-\(b.kind)", section: .build, title: b.kind.name, detail: b.kind == .bridge
+                        ? "Engineers build it across water: drag from one bank to the other. The cost is for each water tile."
+                        : "Engineers construct it where you click.",
                     cost: b.cost, action: .place(b.kind), unavailable: planner.check(cost: b.cost, age: b.age),
                     shortcut: Self.buildKey(b.kind), icon: .building(b.kind), iconSubject: planner.subject(.building(b.kind)))
             }
@@ -427,6 +429,8 @@ public struct PanelModel: Sendable {
         case .factory: "y"
         case .railwayDepot: "d"
         case .oilWell: "r"
+        // "x" for a crossing: "b" is the barracks.
+        case .bridge: "x"
         }
     }
 
