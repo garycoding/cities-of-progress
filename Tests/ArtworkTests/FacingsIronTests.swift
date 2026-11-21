@@ -44,6 +44,18 @@ import Testing
             }
         }
     }
+
+    /// Every kind of both sources is drawn in views.
+    @Test func everyKindIsDrawnInViews() {
+        let people = IronPeopleSprites(), warriors = IronWarriorSprites()
+        for kind: UnitKind in [.worker, .scholar, .engineer, .merchant] {
+            #expect(people.drawsViews(of: .unit(kind, .iron)), "\(kind)")
+        }
+        for kind: UnitKind in [.swordsman, .horseman, .catapult] {
+            #expect(warriors.drawsViews(of: .unit(kind, .iron)), "\(kind)")
+        }
+        #expect(!people.drawsViews(of: .unit(.worker, .bronze)))
+    }
 }
 
 /// The pictures of the Iron age's kinds in views, written to the directory
