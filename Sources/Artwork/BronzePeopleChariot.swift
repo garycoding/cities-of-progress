@@ -124,6 +124,7 @@ struct BronzePeopleChariot: PersonLook {
     // MARK: Drawing
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let (nearPose, farPose) = Self.horses(pose, frame)
         let near = BronzePeopleSteed(at: Self.nearHorse, pose: nearPose, coat: "#a8643a", shade: "#7e4626")
         let far = BronzePeopleSteed(at: Self.farHorse, pose: farPose, coat: "#6f3d22", shade: "#4f2a17")
@@ -488,5 +489,409 @@ struct BronzePeopleSteed {
         svg.raw("</g>")
         drawLeg(&svg, .fore, far: false)
         drawLeg(&svg, .hind, far: false)
+    }
+}
+
+// MARK: - The chariot in other views
+
+// The chariot seen from its other four sides (ruled 2026-11-21: eight facings,
+// five views drawn), in the manner of the car (CarViews.swift). The chariot is
+// taken in its own space: x forward, y down, z toward its near (right) side.
+// The car is 22 wide between its side panels, its wheels 30 apart, the driver
+// stands in its middle, and the two horses go side by side 22 apart, the near
+// one on the right, with the pole between them to the yoke on their withers. A
+// view turns that space by its yaw and drops the depth, and the parts are
+// drawn from the farthest to the nearest. From a quarter turn the near side of
+// the car, its wheels and the horses are their side drawings foreshortened,
+// and the car's front (or its open back) is a face of its own; from straight
+// ahead or behind the wheels are seen end on beside the car, and the horses
+// have drawings of their own: the face, chest and forelegs, or the rump, tail
+// and hind legs. The driver is drawn by the figure kit in the view.
+
+extension BronzePeopleChariot {
+    /// Half the car's width between its side panels, and half the wheels' track.
+    static let carHalf = 11.0, track = 15.0
+    /// How far the horses stand ahead, and to each side of the pole.
+    static let horseAhead = 62.0, horseApart = 11.0
+
+    /// A frame of a pose drawn in a view other than the side.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let view = d.view
+        let yaw = view.yaw * .pi / 180, c = cos(yaw), s = sin(yaw)
+        let front = view == .front || view == .frontQuarter
+        let endOn = abs(c) < 0.01
+        func at(_ x: Double, _ z: Double) -> Double { x * c - z * s }
+        let (nearPose, farPose) = Self.horses(pose, frame)
+        let near = BronzePeopleSteed(at: P(Self.horseAhead, 0), pose: nearPose, coat: "#a8643a", shade: "#7e4626")
+        let far = BronzePeopleSteed(at: P(Self.horseAhead, 0), pose: farPose, coat: "#6f3d22", shade: "#4f2a17")
+        let teams: [(BronzePeopleSteed, Double)] = [(far, -Self.horseApart), (near, Self.horseApart)]
+        let spin = pose == .walking ? -Double(frame) * Self.turn : (pose == .fighting ? 4 * BronzePeopleKit.wave(frame) : 0)
+        let bounce = pose == .walking ? 0.7 * abs(BronzePeopleKit.wave(frame, 0.1, times: 1)) : 0
+        let place = P(at(-1, 0), Self.floor - bounce)
+
+        // The shadow, as long as the chariot shows and as wide.
+        d.svg.ellipse(P(at(42, 0), 0.2), 62 * abs(c) + 24 * abs(s), 4.4, fill: .colour("#000000"), opacity: 0.13)
+
+        /// The side drawing of a part at depth `z`, foreshortened.
+        func side(_ svg: inout SVG, z: Double, _ content: (inout SVG) -> Void) {
+            svg.raw("<g transform=\"translate(\(num(-z * s)),0) scale(\(num(abs(c))),1)\">")
+            content(&svg)
+            svg.raw("</g>")
+        }
+        func horses(_ svg: inout SVG) {
+            // The farther horse first; from straight ahead or behind, where neither is farther, the off horse.
+            for (horse, z) in teams.sorted(by: { ($0.1 * c, $0.1) < ($1.1 * c, $1.1) }) {
+                if endOn {
+                    horse.drawEndOn(&svg, at: -z * s, front: front, near: z > 0)
+                } else {
+                    side(&svg, z: z) { horse.draw(&$0, near: z > 0) }
+                }
+            }
+        }
+        func pole(_ svg: inout SVG) {
+            let yoke = near.withers + P(1.4, -0.6)
+            if endOn {
+                svg.line([P(0, -14.8 - bounce), P(0, yoke.y)], stroke: .colour(Ink.line), width: 3.2)
+                svg.line([P(0, -14.8 - bounce), P(0, yoke.y)], stroke: .colour(BronzePeopleInk.wood), width: 1.8)
+                // The yoke across both horses' withers.
+                let half = Self.horseApart + 6
+                svg.line([P(-half, yoke.y + 1), P(0, yoke.y - 0.8), P(half, yoke.y + 1)], stroke: .colour(Ink.line), width: 3.4)
+                svg.line([P(-half, yoke.y + 1), P(0, yoke.y - 0.8), P(half, yoke.y + 1)], stroke: .colour(BronzePeopleInk.wood), width: 2)
+                for x in [-Self.horseApart, Self.horseApart] {
+                    svg.polygon([P(x - 2.8, yoke.y + 2), P(x, yoke.y - 1.8), P(x + 2.8, yoke.y + 2)], fill: .colour(BronzePeopleInk.bronze),
+                                stroke: .colour(Ink.line), width: 1)
+                }
+            } else {
+                side(&svg, z: 0) { svg in
+                    var pole = PathData()
+                    pole.move(P(12, -14.8 - bounce)); pole.quad(P(40, -15 - bounce), yoke)
+                    svg.path(pole, stroke: .colour(Ink.line), width: 3.2)
+                    svg.path(pole, stroke: .colour(BronzePeopleInk.wood), width: 1.8)
+                }
+            }
+        }
+        func wheels(_ svg: inout SVG, near: Bool?) {
+            for z in [-Self.track, Self.track] where near == nil || (z > 0) == near! {
+                if endOn {
+                    Self.wheelEndOn(&svg, at: P(-z * s, -Self.wheelRadius - bounce * 0), outward: -z * s > 0 ? 1 : -1)
+                } else {
+                    side(&svg, z: z) { Self.wheel(&$0, at: P(0, -Self.wheelRadius), degrees: spin, far: z < 0) }
+                }
+            }
+        }
+        func reins(_ svg: inout SVG, _ d: Drawing) {
+            let lean = d.rig.lean * c
+            func hand(_ front: Bool) -> P {
+                d.hand(front: front).rotated(lean, about: Drawing.hips) + P(0, d.bob) + place
+            }
+            let slack = pose == .walking ? 0.6 : 4
+            let hands = pose == .fighting ? [hand(false), hand(false)] : [hand(true), hand(false)]
+            for (hand, (horse, z)) in zip(hands, [(near, Self.horseApart), (far, -Self.horseApart)]) {
+                let bit = P(at(horse.mouth.x, z), horse.mouth.y)
+                var rein = PathData()
+                rein.move(hand); rein.quad((hand + bit) * 0.5 + P(0, slack), bit)
+                svg.path(rein, stroke: .colour(Ink.line), width: 0.9)
+            }
+        }
+
+        if front {
+            // From in front: the far wheel, the car's far side, the driver, the car's front and near side, the near wheel, the pole and the horses.
+            if !endOn {
+                wheels(&d.svg, near: false)
+                side(&d.svg, z: -Self.carHalf) { Self.car(&$0, rise: bounce) }
+            }
+            Self.driverInView(&d, pose, frame, at: place)
+            if endOn {
+                wheels(&d.svg, near: nil)
+                Self.carFace(&d.svg, view: view, rise: bounce, inside: false)
+            } else {
+                side(&d.svg, z: Self.carHalf) { Self.car(&$0, rise: bounce) }
+                Self.carFace(&d.svg, view: view, rise: bounce, inside: false)
+                wheels(&d.svg, near: true)
+            }
+            reins(&d.svg, d)
+            pole(&d.svg)
+            horses(&d.svg)
+        } else {
+            // From behind: the horses, the pole, the far wheel, the inside of the car, the driver, the car's near side and the near wheel.
+            horses(&d.svg)
+            pole(&d.svg)
+            if endOn {
+                wheels(&d.svg, near: nil)
+            } else {
+                wheels(&d.svg, near: false)
+            }
+            Self.carFace(&d.svg, view: view, rise: bounce, inside: true)
+            if !endOn { side(&d.svg, z: -Self.carHalf) { Self.car(&$0, rise: bounce) } }
+            Self.driverInView(&d, pose, frame, at: place)
+            reins(&d.svg, d)
+            if endOn {
+                Self.carBack(&d.svg, rise: bounce)
+            } else {
+                side(&d.svg, z: Self.carHalf) { Self.car(&$0, rise: bounce) }
+                wheels(&d.svg, near: true)
+            }
+        }
+
+        // Dust thrown up by the hooves at the gallop, and by the forefeet as they come down.
+        if pose == .walking && (frame % 6 == 2 || frame % 6 == 3) {
+            let hoof = near.hoof(.hind)
+            BronzePeopleProps.dust(&d.svg, at: P(at(hoof.x - 5, Self.horseApart), hoof.y - 1), size: frame % 6 == 2 ? 0.8 : 1.1, opacity: 0.5)
+        }
+        if pose == .fighting && (frame == 0 || frame == 11) {
+            for (horse, z) in teams {
+                let hoof = horse.hoof(.fore)
+                d.burst(at: P(at(hoof.x + 1, z), hoof.y - 1), from: endOn ? 60 : 100, to: endOn ? 300 : 170, size: 0.9)
+            }
+        }
+    }
+
+    /// The driver in the view, standing on the car's floor at `at`: the legs
+    /// only where the open back shows them, the sash from shoulder to hip, the
+    /// khopesh in the figure's own plane, and his hair, beard and headband.
+    static func driverInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int, at place: P) {
+        let lean = d.rig.lean * cos(d.yaw * .pi / 180)
+        let at = place + P(0, d.bob)
+        let back = BronzePeopleViews.seesBack(d.view)
+        d.svg.raw("<g transform=\"translate(\(num(at.x)),\(num(at.y))) rotate(\(num(lean)) \(num(Drawing.hips.x)) \(num(Drawing.hips.y)))\">")
+        let outline = [P(-8, -47), P(8.4, -47), P(11.4, -19.4), P(-12, -19.4)]
+        let bladeBehind = d.armBehind(front: true)
+        d.arm(front: false)
+        if back { d.legs() }
+        if pose == .fighting && bladeBehind { khopeshInView(&d, frame) }
+        d.garment(colour: [P(-11.6, -46), P(8.6, -48), P(12.4, -18), P(-13.4, -17.4)],
+                  outline: outline, fill: .colour(BronzePeopleInk.light)) { d in
+            for via in [0.0, 180.0] {
+                for run in BronzePeopleViews.across(d, on: outline, top: (-45, 270), bottom: (-23.4, 90), via: via, width: 5) {
+                    d.svg.polygon(run.map(d.up), fill: .team)
+                }
+            }
+        }
+        if pose == .fighting && !bladeBehind { khopeshInView(&d, frame) }
+        d.arm(front: true)
+        let flutter = pose == .walking ? 2.6 + BronzePeopleKit.wave(frame, times: 3) : 0.6 * BronzePeopleKit.wave(frame)
+        d.head(nose: .line, behind: { d in
+            if d.view == .frontQuarter { headbandEnds(&d, flutter: flutter) }
+        }, hair: { d in
+            d.svg.path(Hunter.hair(d.view), fill: .colour(Ink.line))
+        }, features: { d in
+            // A short pointed beard.
+            guard d.view == .front || d.view == .frontQuarter else { return }
+            let beard = [P(-3, -49.6), P(0, -49), P(3, -49.6), P(1.4, -45.6), P(0, -44), P(-1.4, -45.6)]
+            d.svg.polygon(BronzePeopleViews.onFace(d.view, beard.map { $0 + P(d.view == .frontQuarter ? 0.8 : 0, 0) }), fill: .colour(Ink.line))
+        }, brow: { d in
+            d.svg.path("M1.8,-63.8 q3.2,-1.6 6.4,-0.6", stroke: .colour(Ink.line), width: 1.4)
+        }, over: { d in
+            let band = Array(BronzePeopleViews.ring(d.view, out: 1.2, headbandEdge).dropFirst(1).dropLast(1))
+            d.svg.line(band, stroke: .colour(Ink.line), width: 3.4)
+            d.svg.line(band, stroke: .colour(BronzePeopleInk.verdigris), width: 1.8)
+            if BronzePeopleViews.seesBack(d.view) { headbandEnds(&d, flutter: flutter) }
+        })
+        d.svg.raw("</g>")
+    }
+
+    /// The headband's line round the head.
+    static let headbandEdge = BronzePeopleViews.edge(front: -65.4, side: -63, back: -61.6)
+
+    /// The headband's two ends, streaming behind from the knot at the back of the head.
+    static func headbandEnds(_ d: inout Drawing, flutter: Double) {
+        let knot = BronzePeopleViews.onHead(d.view, degrees: 180, y: -62, out: 1).point
+        let backward = -cos(d.yaw * .pi / 180), spread = d.view == .back ? 1.0 : 0.4
+        for (i, (dy, length)) in [(0.0, 10.0), (1.6, 8.0)].enumerated() {
+            let side = (Double(i) * 2 - 1) * spread
+            let top = knot + P(side, dy)
+            let end = top + P(-(length - flutter * 0.4) * backward + side * (3 + flutter), 3.6 - flutter * 1.3 + dy + (1 - abs(backward)) * 4)
+            d.svg.polygon([top + P(-0.6, -0.8), top + P(0.6, 0.8), end + P(0.4, 0.5), end + P(-0.4, -0.5)],
+                          fill: .colour(BronzePeopleInk.verdigris), stroke: .colour(Ink.line), width: 0.8)
+        }
+    }
+
+    /// The khopesh at the front hand, turned in the figure's own plane, and where its blow lands.
+    static func khopeshInView(_ d: inout Drawing, _ frame: Int) {
+        let hand = d.hand(front: true)
+        let (degrees, reach) = BronzePeopleViews.onScreen(d.view, d.rig.frontArm.upper - 4)
+        khopesh(&d.svg, at: hand, degrees: degrees)
+        if frame == 8 { d.impact(at: hand + P.direction(degrees) * (15 * reach), size: 1) }
+    }
+
+    /// The car's front: seen from in front, its outside, painted in the team's
+    /// colour with a border and a rosette; from behind, its inside, in shade.
+    static func carFace(_ svg: inout SVG, view: SpriteView, rise: Double, inside: Bool) {
+        let yaw = view.yaw * .pi / 180, c = cos(yaw), s = sin(yaw)
+        func at(_ x: Double, _ y: Double, _ z: Double) -> P { P(x * c - z * s, y - rise) }
+        // The front's curve, from the floor up to the rail.
+        let curve: [P] = (0...8).map { i in
+            let t = Double(i) / 8, m = 1 - t
+            let a = P(14.6, floor), b = P(18.2, -22.6), e = P(18.4, -35.6), f = P(12.8, -42.4)
+            return a * (m * m * m) + b * (3 * m * m * t) + e * (3 * m * t * t) + f * (t * t * t)
+        }
+        let w = carHalf
+        let face = curve.map { at($0.x, $0.y, w) } + curve.reversed().map { at($0.x, $0.y, -w) }
+        svg.polygon(face.map { $0 + P(-0.8, 0.7) }, fill: .team)
+        if inside {
+            svg.polygon(face, fill: .colour("#000000"), opacity: 0.22)
+        } else {
+            let border = curve.dropFirst().dropLast().map { at($0.x - 1, $0.y, w - 2.2) }
+                + curve.dropFirst().dropLast().reversed().map { at($0.x - 1, $0.y, -w + 2.2) }
+            svg.polygon(border, fill: .none, stroke: .colour(BronzePeopleInk.light), width: 1.2)
+            let rosette = at(17.6, -28.6, 0)
+            for i in 0..<8 {
+                svg.circle(rosette + P.direction(Double(i) * 45) * 2.6, 1.1, fill: .colour(BronzePeopleInk.light))
+            }
+            svg.circle(rosette, 1.3, fill: .colour(BronzePeopleInk.gold), stroke: .colour(Ink.line), width: 0.5)
+        }
+        svg.polygon(face, fill: .none, stroke: .colour(Ink.line), width: 1.6)
+        // The rail across the top, of bent wood capped in bronze.
+        let rail = [at(12.6, -43, w), at(12.6, -43, -w)]
+        svg.line(rail, stroke: .colour(Ink.line), width: 3)
+        svg.line(rail, stroke: .colour(BronzePeopleInk.bronze), width: 1.6)
+        svg.line([at(15.4, floor, w), at(15.4, floor, -w)], stroke: .colour(Ink.line), width: 2.2)
+    }
+
+    /// The car's open back, seen from straight behind: the side panels end on,
+    /// their rails sloping down to the back, and the floor across.
+    static func carBack(_ svg: inout SVG, rise: Double) {
+        let up = P(0, -rise), w = carHalf
+        for x in [-w, w] {
+            let panel = [P(x - 1.4, floor), P(x + 1.4, floor), P(x + 1.4, -36.2), P(x - 1.4, -36.2)].map { $0 + up }
+            svg.polygon(panel.map { $0 + P(-0.6, 0.5) }, fill: .team)
+            svg.polygon(panel, fill: .none, stroke: .colour(Ink.line), width: 1.2)
+            svg.line([P(x, -36.2) + up, P(x * 0.96, -43) + up], stroke: .colour(Ink.line), width: 3)
+            svg.line([P(x, -36.2) + up, P(x * 0.96, -43) + up], stroke: .colour(BronzePeopleInk.bronze), width: 1.6)
+        }
+        svg.line([P(-w - 2, floor) + up, P(w + 2, floor) + up], stroke: .colour(Ink.line), width: 2.4)
+        svg.line([P(-w - 1.6, floor - 0.2) + up, P(w + 1.6, floor - 0.2) + up], stroke: .colour(BronzePeopleInk.wood), width: 1)
+    }
+
+    /// A wheel seen end on, centred on `c`: the rim as an upright band, and the hub standing out on the side `outward`.
+    static func wheelEndOn(_ svg: inout SVG, at c: P, outward: Double) {
+        let r = wheelRadius, half = 2.0
+        let rim = [c + P(-half, -r), c + P(half, -r), c + P(half, r), c + P(-half, r)]
+        svg.polygon(rim, fill: .colour(BronzePeopleInk.wood), stroke: .colour(Ink.line), width: 1.4)
+        svg.line([c + P(0, -r + 1.4), c + P(0, r - 1.4)], stroke: .colour(Ink.line), width: 0.7, opacity: 0.6)
+        let hub = [c + P(0, -2.6), c + P(outward * 4.4, -2), c + P(outward * 4.4, 2), c + P(0, 2.6)]
+        svg.polygon(hub, fill: .colour(BronzePeopleInk.bronze), stroke: .colour(Ink.line), width: 1)
+    }
+}
+
+extension BronzePeopleSteed {
+    /// The horse seen straight from in front (`front`) or behind, its middle at
+    /// `x` on the screen: every height taken from its side drawing, so that it
+    /// breathes, gallops and rears as it does from the side.
+    func drawEndOn(_ svg: inout SVG, at x: Double, front: Bool, near: Bool) {
+        let ink = Paint.colour(Ink.line), skin = Paint.colour(coat)
+        // Toward the screen's right is the horse's left side from in front, its right from behind.
+        let right = front ? -1.0 : 1.0
+        func leg(_ kind: Leg, far: Bool) {
+            let (top, joint, hoof) = Self.leg(self, kind, far: far, bob: bob)
+            let lx = x + (far ? -3.4 : 3.4) * right
+            let out = (far ? -1.0 : 1.0) * right * 0.8
+            let colour = far ? shade : coat
+            let points = [P(lx, top.y), P(lx + out, joint.y), P(lx, hoof.y - 2.4)]
+            svg.line(points, stroke: ink, width: kind == .hind && !front ? 5.6 : 4.4)
+            svg.line(points, stroke: .colour(colour), width: kind == .hind && !front ? 3.6 : 2.6)
+            svg.ellipse(P(lx, hoof.y - 1), 2.2, 1.6, fill: ink)
+        }
+        let chest = body(P(17, -37)).y, rump = body(P(-16, -37)).y
+        let poll = head(P(21.6, -69.2)).y, eye = head(P(28.8, -63.4)).y, muzzle = head(P(38.6, -54.6)).y
+        let withersY = withers.y
+        if front {
+            leg(.hind, far: true); leg(.hind, far: false)
+            // The body end on: the chest, with the breast strap across it.
+            svg.ellipse(P(x - 0.6, chest + 0.6), 7.4, 10.6, fill: skin)
+            svg.ellipse(P(x, chest + 4.6), 5.6, 5, fill: .colour(shade), opacity: 0.5)
+            svg.ellipse(P(x, chest), 7.4, 10.6, fill: .none, stroke: ink, width: 1.6)
+            leg(.fore, far: true); leg(.fore, far: false)
+            var strap = PathData()
+            strap.move(P(x - 7, chest - 4)); strap.quad(P(x, chest + 1.6), P(x + 7, chest - 4))
+            svg.path(strap, stroke: .colour(BronzePeopleInk.leather), width: 2)
+            for dx in [-4.0, 0.0, 4.0] {
+                svg.circle(P(x + dx, chest - 1.4 + abs(dx) * -0.4), 0.8, fill: .colour(BronzePeopleInk.bronzeLight), stroke: ink, width: 0.4)
+            }
+            // The neck, rising from the chest to the head, its mane falling to one side.
+            let neck = [P(x - 5, withersY + 3), P(x + 5, withersY + 3), P(x + 3.6, poll + 7), P(x - 3.6, poll + 7)]
+            svg.polygon(neck.map { $0 + P(-0.6, 0.6) }, fill: skin)
+            svg.polygon(neck, fill: .none, stroke: ink, width: 1.4)
+            svg.polygon([P(x + 3.6 * right, poll + 6), P(x + 5.6 * right, poll + 8), P(x + 6 * right, withersY + 2), P(x + 5 * right, withersY + 3)],
+                        fill: ink)
+            plume(&svg, at: P(x, poll - 1))
+            ears(&svg, x: x, poll: poll)
+            // The long face, the forehead broad between the eyes and narrowing to the muzzle.
+            var face = PathData()
+            face.move(P(x - 4.2, poll + 1))
+            face.quad(P(x, poll - 1.6), P(x + 4.2, poll + 1))
+            face.quad(P(x + 4.6, eye + 1), P(x + 2.8, muzzle - 2))
+            face.quad(P(x + 3.2, muzzle + 1.6), P(x, muzzle + 1.8))
+            face.quad(P(x - 3.2, muzzle + 1.6), P(x - 2.8, muzzle - 2))
+            face.quad(P(x - 4.6, eye + 1), P(x - 4.2, poll + 1))
+            face.close()
+            svg.path(face, fill: skin, stroke: ink, width: 1.5)
+            svg.ellipse(P(x, muzzle - 0.4), 2.6, 1.8, fill: .colour(shade), opacity: 0.7)
+            // The forelock, the bridle's straps and discs, the eyes and the nostrils.
+            svg.path("M\(num(x - 1.6)),\(num(poll)) q1.6,4.4 3.2,0 q-0.4,3.4 -1.6,5 q-1.2,-1.6 -1.6,-5 Z", fill: ink)
+            svg.line([P(x - 3.8, poll + 3), P(x - 2.8, muzzle - 3)], stroke: ink, width: 1.1)
+            svg.line([P(x + 3.8, poll + 3), P(x + 2.8, muzzle - 3)], stroke: ink, width: 1.1)
+            svg.line([P(x - 3.2, muzzle - 3.4), P(x + 3.2, muzzle - 3.4)], stroke: ink, width: 1.1)
+            for dx in [-3.2, 3.2] {
+                svg.circle(P(x + dx, muzzle - 3.4), 1.3, fill: .colour(BronzePeopleInk.bronze), stroke: ink, width: 0.6)
+            }
+            for dx in [-4.2, 4.2] {
+                if pose.blink {
+                    svg.line([P(x + dx - 1.2, eye), P(x + dx + 1.2, eye)], stroke: ink, width: 1)
+                } else {
+                    svg.circle(P(x + dx, eye), 1.4, fill: .colour(Ink.eyeWhite), stroke: ink, width: 0.7)
+                    svg.circle(P(x + dx * 1.06, eye + 0.1), 0.7, fill: ink)
+                }
+            }
+            for dx in [-1.2, 1.2] { svg.circle(P(x + dx, muzzle), 0.6, fill: ink) }
+            if pose.mouthOpen { svg.ellipse(P(x, muzzle + 2.4), 1.6, 0.9, fill: ink) }
+        } else {
+            // From behind: the poll and ears over the neck, the plume, the mane down the neck's middle.
+            let neck = [P(x - 5, withersY + 3), P(x + 5, withersY + 3), P(x + 3.8, poll + 3), P(x - 3.8, poll + 3)]
+            svg.polygon(neck.map { $0 + P(-0.6, 0.6) }, fill: skin)
+            svg.polygon(neck, fill: .none, stroke: ink, width: 1.4)
+            svg.ellipse(P(x, poll + 2.4), 4.6, 4, fill: skin, stroke: ink, width: 1.4)
+            ears(&svg, x: x, poll: poll)
+            svg.polygon([P(x - 1.8, poll + 1), P(x + 1.8, poll + 1), P(x + 2.6 + pose.mane, withersY + 2), P(x - 2.6 + pose.mane, withersY + 2)],
+                         fill: ink)
+            plume(&svg, at: P(x, poll - 1))
+            leg(.fore, far: true); leg(.fore, far: false)
+            // The rump, its two quarters, and the tail falling between the hind legs.
+            svg.ellipse(P(x - 0.6, rump + 0.6), 7.8, 10.4, fill: skin)
+            svg.ellipse(P(x, rump + 4), 6, 5, fill: .colour(shade), opacity: 0.45)
+            svg.ellipse(P(x, rump), 7.8, 10.4, fill: .none, stroke: ink, width: 1.6)
+            svg.line([P(x, rump - 6), P(x, rump + 6)], stroke: .colour(shade), width: 1.1)
+            leg(.hind, far: true); leg(.hind, far: false)
+            let dock = body(P(-18.4, -41.4)).y, tip = body(P(-30 - pose.tail * 8, -22 + pose.tail * 8)).y
+            let swing = pose.tail * 3.4
+            var tail = PathData()
+            tail.move(P(x - 1.6, dock))
+            tail.quad(P(x - 3 + swing * 0.5, (dock + tip) / 2), P(x - 1.2 + swing, tip))
+            tail.line(P(x + 1.6 + swing, tip - 0.6))
+            tail.quad(P(x + 2.8 + swing * 0.5, (dock + tip) / 2), P(x + 1.6, dock))
+            tail.close()
+            svg.path(tail, fill: ink)
+        }
+    }
+
+    /// The two ears at the poll: pricked, or laid back when the horse is roused.
+    private func ears(_ svg: inout SVG, x: Double, poll: Double) {
+        for side in [-1.0, 1.0] {
+            let tip = pose.earBack ? P(x + side * 6, poll - 2.2) : P(x + side * 3, poll - 6)
+            svg.polygon([P(x + side * 1.2, poll + 0.4), tip, P(x + side * 4, poll + 0.8)], fill: .colour(coat), stroke: .colour(Ink.line), width: 1.1)
+        }
+    }
+
+    /// The plume of the team's colour: three feathers fanned up from a bronze holder.
+    private func plume(_ svg: inout SVG, at c: P) {
+        let sway = pose.mane * 6
+        for angle in [-160.0, 180.0, 160.0] {
+            svg.group(at: c, turned: angle + sway * 0.4) { svg in
+                svg.ellipse(P(-0.5, 6.4), 2.3, 6, fill: .team)
+                svg.ellipse(P(0, 7), 2.3, 6, fill: .none, stroke: .colour(Ink.line), width: 0.9)
+                svg.path("M0,1.6 L0,11.4", stroke: .colour(Ink.line), width: 0.6, opacity: 0.7)
+            }
+        }
+        svg.circle(c, 1.4, fill: .colour(BronzePeopleInk.bronze), stroke: .colour(Ink.line), width: 0.7)
     }
 }

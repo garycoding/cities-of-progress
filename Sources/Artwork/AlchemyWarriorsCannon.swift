@@ -251,6 +251,7 @@ struct AlchemyWarriorsCannon: PersonLook {
     // MARK: Drawing
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let layer = d.svg.layer
         let phase = d.phase
         let dx = Self.recoil(pose, frame)
@@ -682,6 +683,443 @@ struct AlchemyWarriorsCannon: PersonLook {
             head(0, 6, sponge: true); head(length - 3.2, length, sponge: false)
         } else {
             head(0, 3.2, sponge: false); head(length - 6, length, sponge: true)
+        }
+    }
+}
+
+// MARK: - The cannon in the other views
+
+extension AlchemyWarriorsCannon {
+    /// Where the wheels and the carriage's cheeks stand across the gun, from its middle.
+    static let track = 13.0, cheekSpread = 5.0
+    /// How far to the gun's right the gunner stands, and to its left the rammer, so that neither hides behind it.
+    static let gunnerSide = 28.0, rammerSide = 26.0, rammerAtMuzzle = 10.0
+
+    /// A point of the gun's space where it falls in this view.
+    static func place(_ view: SpriteView, _ p: P, z: Double = 0) -> P { AlchemyViews.project(view, p.x, p.y, z).point }
+
+    /// A frame of a pose seen from a view other than the side. From a quarter
+    /// the gun is its side drawing shortened, the wheels and the cheeks each in
+    /// their own plane across it, as the car is drawn; from the front or
+    /// behind it shows its muzzle or its breech and trail between the wheels
+    /// seen end on. The crew stand beside it, the gunner to its right and the
+    /// rammer to its left (and at its muzzle while he serves it), each drawn on
+    /// the figure kit in the view his own facing gives, and the whole is
+    /// ordered by depth.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let view = d.view
+        let (c, s) = AlchemyViews.turn(view)
+        let layer = d.svg.layer, phase = d.phase
+        let dx = Self.recoil(pose, frame)
+        let spin = (pose == .walking ? -Double(frame) * Self.turn : 0) - dx / Self.wheelRadius * 180 / .pi
+        d.svg.ellipse(P(-6 * c, 0.2), abs(60 * c) + abs(Self.track * s) + 6, 4.2, fill: .colour("#000000"), opacity: 0.13)
+
+        // The crew: where each stands, how deep, and his drawing.
+        var crew: [(depth: Double, svg: String)] = []
+        var rammerHands: (near: P, far: P)?
+        if let r = Self.gunnerRig(pose, frame) {
+            var g = Drawing(layer: layer, rig: r, phase: phase, view: view)
+            let origin = pose == .walking ? Self.walkingGunner : Self.gunner
+            let z = pose == .walking ? 18.0 : Self.gunnerSide
+            let at = Self.place(view, origin, z: z)
+            Self.gunnerInView(&g, pose, frame, origin: origin, at: at, dx: dx)
+            crew.append((origin.x * s + z * c, "<g transform=\"translate(\(num(at.x)),0)\">" + g.svg.body + "</g>"))
+        }
+        if let (r, origin, mirrored) = Self.rammerRig(pose, frame) {
+            let own = mirrored ? AlchemyViews.opposite(view) : view
+            var m = Drawing(layer: layer, rig: r, phase: phase, view: own)
+            let serving = pose == .fighting && Self.service[frame].depth != nil
+            let z = -(serving ? Self.rammerAtMuzzle : (pose == .walking ? 20 : Self.rammerSide))
+            let at = Self.place(view, origin, z: z)
+            Self.rammerInView(&m, pose, frame)
+            let flip = mirrored ? -1.0 : 1.0
+            func unit(_ p: P) -> P { P(at.x + flip * p.x, p.y) }
+            rammerHands = (unit(AlchemyViews.world(m, m.hand(front: true))), unit(AlchemyViews.world(m, m.hand(front: false))))
+            var body = "<g transform=\"translate(\(num(at.x)),0) scale(\(num(flip)),1)\">" + m.svg.body + "</g>"
+            // The staff, in the gun's own picture: into the bore, upright beside him, or at the trail.
+            var staff = SVG(layer: layer)
+            if let hands = rammerHands {
+                if pose == .fighting, let end = Self.staffEnd(Self.service[frame], dx: dx) {
+                    let start = Self.place(view, end), toward = hands.near - start
+                    let length = max(BronzePeopleKit.length(toward), 0.01)
+                    Self.spongeStaff(&staff, from: start, toward: start + toward * (Self.staff / max(length, Self.staff * 0.55)),
+                                     spongeAtStart: Self.service[frame].sponge, sooty: frame == 6, hiddenTo: Self.place(view, Self.muzzle(dx: dx)))
+                } else if pose == .walking {
+                    let (degrees, k) = AlchemyViews.along(own, 100 + 2 * BronzePeopleKit.wave(frame))
+                    // His own direction, mirrored with him into the gun's picture.
+                    let u = P.direction(degrees) * max(k, 0.25)
+                    let along = P(u.x * flip, u.y)
+                    Self.spongeStaff(&staff, from: hands.near - along * 22, toward: hands.near + along * 24, spongeAtStart: false, sooty: false)
+                } else {
+                    Self.spongeStaff(&staff, from: P(hands.near.x, 0), toward: P(hands.near.x, -Self.staff), spongeAtStart: false, sooty: false)
+                }
+            }
+            body += staff.body
+            crew.append((origin.x * s + z * c, body))
+        }
+
+        // The gun.
+        var gun = SVG(layer: layer)
+        if abs(c) > 0.01 {
+            Self.gunQuarter(&gun, view, frame: frame, dx: dx, spin: spin)
+        } else {
+            Self.gunEndOn(&gun, front: s > 0, dx: dx, spin: spin)
+        }
+        crew.sort { $0.depth < $1.depth }
+        for member in crew where member.depth < 0 { d.svg.raw(member.svg) }
+        if pose == .walking, let hands = rammerHands {
+            // The drag rope from the carriage to the rammer's hand.
+            let from = Self.place(view, P(21, -28))
+            var rope = PathData()
+            rope.move(from); rope.quad((from + hands.far) * 0.5 + P(0, 2), hands.far)
+            d.svg.path(rope, stroke: .colour(Ink.line), width: 1.7)
+            d.svg.path(rope, stroke: .colour(AlchemyWarriorsInk.paleBuff), width: 0.8)
+        }
+        d.svg.raw(gun.body)
+        if pose == .fighting {
+            if frame == 1 { d.burst(at: Self.place(view, Self.vent(dx: 0)) + P(0, -1), from: 120, to: 240, size: 0.6) }
+            if frame == 3 { BronzePeopleProps.dust(&d.svg, at: Self.place(view, P(-56, -1)), size: 1, opacity: 0.5) }
+            if frame == 10 { BronzePeopleProps.dust(&d.svg, at: Self.place(view, P(-52, -1)), size: 0.8, opacity: 0.4) }
+        }
+        for member in crew where member.depth >= 0 { d.svg.raw(member.svg) }
+        if pose == .fighting {
+            Self.shotInView(&d.svg, view, frame: frame)
+            if frame == 8 {
+                let m = Self.place(view, Self.muzzle(dx: dx))
+                d.svg.path("M\(num(m.x + 1)),\(num(m.y - 5.4)) l2.4,-2.6 M\(num(m.x + 3.4)),\(num(m.y - 3.6)) l3,-1 "
+                           + "M\(num(m.x + 1)),\(num(m.y + 5.4)) l2.4,2.6", stroke: .colour(Ink.line), width: 1)
+            }
+        }
+    }
+
+    /// The gun from a quarter: the far wheel, the carriage and the barrel, and
+    /// the near wheel, each its side drawing shortened in its own plane across the gun.
+    static func gunQuarter(_ svg: inout SVG, _ view: SpriteView, frame: Int, dx: Double, spin: Double) {
+        let (c, s) = AlchemyViews.turn(view)
+        func plane(_ z: Double, _ content: (inout SVG) -> Void) {
+            svg.raw("<g transform=\"translate(\(num(dx * c - z * s)),0) scale(\(num(c)),1)\">")
+            content(&svg)
+            svg.raw("</g>")
+        }
+        plane(-track) { wheel(&$0, at: axle, degrees: spin + 9, far: true) }
+        // The axle-tree across, between the wheels.
+        let left = place(view, axle + P(dx, 0), z: -track), right = place(view, axle + P(dx, 0), z: track)
+        svg.line([left, right], stroke: .colour(Ink.line), width: 4.2)
+        svg.line([left, right], stroke: .colour(AlchemyWarriorsInk.darkWood), width: 2.4)
+        plane(cheekSpread) { carriage(&$0, frame: frame) }
+        plane(0) { gun(&$0) }
+        // The muzzle's mouth or the cascabel's end, toward the viewer.
+        if s > 0 {
+            let m = place(view, muzzle(dx: dx))
+            svg.ellipse(m, 4.4 * s, 4.4, fill: .colour(AlchemyWarriorsInk.barrel), stroke: .colour(Ink.line), width: 1.2)
+            svg.ellipse(m, 2.4 * s, 2.4, fill: .colour(Ink.line))
+        }
+        plane(track) { wheel(&$0, at: axle, degrees: spin, far: false) }
+    }
+
+    /// A wheel seen end on, at `x` across: its tyre a tall narrow band, the hub
+    /// standing out of it, and the tyre's nails rising and falling as it turns.
+    static func wheelEndOn(_ svg: inout SVG, x: Double, dx: Double, spin: Double, near: Bool) {
+        let r = wheelRadius, c = P(x, axle.y), half = 2.2
+        let ink = Paint.colour(Ink.line)
+        svg.polygon([c + P(-half, -r), c + P(half, -r), c + P(half, r), c + P(-half, r)], fill: .colour(near ? AlchemyWarriorsInk.wood : AlchemyWarriorsInk.darkWood),
+                    stroke: ink, width: 1.2)
+        svg.line([c + P(-half + 0.8, -r + 1.6), c + P(-half + 0.8, r - 1.6)], stroke: .colour(AlchemyWarriorsInk.barrelLight), width: 0.9)
+        // The nails on the tyre, where they face the viewer.
+        for i in 0..<10 {
+            let angle = (spin + Double(i) * 36) * .pi / 180
+            guard sin(angle) > 0.2 else { continue }
+            svg.circle(c + P(0, -r * cos(angle)), 0.6, fill: .colour(AlchemyWarriorsInk.barrel))
+        }
+        let hub = c + P(x > 0 ? 3.2 : -3.2, 0)
+        svg.polygon([c + P(x > 0 ? half : -half, -3.4), hub + P(0, -2.6), hub + P(0, 2.6), c + P(x > 0 ? half : -half, 3.4)],
+                    fill: .colour(near ? AlchemyWarriorsInk.paleWood : AlchemyWarriorsInk.darkWood), stroke: ink, width: 0.9)
+        svg.ellipse(hub, 1, 2.6, fill: .colour(AlchemyWarriorsInk.barrel), stroke: ink, width: 0.6)
+    }
+
+    /// The gun from the front, its muzzle toward the viewer, or from behind,
+    /// its breech and trail: between the wheels seen end on, the carriage's
+    /// cheeks painted in the team's colour.
+    static func gunEndOn(_ svg: inout SVG, front: Bool, dx: Double, spin: Double) {
+        let ink = Paint.colour(Ink.line), team = Paint.team
+        let light = Paint.colour(AlchemyWarriorsInk.light)
+        // The far wheel's side first: from the front the wheels are both at the sides, drawn first.
+        for x in [-track, track] { wheelEndOn(&svg, x: x, dx: dx, spin: spin, near: true) }
+        let w = cheekSpread
+        if front {
+            // The trail falling away behind, the cheeks' fronts, the axle-tree, and the muzzle.
+            svg.polygon([P(-w + 1, -22), P(w - 1, -22), P(2.4, -1), P(-2.4, -1)], fill: .colour(AlchemyWarriorsInk.darkTeal), stroke: ink, width: 1)
+            svg.line([P(-track, axle.y), P(track, axle.y)], stroke: ink, width: 4.6)
+            svg.line([P(-track, axle.y), P(track, axle.y)], stroke: .colour(AlchemyWarriorsInk.darkWood), width: 2.8)
+            for x in [-w, w] {
+                AlchemyWarriorsKit.shape(&svg, [P(x - 1.6, -31.4), P(x + 1.6, -31.4), P(x + 1.6, -16.6), P(x - 1.6, -16.6)], fill: team, width: 1.1)
+                svg.line([P(x, -30), P(x, -18)], stroke: light, width: 0.6, opacity: 0.85)
+            }
+            let m = muzzle(dx: dx)
+            let mouth = P(0, m.y)
+            // The dolphins over the barrel, and the barrel's mouth with its rings.
+            for x in [-2.6, 2.6] {
+                svg.path("M\(num(x - 1.4)),\(num(mouth.y - 4.6)) q\(num(1.4)),-3 2.8,0", stroke: ink, width: 2)
+                svg.path("M\(num(x - 1.4)),\(num(mouth.y - 4.6)) q\(num(1.4)),-3 2.8,0", stroke: .colour(AlchemyWarriorsInk.gilt), width: 1)
+            }
+            svg.circle(mouth, 5.4, fill: .colour(AlchemyWarriorsInk.barrel), stroke: ink, width: 1.3)
+            svg.circle(mouth, 4.4, fill: .none, stroke: .colour(AlchemyWarriorsInk.barrelLight), width: 0.8)
+            svg.circle(mouth, 2.6, fill: ink)
+            svg.path("M\(num(-3.6)),\(num(mouth.y - 2.6)) q2,-1.6 4.4,-1.4", stroke: .colour(AlchemyWarriorsInk.barrelLight), width: 0.8)
+        } else {
+            // The axle-tree and the cheeks, the breech with its cascabel, and the trail toward the viewer.
+            svg.line([P(-track, axle.y), P(track, axle.y)], stroke: ink, width: 4.6)
+            svg.line([P(-track, axle.y), P(track, axle.y)], stroke: .colour(AlchemyWarriorsInk.darkWood), width: 2.8)
+            let b = breech
+            svg.circle(P(0, b.y), 5.6, fill: .colour(AlchemyWarriorsInk.barrel), stroke: ink, width: 1.3)
+            svg.circle(P(0, b.y), 4.6, fill: .none, stroke: .colour(AlchemyWarriorsInk.barrelLight), width: 0.8)
+            svg.circle(P(0, b.y - 5.2), 0.8, fill: ink)
+            // The trail: the cheeks closing from the gun to the shoe on the ground.
+            let trail = [P(-w - 1.6, -27), P(w + 1.6, -27), P(w + 1.2, -20), P(3.6, -3.2), P(3, 0), P(-3, 0), P(-3.6, -3.2), P(-w - 1.2, -20)]
+            AlchemyWarriorsKit.shape(&svg, trail, fill: team, width: 1.3)
+            svg.line([P(-w, -25), P(-2.4, -4)], stroke: light, width: 0.8, opacity: 0.85)
+            svg.line([P(w, -25), P(2.4, -4)], stroke: light, width: 0.8, opacity: 0.85)
+            var lozenges = PathData()
+            for (i, y) in [-21.0, -14, -7.6].enumerated() {
+                let r = 1.9 - Double(i) * 0.3
+                lozenges.move(P(0, y - r)); lozenges.line(P(r * 1.2, y)); lozenges.line(P(0, y + r)); lozenges.line(P(-r * 1.2, y)); lozenges.close()
+            }
+            svg.path(lozenges, fill: light)
+            AlchemyWarriorsKit.shape(&svg, [P(-3.2, -2.6), P(3.2, -2.6), P(3, 0.2), P(-3, 0.2)], fill: .colour(AlchemyWarriorsInk.barrel), width: 0.9)
+            svg.circle(P(0, -8.8), 1.5, fill: .none, stroke: ink, width: 1.1)
+            // The cascabel's knob, over the trail.
+            svg.line([P(0, b.y), P(0, b.y + 3)], stroke: ink, width: 3)
+            svg.circle(P(0, b.y + 3.6), 2.2, fill: .colour(AlchemyWarriorsInk.barrel), stroke: ink, width: 1)
+        }
+    }
+
+    /// The flash and the great cloud of smoke in this view: the cloud rolls
+    /// forward as the view shows it, and is drawn drifting aside where it would roll at the viewer.
+    static func shotInView(_ svg: inout SVG, _ view: SpriteView, frame: Int) {
+        let (c, _) = AlchemyViews.turn(view)
+        let origin = place(view, muzzle(dx: 0) + axes().u * 1.5)
+        if frame == 2 {
+            let at = place(view, muzzle(dx: recoil(.fighting, 2)))
+            let (degrees, k) = AlchemyViews.along(view, bore)
+            var star: [P] = [], core: [P] = []
+            for i in 0..<14 {
+                let angle = degrees + Double(i) * 360 / 14
+                let forward = max(0, cos(Double(i) * 360 / 14 * .pi / 180)) * k
+                let r = i % 2 == 0 ? 8 + 22 * forward : 3.8
+                star.append(at + P.direction(angle) * r + P.direction(degrees) * (3 * k))
+                core.append(at + P.direction(angle) * (i % 2 == 0 ? r * 0.5 : 1.8) + P.direction(degrees) * (3 * k))
+            }
+            svg.polygon(star.map { $0 + P(-0.6, 0.6) }, fill: .colour(AlchemyWarriorsInk.flash))
+            svg.polygon(star, fill: .none, stroke: .colour(Ink.line), width: 1.1)
+            svg.polygon(core, fill: .colour(AlchemyWarriorsInk.flashCore))
+            let v = place(view, vent(dx: recoil(.fighting, 2)))
+            AlchemyWarriorsKit.smoke(&svg, at: v, puffs: [(P(0, -2.4), 2), (P(-1.4, -5.2), 1.6)], opacity: 0.9)
+        }
+        let ages: [Int: (spread: Double, rise: Double, size: Double, opacity: Double)] = [
+            2: (0.3, 0, 0.75, 0.95), 3: (0.62, 2, 1.2, 0.95), 4: (0.78, 6, 1.35, 0.92), 5: (0.86, 10, 1.42, 0.8),
+            6: (0.9, 14, 1.45, 0.62), 7: (0.92, 18, 1.45, 0.45), 8: (0.93, 21, 1.4, 0.3), 9: (0.94, 24, 1.35, 0.16),
+        ]
+        guard let age = ages[frame] else { return }
+        let base: [(P, Double)] = [(P(6, 0), 5), (P(14, -3), 7), (P(24, 0.6), 8), (P(34, -5), 7.4), (P(43, 1), 6.4), (P(22, -10), 6),
+                                   (P(33, 4.4), 5.2), (P(48, -5), 5.4), (P(12, -11), 4.6)]
+        // Seen end on, between the crew, it billows and rises over the gun.
+        let across = c < 0.3 ? 0.4 : max(c, 0.55)
+        let puffs = base.map { p, r in (P((p.x - (c < 0.3 ? 24 : 0)) * age.spread * across, p.y * (0.7 + age.spread * 0.3) - age.rise * (0.5 + p.x / 50)), r * age.size) }
+        AlchemyWarriorsKit.smoke(&svg, at: origin + P(0, -(1 - c) * age.spread * 30), puffs: puffs, opacity: age.opacity)
+        if frame == 3 {
+            let v = place(view, vent(dx: recoil(.fighting, 3)))
+            AlchemyWarriorsKit.smoke(&svg, at: v, puffs: [(P(-0.6, -4), 2.4), (P(0.8, -7.6), 1.8)], opacity: 0.7)
+        }
+    }
+
+    // MARK: The crew in the other views
+
+    /// A crewman's arms in this view, behind the body or before it, each in its sleeve of `colour` (the far one in `far`).
+    static func crewArms(_ d: inout Drawing, behind: Bool, colour: String, far: String) {
+        for limb in AlchemyViews.arms(d, behind: behind) {
+            let points = limb.points
+            let forearm = BronzePeopleKit.length(points[2] - points[1])
+            let cuffAt = forearm > 2 ? points[2] + (points[1] - points[2]) * (2 / forearm) : points[2]
+            d.svg.line([points[0], points[1], cuffAt], stroke: .colour(Ink.line), width: 4.4)
+            d.svg.line([points[0], points[1], cuffAt], stroke: .colour(limb.right ? colour : far), width: 2.8)
+            d.svg.line([cuffAt, points[2]], stroke: .colour(Ink.line), width: 1.9)
+            d.hand(points[2])
+        }
+    }
+
+    /// A crewman's legs in this view: breeches of `breeches` to the knee, pale stockings and shoes.
+    static func crewLegs(_ d: inout Drawing, breeches: String) {
+        let legs = AlchemyViews.legs(d)
+        d.svg.group(turned: -AlchemyViews.lean(d), about: Drawing.hips) { svg in
+            for (i, leg) in legs.enumerated() {
+                let near = i == legs.count - 1
+                let hip = leg.root, knee = leg.joint, foot = leg.end, toe = leg.toe ?? foot
+                let run = BronzePeopleKit.length(foot - knee)
+                let u = run > 0.01 ? (foot - knee) * (1 / run) : P(0, 1)
+                svg.line([knee, foot], stroke: .colour(Ink.line), width: 2.8)
+                svg.line([knee + u * 1.6, foot - u * 0.6], stroke: .colour(AlchemyWarriorsInk.linen), width: 1.2)
+                svg.line([hip, knee, knee + u * 1.6], stroke: .colour(Ink.line), width: 5)
+                svg.line([hip, knee, knee + u * 1.6], stroke: .colour(near ? breeches : AlchemyWarriorsInk.darkLeather), width: 3.4)
+                if abs(toe.x - foot.x) > 1.2 {
+                    let dir = toe.x > foot.x ? 1.0 : -1.0
+                    BronzePeopleProps.shape(&svg, [foot + P(-1.8 * dir, -1.6), foot + P(2.4 * dir, -1.4), toe + P(0.9 * dir, 0), toe + P(0.5 * dir, 1.2),
+                                                   foot + P(-1.6 * dir, 1.2)], fill: .colour(AlchemyWarriorsInk.darkLeather), width: 0.9)
+                } else {
+                    svg.ellipse(foot + P(0, 0.2), 2.2, 1.5, fill: .colour(AlchemyWarriorsInk.darkLeather), stroke: .colour(Ink.line), width: 0.9)
+                }
+            }
+        }
+    }
+
+    /// The gunner in this view: his coat, belt and powder horn, the linstock
+    /// or the handspike in his hand, his beard and his felt cap. `at` is where
+    /// he stands on the screen; the handspike reaches from his hand to the trail.
+    static func gunnerInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int, origin: P, at: P, dx: Double) {
+        let view = d.view
+        let place = linstockPlace(pose, frame)
+        let coat = [P(-9.2, -47.4), P(9.2, -47.4), P(11.6, -30), P(13.8, -16.4), P(-14.2, -16.4)]
+        d.figure { d in
+            func linstock(_ d: inout Drawing) {
+                let hand = AlchemyViews.world(d, d.hand(front: true))
+                let (degrees, k) = AlchemyViews.along(view, place.degrees)
+                let u = P.direction(degrees) * max(k, 0.25)
+                let back = AlchemyViews.world(d, d.hand(front: false))
+                AlchemyViews.inPicture(&d) { svg in
+                    if pose == .fighting && frame >= 9 {
+                        // The handspike from his hand to the trail's end.
+                        let foot = AlchemyViews.project(view, -49.2 + dx, -3.4, 0).point - P(at.x, 0)
+                        svg.line([foot, hand], stroke: .colour(Ink.line), width: 2.8)
+                        svg.line([foot, hand], stroke: .colour(AlchemyWarriorsInk.paleWood), width: 1.4)
+                    }
+                    if pose == .walking {
+                        AlchemyViews.foreshortened(&svg, at: back, degrees: degrees, by: max(k, 0.25)) { svg in
+                            staffOfMatch(&svg, butt: back - P.direction(degrees) * 14, degrees: degrees, frame: frame)
+                        }
+                    } else if place.grip == nil {
+                        // Planted beside him, upright, its butt on the ground before his right foot.
+                        let butt = AlchemyViews.project(view, planted.x - origin.x - 7.5, 0, Drawing.shoulderSpread).point
+                        AlchemyViews.foreshortened(&svg, at: butt, degrees: degrees, by: max(k, 0.25)) { svg in
+                            staffOfMatch(&svg, butt: butt, degrees: degrees, frame: frame)
+                        }
+                    } else {
+                        let butt = hand - u * (place.grip ?? 33)
+                        AlchemyViews.foreshortened(&svg, at: butt, degrees: degrees, by: max(k, 0.25)) { svg in
+                            staffOfMatch(&svg, butt: butt, degrees: degrees, frame: frame)
+                        }
+                    }
+                }
+            }
+            crewArms(&d, behind: true, colour: AlchemyWarriorsInk.teal, far: AlchemyWarriorsInk.darkTeal)
+            if d.armBehind(front: true) { linstock(&d) }
+            crewLegs(&d, breeches: AlchemyWarriorsInk.buff)
+            d.garment(colour: [P(-13, -46.4), P(9.4, -48.4), P(12.4, -30), P(15, -15.4), P(-15.6, -15)], outline: coat,
+                      fill: .colour(AlchemyWarriorsInk.teal)) { d in
+                d.band([P(-13.8, -18.9), P(13.6, -18.9), P(13.6, -17.9), P(-13.8, -17.9)], fill: .colour(AlchemyWarriorsInk.paleTeal))
+                for i in 0..<4 {
+                    let (b, depth) = AlchemyViews.around(view, -43.6 + Double(i) * 3.6, angle: 6, on: coat)
+                    if depth > 0.5 {
+                        d.svg.circle(d.up(b), 0.7, fill: .colour(AlchemyWarriorsInk.gilt), stroke: .colour(Ink.line), width: 0.4)
+                    }
+                }
+            }
+            let belt = [P(-13.2, -30.6), P(11.8, -30.8), P(11.8, -29), P(-13.2, -28.8)]
+            d.band(belt, fill: .colour(AlchemyWarriorsInk.leather))
+            d.svg.polygon(d.turned(belt).map(d.up), fill: .none, stroke: .colour(Ink.line), width: 0.9)
+            // The powder horn on its cord at his left hip.
+            let (horn, hornDepth) = AlchemyViews.around(view, -24.6, angle: 120, on: coat, side: -1)
+            if hornDepth > -1 {
+                AlchemyWarriorsKit.shape(&d.svg, [horn + P(-3, -1.4), horn + P(3, -1.6), horn + P(2.6, 0.4), horn + P(-2, 1.4)],
+                                         fill: .colour(AlchemyWarriorsInk.light), width: 0.8)
+            }
+            if !d.armBehind(front: true) { linstock(&d) }
+            crewArms(&d, behind: false, colour: AlchemyWarriorsInk.teal, far: AlchemyWarriorsInk.darkTeal)
+            d.head(nose: .bulb, hair: { d in
+                switch d.view {
+                case .back: d.svg.path("M-10,-57 C-10.6,-53 -8,-50.4 0,-50 C8,-50.4 10.6,-53 10,-57 C5,-55.4 -5,-55.4 -10,-57 Z", fill: .colour(AlchemyWarriorsInk.hair))
+                case .backQuarter: d.svg.path("M-10,-57 C-10.6,-53 -8,-50.4 -1,-50 C4,-50.4 6.4,-53 6,-57 C2,-55.6 -5,-55.4 -10,-57 Z", fill: .colour(AlchemyWarriorsInk.hair))
+                default: break
+                }
+            }, features: { d in
+                // A full beard round the chin.
+                let (left, right, centre): (Double, Double, Double)
+                switch d.view {
+                case .front: (left, right, centre) = (-8, 8, 0)
+                case .frontQuarter: (left, right, centre) = (-4.6, 10.4, 5.4)
+                default: return
+                }
+                d.svg.path("M\(num(left)),-54 C\(num(left)),-47 \(num(centre - 4)),-44 \(num(centre)),-44 C\(num(centre + 4)),-44 \(num(right)),-47 \(num(right)),-54 "
+                           + "C\(num(right - 2)),-50.6 \(num(centre + 3)),-49.4 \(num(centre)),-49.6 C\(num(centre - 3)),-49.4 \(num(left + 2)),-50.6 \(num(left)),-54 Z",
+                           fill: .colour(AlchemyWarriorsInk.hair), stroke: .colour(Ink.line), width: 0.5)
+            }, brow: { d in
+                d.svg.path("M1.6,-63.6 q3.2,-1.4 6.6,-0.4", stroke: .colour(Ink.line), width: 1.7)
+            }, over: { d in
+                // The felt cap with its turned-up brim.
+                let cap = AlchemyViews.dome(d.view, radius: 11, front: -66, back: -63, top: -75, crest: -1)
+                BronzePeopleProps.shape(&d.svg, cap, fill: .colour(AlchemyWarriorsInk.leather), width: 1.3)
+                let upper = AlchemyViews.rim(d.view, radius: 12, front: -68, back: -64.4)
+                let lower = AlchemyViews.rim(d.view, radius: 11.8, front: -65.4, back: -61.6)
+                BronzePeopleProps.shape(&d.svg, upper + lower.reversed(), fill: .colour(AlchemyWarriorsInk.darkLeather), width: 1.1)
+            })
+        }
+    }
+
+    /// The rammer in this view (his own, the view of his facing): his jerkin
+    /// over the shirt, his moustache, and the wine stocking cap with its tassel.
+    static func rammerInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let view = d.view
+        let jerkin = [P(-8.8, -47.4), P(8.8, -47.4), P(11.4, -27.4), P(-13, -27.4)]
+        d.figure { d in
+            crewArms(&d, behind: true, colour: AlchemyWarriorsInk.linen, far: AlchemyWarriorsInk.paleBuff)
+            crewLegs(&d, breeches: AlchemyWarriorsInk.darkTeal)
+            d.garment(colour: [P(-12.2, -32), P(11.8, -32.2), P(13.4, -17), P(-14.2, -16.6)],
+                      outline: [P(-11.2, -31.6), P(11, -31.6), P(12.4, -18), P(-13, -18)], fill: .colour(AlchemyWarriorsInk.linen))
+            d.garment(colour: [P(-12.6, -46.6), P(9.4, -48.4), P(12.2, -26.6), P(-13.8, -26.2)], outline: jerkin,
+                      fill: .colour(AlchemyWarriorsInk.buff)) { d in
+                var lacing = PathData()
+                for i in 0..<4 {
+                    let y = -44 + Double(i) * 4
+                    let a = AlchemyViews.around(view, y, angle: 12, on: jerkin), b = AlchemyViews.around(view, y + 1.6, angle: 12, on: jerkin, side: -1)
+                    if a.depth > 0.5 && b.depth > 0.5 { lacing.move(d.up(a.point)); lacing.line(d.up(b.point)) }
+                }
+                d.svg.path(lacing, stroke: .colour(AlchemyWarriorsInk.darkLeather), width: 0.7)
+            }
+            AlchemyWarriorsKit.shape(&d.svg, d.turned([P(-5.6, -49), P(7.6, -49.2), P(6.4, -46.2), P(-5, -46)]).map(d.up),
+                                     fill: .colour(AlchemyWarriorsInk.linen), width: 0.9)
+            crewArms(&d, behind: false, colour: AlchemyWarriorsInk.linen, far: AlchemyWarriorsInk.paleBuff)
+            let flop = pose == .walking ? 1.2 * BronzePeopleKit.wave(frame, 0.2) : 0.3 * BronzePeopleKit.wave(frame)
+            d.head(nose: .button, hair: { d in
+                switch d.view {
+                case .back: d.svg.path("M-10,-58 C-10.6,-54 -8,-51 0,-50.6 C8,-51 10.6,-54 10,-58 C5,-56.4 -5,-56.4 -10,-58 Z", fill: .colour(AlchemyWarriorsInk.hair))
+                case .backQuarter: d.svg.path("M-10,-58 C-10.6,-54 -8,-51 -1,-50.6 C4,-51 6.4,-54 6,-58 C2,-56.4 -5,-56.4 -10,-58 Z", fill: .colour(AlchemyWarriorsInk.hair))
+                default: break
+                }
+            }, features: { d in
+                let centre: Double
+                switch d.view {
+                case .front: centre = 0
+                case .frontQuarter: centre = 5.4
+                default: return
+                }
+                // A bushy moustache.
+                d.svg.path("M\(num(centre)),-54 C\(num(centre - 3.6)),-55 \(num(centre - 6.4)),-53 \(num(centre - 6)),-50.4 C\(num(centre - 4)),-51.6 "
+                           + "\(num(centre - 1.6)),-51.8 \(num(centre)),-51.4 C\(num(centre + 1.6)),-51.8 \(num(centre + 4)),-51.6 \(num(centre + 6)),-50.4 "
+                           + "C\(num(centre + 6.4)),-53 \(num(centre + 3.6)),-55 \(num(centre)),-54 Z",
+                           fill: .colour(AlchemyWarriorsInk.hair), stroke: .colour(Ink.line), width: 0.5)
+            }, brow: { d in
+                d.svg.path("M1.2,-63.4 q3.4,-2.2 7.4,-0.8", stroke: .colour(Ink.line), width: 2)
+            }, over: { d in
+                // The stocking cap of wine, flopping back over his left side, with its tassel.
+                let cap = AlchemyViews.dome(d.view, radius: 11.2, front: -65.4, back: -61, top: -74.6, crest: -2)
+                BronzePeopleProps.shape(&d.svg, cap, fill: .colour(AlchemyWarriorsInk.wine), width: 1.3)
+                d.svg.line(AlchemyViews.rim(d.view, radius: 11.2, front: -65.4, back: -61.4), stroke: .colour(AlchemyWarriorsInk.darkWine), width: 1.6)
+                let tassel = AlchemyViews.project(d.view, -15.4, -66 + flop, -4)
+                let crown = AlchemyViews.project(d.view, -4, -73, 0).point
+                let tip = tassel.point
+                BronzePeopleProps.shape(&d.svg, [crown + P(-2, 0), crown + P(2, 0), tip + P(1.2, 0.6), tip + P(-1.2, -0.6)],
+                                        fill: .colour(AlchemyWarriorsInk.wine), width: 1.1)
+                d.svg.circle(tip + P(-0.4, 0.4), 1.8, fill: .colour(AlchemyWarriorsInk.light))
+                d.svg.circle(tip, 1.8, fill: .none, stroke: .colour(Ink.line), width: 0.8)
+            })
         }
     }
 }
