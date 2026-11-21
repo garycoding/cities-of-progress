@@ -64,6 +64,7 @@ struct BronzePeopleSpearman: PersonLook {
     }
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let sway = d.rig.sway
         d.figure { d in
             d.arm(front: false, width: 2.1)
@@ -189,6 +190,138 @@ struct BronzePeopleSpearman: PersonLook {
     }
 }
 
+extension BronzePeopleSpearman {
+    /// The spearman seen from another side: the studs, pleats, fringe and belt
+    /// spread round the cloak and kilt, the shield on his left arm before him
+    /// (its painted face toward the viewer from in front, its back and rim from
+    /// behind), the spear in the figure's own plane, and the helmet, chin strap
+    /// and moustache as the view shows them.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let sway = d.rig.sway
+        let back = BronzePeopleViews.seesBack(d.view)
+        d.figure { d in
+            let cloak = [P(-8.4, -47), P(8.8, -47), P(12.2, -25.4), P(-13.2, -25.4)]
+            let kilt = [P(-12.6, -26.6), P(12, -26.6), P(14.2, -13.4), P(-15.2, -13.4)]
+            let spearBehind = d.armBehind(front: true)
+            let push = pose == .fighting ? [0.0, -0.4, -0.8, -1.2, -1.6, -1.6, 0.6, 2.4, 2.4, 1.6, 0.8, 0.2][frame] : 0
+            if back { Self.shieldInView(&d, push: push, sway: pose == .walking ? sway : 0) }
+            d.arm(front: false, width: 2.1)
+            d.legs()
+            if spearBehind { Self.spearInView(&d, pose, frame) }
+            d.garment(colour: [P(-12.4, -46), P(9, -48), P(13.4, -24), P(-14.6, -23.4)],
+                      outline: cloak, fill: .colour(BronzePeopleInk.leather)) { d in
+                for row in 0..<4 {
+                    let y = -43.6 + Double(row) * 5.2
+                    guard let seen = BronzePeopleViews.span(d.turned(cloak), at: y) else { continue }
+                    for column in 0..<4 {
+                        let t = (Double(column) + 0.5 + Double(row % 2) * 0.4) / 4.4
+                        let c = P(seen.low + 1.6 + (seen.high - seen.low - 3.2) * t, y)
+                        d.svg.circle(d.up(c), 1, fill: .colour(BronzePeopleInk.bronze), stroke: .colour(Ink.line), width: 0.5)
+                    }
+                }
+            }
+            d.garment(colour: [P(-14, -27), P(12.6, -28), P(15.6, -11.6), P(-17, -11)],
+                      outline: kilt, fill: .colour(BronzePeopleInk.verdigris)) { d in
+                var pleats = PathData()
+                for x in stride(from: -9.0, through: 9.0, by: 4.5) {
+                    pleats.move(BronzePeopleViews.spread(d, P(x, -25), on: kilt))
+                    pleats.line(BronzePeopleViews.spread(d, P(x * 1.18, -14.6), on: kilt))
+                }
+                d.svg.path(pleats, stroke: .colour(BronzePeopleInk.paleVerdigris), width: 1)
+            }
+            var fringe = PathData()
+            for i in 0..<12 {
+                let p = BronzePeopleViews.spread(d, P(-14.6 + Double(i) * 2.55, -13.6), on: kilt)
+                fringe.move(P(p.x, -13.4)); fringe.line(P(p.x - 0.3, -10.8))
+            }
+            d.svg.path(fringe, stroke: .colour(Ink.line), width: 1)
+            if let belt = BronzePeopleViews.span(d.turned(kilt), at: -26.4) {
+                d.svg.line([d.up(P(belt.low - 0.2, -26.8)), d.up(P(belt.high + 0.2, -27.2))], stroke: .colour(BronzePeopleInk.darkVerdigris), width: 2.2)
+            }
+            if !back { Self.shieldInView(&d, push: push, sway: pose == .walking ? sway : 0) }
+            if !spearBehind { Self.spearInView(&d, pose, frame) }
+            d.arm(front: true, width: 2.1)
+            d.head(nose: .hook, hair: { _ in }, features: { d in
+                guard d.view == .front || d.view == .frontQuarter else { return }
+                let moustache = [P(-5.4, -51.2), P(-2.4, -53.2), P(0, -52.4), P(2.4, -53.2), P(5.4, -51.2), P(2.4, -50.6), P(0, -51),
+                                 P(-2.4, -50.6)]
+                d.svg.polygon(BronzePeopleViews.onFace(d.view, moustache.map { $0 + P(d.view == .frontQuarter ? 0.8 : 0, 0) }),
+                              fill: .colour(Ink.line))
+            }, brow: { d in
+                d.svg.path("M1.6,-63.2 l6.6,0.6", stroke: .colour(Ink.line), width: 2)
+            }, over: { d in
+                Self.helmetInView(&d)
+            })
+        }
+    }
+
+    /// The helmet's edge round the head: over the brow in front, down to the neck guard behind.
+    static let helmetEdge = BronzePeopleViews.edge(front: -62.4, side: -59.6, back: -52.6)
+
+    /// The bronze helmet: its dome with the neck guard, the dark line along its
+    /// edge, a highlight, the knob at the crown, and the chin strap where it shows.
+    static func helmetInView(_ d: inout Drawing) {
+        let view = d.view
+        // The chin strap, from under the helmet at each side to under the chin.
+        if view == .front || view == .frontQuarter {
+            let ends = view == .front ? [P(-9.6, -57.4), P(9.6, -57.4)] : [P(-6.4, -57.4)]
+            let chin = BronzePeopleViews.onFace(view, [P(0, -46.9)])[0]
+            for end in ends {
+                var strap = PathData()
+                strap.move(end); strap.quad(P(end.x * 0.8 + chin.x * 0.2, -48.4), chin)
+                d.svg.path(strap, stroke: .colour(BronzePeopleInk.leather), width: 1.4)
+            }
+        }
+        let dome = BronzePeopleViews.dome(view, out: 1, crown: 3.6, rim: helmetEdge)
+        BronzePeopleProps.shape(&d.svg, dome, fill: .colour(BronzePeopleInk.bronze), width: 1.5)
+        let rim = BronzePeopleViews.ring(view, out: 1.2) { helmetEdge($0) - 1 }
+        d.svg.line(Array(rim.dropFirst(1).dropLast(1)), stroke: .colour(BronzePeopleInk.bronzeDark), width: 1.2)
+        let shine = BronzePeopleViews.ring(view, out: 2.4) { _ in -71.4 }
+        d.svg.line(Array(shine[5...16]), stroke: .colour(BronzePeopleInk.bronzeLight), width: 1.1)
+        let top = dome.map(\.y).min() ?? -74
+        d.svg.circle(P(dome.first { $0.y == top }?.x ?? 0, top - 0.4), 1.7, fill: .colour(BronzePeopleInk.bronze), stroke: .colour(Ink.line), width: 1)
+    }
+
+    /// The spear in the figure's own plane: upright with its butt on the ground,
+    /// or level for the thrust, foreshortened as the view turns it.
+    static func spearInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let hand = d.hand(front: true)
+        let (degrees, reach) = BronzePeopleViews.onScreen(d.view, spearDegrees(pose, frame, sway: d.rig.sway))
+        switch pose {
+        case .fighting:
+            spear(&d.svg, at: hand, degrees: degrees, ahead: max(40 * reach, 12), behind: max(27 * reach, 6))
+            if frame == 8 { d.impact(at: hand + P.direction(degrees) * max(40 * reach, 12) + P(0, -1), size: 1.1) }
+        default:
+            let below = max(4, -d.bob - hand.y - (pose == .walking ? 7 : 0.6))
+            spear(&d.svg, at: hand, degrees: degrees, ahead: 54, behind: below)
+        }
+    }
+
+    /// The round shield on his left arm before him: its painted face from in
+    /// front, its back from behind, as wide as the view shows it, with a rim
+    /// of the team's colour round its back.
+    static func shieldInView(_ d: inout Drawing, push: Double, sway: Double) {
+        let yaw = d.yaw * .pi / 180
+        let x = 12 + push, z = -4.0
+        let c = d.up(P(x * cos(yaw) - z * sin(yaw), -33.4)) + P(0, 0.6 * sway)
+        let facing = sin(yaw)
+        let squash = max(abs(facing), 0.3)
+        d.svg.raw("<g transform=\"translate(\(num(c.x)),\(num(c.y))) scale(\(num(squash)),1) translate(\(num(-c.x)),\(num(-c.y)))\">")
+        if facing > 0 {
+            shield(&d.svg, at: c, radius: 12.4)
+        } else {
+            // The back: leather over wood, a rim of the team's colour, and the grip across.
+            d.svg.circle(c + P(-0.8, 0.7), 12.4, fill: .team)
+            d.svg.circle(c, 10, fill: .colour(BronzePeopleInk.leather))
+            d.svg.circle(c, 12.4, fill: .none, stroke: .colour(Ink.line), width: 1.6)
+            d.svg.circle(c, 10, fill: .none, stroke: .colour(Ink.line), width: 0.8)
+            d.svg.line([c + P(-6, 0), c + P(6, 0)], stroke: .colour(Ink.line), width: 2.6)
+            d.svg.line([c + P(-6, 0), c + P(6, 0)], stroke: .colour(BronzePeopleInk.wood), width: 1.3)
+        }
+        d.svg.raw("</g>")
+    }
+}
+
 // MARK: - The archer
 
 /// A young archer: a light linen tunic over a kilt of the team's colour, a
@@ -250,6 +383,7 @@ struct BronzePeopleArcher: PersonLook {
     }
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let sway = d.rig.sway
         d.figure { d in
             Self.quiver(&d.svg, d.up(P(-12.4, -50.6)) + P(0, pose == .walking ? 0.5 * sway : 0))
@@ -310,9 +444,10 @@ struct BronzePeopleArcher: PersonLook {
     }
 
     /// A recurved composite bow held at `grip`, upright (turned by `degrees`),
-    /// bent by `pull` (0 to 1), its string drawn to `nock` or straight between the tips.
-    static func bow(_ svg: inout SVG, grip g: P, degrees: Double, pull: Double, nock: P?) {
-        func at(_ p: P) -> P { g + p.rotated(degrees, about: P(0, 0)) }
+    /// bent by `pull` (0 to 1), its string drawn to `nock` or straight between
+    /// the tips; its depth toward the string shortened to `across` where a view turns it.
+    static func bow(_ svg: inout SVG, grip g: P, degrees: Double, pull: Double, nock: P?, across: Double = 1) {
+        func at(_ p: P) -> P { g + P(p.x * across, p.y).rotated(degrees, about: P(0, 0)) }
         let tipX = -1.4 - 3.4 * pull, tipY = 16.6 - 1.8 * pull
         var limbs = PathData()
         for side in [-1.0, 1.0] {
@@ -345,10 +480,10 @@ struct BronzePeopleArcher: PersonLook {
         }
     }
 
-    /// A leather quiver on the back, its top at `top`, with bronze bands and
-    /// the fletching of its arrows above the rim.
-    static func quiver(_ svg: inout SVG, _ top: P) {
-        let u = P.direction(14), a = P(-u.y, u.x)
+    /// A leather quiver on the back, its top at `top` and slanting by
+    /// `degrees`, with bronze bands and the fletching of its arrows above the rim.
+    static func quiver(_ svg: inout SVG, _ top: P, degrees: Double = 14) {
+        let u = P.direction(degrees), a = P(-u.y, u.x)
         let bottom = top + u * 25
         for (i, offset) in [-1.6, 0.4, 2.2].enumerated() {
             let nock = top + a * offset - u * (3.6 + Double(i % 2) * 1.4)
@@ -361,6 +496,109 @@ struct BronzePeopleArcher: PersonLook {
         for t in [0.12, 0.86] {
             let c = top + u * (25 * t)
             svg.line([c + a * 3.1, c - a * 3.1], stroke: .colour(BronzePeopleInk.bronze), width: 1.6)
+        }
+    }
+}
+
+extension BronzePeopleArcher {
+    /// The archer seen from another side: the quiver on his back (over him from
+    /// behind, past his shoulder from in front), the tunic's neckband in front,
+    /// the belt and the quiver's strap round the body, the bow upright in the
+    /// figure's own plane with the string drawn to the hand that draws it, and
+    /// the hair cut at the jaw, the fillet and the moustache as the view shows them.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let sway = d.rig.sway
+        let back = BronzePeopleViews.seesBack(d.view)
+        d.figure { d in
+            let tunic = [P(-8.2, -47), P(8.4, -47), P(11.2, -29.4), P(-11.8, -29.4)]
+            if !back { Self.quiverInView(&d, sway: pose == .walking ? sway : 0) }
+            if pose != .fighting { d.arm(front: false) }
+            d.legs()
+            d.garment(colour: [P(-13.6, -29.6), P(12.4, -30.6), P(15.6, -12.2), P(-16.8, -11.6)],
+                      outline: [P(-11.8, -29.4), P(11.6, -29.4), P(13.8, -14.2), P(-15, -14.2)], fill: .team)
+            d.zigzag(from: P(-15, -14.2), to: P(13.8, -14.2), teeth: 5, depth: 2.6)
+            d.garment(colour: [P(-11.6, -46), P(8.6, -48), P(11.8, -28.6), P(-13, -28)],
+                      outline: tunic, fill: .colour(BronzePeopleInk.light)) { d in
+                guard !BronzePeopleViews.seesBack(d.view) else { return }
+                let at = BronzePeopleViews.round(d, on: tunic, at: -45.6, degrees: 0).point.x
+                let y = d.up(P(0, -45.6)).y
+                d.svg.path("M\(num(at - 6.6)),\(num(y)) l2.2,1.6 l2.2,-1.6 l2.2,1.6 l2.2,-1.6 l2.2,1.6 l2.2,-1.6",
+                           stroke: .colour(BronzePeopleInk.terracotta), width: 1.2)
+            }
+            if let belt = BronzePeopleViews.span(d.turned(tunic), at: -29.6) {
+                d.svg.line([d.up(P(belt.low, -29.6)), d.up(P(belt.high, -29.8))], stroke: .colour(BronzePeopleInk.leather), width: 2.2)
+            }
+            // The quiver's strap, from the right shoulder across to the left hip, in front and behind.
+            for via in [0.0, 180.0] {
+                for run in BronzePeopleViews.across(d, on: tunic, top: (-46, 90), bottom: (-31.4, 270), via: via, width: 1.8) {
+                    d.svg.polygon(run.map(d.up), fill: .colour(BronzePeopleInk.leather))
+                }
+            }
+            if back { Self.quiverInView(&d, sway: pose == .walking ? sway : 0) }
+            if pose == .fighting {
+                d.arm(front: false)
+                Self.shotInView(&d, frame)
+            } else {
+                Self.bow(&d.svg, grip: d.hand(front: true), degrees: 0, pull: 0, nock: nil, across: BronzePeopleViews.across(d.view))
+            }
+            d.arm(front: true)
+            // A leather bracer on the bow arm.
+            let lift = d.rig.lift, arm = d.rig.frontArm
+            let elbowSide = P(0.5, -44 - lift) + P.direction(arm.upper) * Joints.upperArm
+            let elbow = d.project(elbowSide.x, elbowSide.y, Drawing.shoulderSpread).point, hand = d.hand(front: true)
+            d.svg.line([elbow + (hand - elbow) * 0.35, elbow + (hand - elbow) * 0.75], stroke: .colour(BronzePeopleInk.leather), width: 3)
+            d.head(nose: .button, hair: { d in
+                // Black hair cut straight at the jaw.
+                d.svg.polygon(BronzePeopleViews.dome(d.view, out: 0.6, crown: 1.4, rim: Self.hairEdge), fill: .colour(Ink.line))
+            }, features: { d in
+                guard d.view == .front || d.view == .frontQuarter else { return }
+                d.svg.line(BronzePeopleViews.onFace(d.view, [P(-3.6, -52.6), P(0, -53.4), P(3.6, -52.6)].map { $0 + P(d.view == .frontQuarter ? 0.8 : 0, 0) }),
+                           stroke: .colour(Ink.line), width: 1.1)
+            }, brow: { d in
+                d.svg.path("M1.6,-64 q3.2,-1.4 6.2,-0.4", stroke: .colour(Ink.line), width: 1.3)
+            }, over: { d in
+                // A fillet of terracotta cloth round the head, across the brow.
+                let fillet = Array(BronzePeopleViews.ring(d.view, out: 1.2, Self.filletEdge).dropFirst(1).dropLast(1))
+                d.svg.line(fillet, stroke: .colour(Ink.line), width: 3.2)
+                d.svg.line(fillet, stroke: .colour(BronzePeopleInk.terracotta), width: 1.7)
+            })
+        }
+    }
+
+    /// The hair's edge round the head: over the brow in front, at the jaw at the sides and behind.
+    static let hairEdge = BronzePeopleViews.edge(front: -64.6, side: -50.6, back: -50.6)
+    /// The fillet's line round the head.
+    static let filletEdge = BronzePeopleViews.edge(front: -65.6, side: -63.2, back: -61.8)
+
+    /// The quiver slung on his back, slanting from the right shoulder down to the left hip.
+    static func quiverInView(_ d: inout Drawing, sway: Double) {
+        let tunic = [P(-8.2, -47), P(8.4, -47), P(11.2, -29.4), P(-11.8, -29.4)]
+        let top = BronzePeopleViews.round(d, on: tunic, at: -50.6, degrees: 180, out: 3.4).point
+        let slant = 14 * cos(d.yaw * .pi / 180) - (BronzePeopleViews.seesBack(d.view) ? 1 : -1) * 22 * abs(sin(d.yaw * .pi / 180))
+        quiver(&d.svg, d.up(top) + P(0, 0.5 * sway), degrees: slant)
+    }
+
+    /// One frame of the shot in this view: the bow upright at the bow hand, its
+    /// string drawn to the drawing hand, the arrow on the string, and the arrow
+    /// loosed, carried forward in the figure's own plane.
+    static func shotInView(_ d: inout Drawing, _ frame: Int) {
+        let shot = shots[frame]
+        let across = BronzePeopleViews.across(d.view)
+        let bow = d.hand(front: true), string = d.hand(front: false)
+        let pull = shot.drawn ? max(0, min(1, (d.joints.frontHand.x - d.joints.backHand.x - 6) / 12)) : 0
+        Self.bow(&d.svg, grip: bow, degrees: 0, pull: pull, nock: shot.drawn ? string : nil, across: across)
+        if shot.drawn {
+            let run = bow - string, length = max(BronzePeopleKit.length(run), 0.1)
+            arrow(&d.svg, nock: string, degrees: BronzePeopleKit.degrees(from: string, to: bow), length: max(27 * across, length + 3.6))
+        } else if shot.holding {
+            let (degrees, reach) = BronzePeopleViews.onScreen(d.view, 100)
+            arrow(&d.svg, nock: string + P(-6 * across, -1.4), degrees: degrees, length: 27 * reach)
+        }
+        if let flying = shot.flying {
+            let map = BronzePeopleViews.held(d, front: true), side = d.joints.frontHand
+            let (degrees, reach) = BronzePeopleViews.onScreen(d.view, 92)
+            let nock = map(P(side.x + flying - 27 - shot.bow.x + 27 * (1 - reach), side.y - 1.4 + (flying - 44) * 0.06))
+            arrow(&d.svg, nock: nock, degrees: degrees, length: 27 * reach)
         }
     }
 }
