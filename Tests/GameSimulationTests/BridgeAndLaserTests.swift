@@ -96,6 +96,20 @@ private let river = (0..<40).flatMap { y in (10...12).map { GridPoint($0, y) } }
         #expect(!sim.blocked[sim.tileIndex(t)])
     }
 
+    @Test func aMatchMaySayNoBridges() {
+        var match = setup(openMap(starts: [GridPoint(2, 2), GridPoint(34, 34)], water: river), teams: [0, 1])
+        match.noBridges = true
+        var sim = Simulation(setup: match)
+        sim.exploreAll(me)
+        sim.give(me, [.wood: 100])
+        let engineer = sim.add(.engineer, me, 8.5, 20.5)
+        #expect(sim.apply(.buildBridge(engineers: [engineer], from: GridPoint(9, 20), to: GridPoint(13, 20)), from: me)
+                == .refused(.invalidTarget))
+        #expect(!sim.view(for: me).bridges)
+        var open = duel()
+        #expect(open.view(for: me).bridges)
+    }
+
     @Test func aMatchSavedBeforeBridgesGainsThem() throws {
         let sim = duel()
         var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(sim)) as! [String: Any]

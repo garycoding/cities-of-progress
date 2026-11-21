@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Gary Frattarola <garyf@parkviewlab.ai>
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import Foundation
 import GameCore
 import Testing
 @testable import GameInterface
@@ -98,6 +99,24 @@ import Testing
     #expect(lobby.setup(map: Samples.map(), seed: 7)?.sight == .everything)
     m.sight = .explore
     #expect(m.choice.setup(map: Samples.map(), seed: 7).sight == nil)
+}
+
+@Test func theStartingAgeAndTheMapSizeTravelToTheMatchAndTheLobby() {
+    var m = NewMatchModel()
+    #expect(m.startingAge == .stone && m.mapSize == .standard)
+    #expect(m.choice.setup(map: Samples.map(), seed: 7).startingAge == nil)
+    m.startingAge = .iron
+    m.mapSize = .large
+    #expect(m.choice.setup(map: Samples.map(), seed: 7).firstAge == .iron)
+    #expect(m.choice.mapSize == .large)
+    #expect(m.lobby.firstAge == .iron && m.lobby.size == .large)
+    var lobby = m.lobby
+    lobby.seats = lobby.seats.map { var s = $0; if s.civilization == nil { s.civilization = .rome }; return s }
+    #expect(lobby.setup(map: Samples.map(), seed: 7)?.firstAge == .iron)
+    // A lobby from a Mac without these settings decodes as the Stone age on the standard map.
+    let old = try! JSONDecoder().decode(Lobby.self, from: JSONEncoder().encode(Lobby(name: "Old", seats: lobby.seats)))
+    #expect(old.firstAge == .stone && old.size == .standard)
+    #expect(MapSize.large.side == 2 * MapSize.standard.side)
 }
 
 @Test(arguments: 2...6) func anyNumberOfPlayersFromTwoToSixCanStart(players: Int) {

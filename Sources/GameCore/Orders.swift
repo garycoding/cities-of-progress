@@ -67,8 +67,11 @@ public enum Order: Hashable, Codable, Sendable {
     case dismiss(units: [EntityID])
     /// Sow a farm that has run dry again, paying `GatheringStats.farmReseed`.
     case reseed(farm: EntityID)
-    /// A person's car, made beside one of the player's town centres (ruled 2026-11-21).
+    /// A person's car, made beside one of the player's town centres (ruled
+    /// 2026-11-21); up to `CarStats.perPerson` each.
     case summonCar
+    /// Turn the kill radius of the person's own cars on or off (ruled 2026-11-21).
+    case setKillRadius(cars: [EntityID], on: Bool)
     /// Engineers build a bridge in a straight line from the land tile `from` to
     /// the land tile `to`, one piece on each water tile between, paying for every
     /// piece at once; they build from the `from` bank outwards (ruled 2026-11-21).

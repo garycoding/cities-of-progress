@@ -121,6 +121,8 @@ final class EntityNode: SKNode {
         }
         if entity.kind == .unit(.car) {
             updateGlow(owner: entity.owner, context: context)
+            // No glow while the person has turned the car's kill radius off (ruled 2026-11-21).
+            glow?.isHidden = entity.killRadiusOff == true
             updateBeam(entity: entity, context: context)
         }
 

@@ -55,8 +55,8 @@ struct PlayerState: Codable, Sendable, Hashable {
     var resources: ResourceAmounts
     /// Scholar-ticks of study toward the next age.
     var study = 0
-    /// Whether this person has made their car (ruled 2026-11-21: one each);
-    /// optional so that older saves open, nil being not yet.
+    /// Whether this person has made a car; kept so that older saves open, and
+    /// no longer read: a person may make up to `CarStats.perPerson` (ruled 2026-11-21).
     var hasCar: Bool?
     /// In the order researched.
     var improvements: [Improvement] = []
@@ -190,6 +190,9 @@ struct Entity: Codable, Sendable, Hashable {
     var farmUsed: Int?
     /// For a bridge piece, its place in its bridge; optional so that older saves open.
     var bridgePlace: BridgePlace?
+    /// For a car whose person has turned its kill radius off (ruled 2026-11-21),
+    /// true; optional so that older saves open, nil being on.
+    var killRadiusOff: Bool?
     /// Engineer-ticks of demolition done.
     var demolished = 0
     var queue: [UnitKind] = []

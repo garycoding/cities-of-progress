@@ -249,7 +249,7 @@ final class GameController {
 
     func start(_ choice: NewMatchChoice) {
         let seed = UInt64.random(in: 1...UInt64.max)
-        let map = MapGenerator().generate(MapRequest(playerCount: choice.players.count, seed: seed))
+        let map = MapGenerator().generate(MapRequest(size: choice.mapSize, playerCount: choice.players.count, seed: seed))
         let setup = choice.setup(map: map, seed: seed)
         guard let person = setup.players.first(where: { $0.controller == .human }) else { return }
         let new = Match(host: Host(setup: setup), player: person.id, name: Self.newName())
@@ -361,7 +361,7 @@ final class GameController {
             new = Match(host: saved.host, player: saved.player, camera: saved.camera, name: saved.name ?? lobby.name)
         } else {
             let seed = UInt64.random(in: 1...UInt64.max)
-            let map = MapGenerator().generate(MapRequest(playerCount: lobby.seats.count, seed: seed))
+            let map = MapGenerator().generate(MapRequest(size: lobby.size, playerCount: lobby.seats.count, seed: seed))
             guard let setup = lobby.setup(map: map, seed: seed) else { return }
             new = Match(host: Host(setup: setup), player: seat, name: lobby.name)
         }
