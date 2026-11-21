@@ -57,10 +57,17 @@ public struct Lobby: Hashable, Codable, Sendable {
     public var seats: [Seat]
     /// What the people will see of the map, chosen by the host; optional so that older lobbies decode, nil being `.explore`.
     public var sight: MapSight?
+    /// Whether bridges may be built, chosen by the host (ruled 2026-11-21);
+    /// optional so that older lobbies decode, nil being allowed.
+    public var noBridges: Bool?
 
-    public init(name: String, seats: [Seat], sight: MapSight = .explore) {
+    public init(name: String, seats: [Seat], sight: MapSight = .explore, bridges: Bool = true) {
         self.name = name; self.seats = seats; self.sight = sight == .explore ? nil : sight
+        self.noBridges = bridges ? nil : true
     }
+
+    /// Whether bridges may be built in the match.
+    public var bridges: Bool { noBridges != true }
 
     /// The host may start once every seat is held and has a civilization.
     public var isReady: Bool { !seats.contains { $0.isWaiting } }
@@ -80,7 +87,8 @@ public struct Lobby: Hashable, Codable, Sendable {
             }
             return PlayerSetup(id: seat.player, civilization: seat.civilization ?? .sumer, team: seat.team, controller: controller)
         }
-        return MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue, sight: sight ?? .explore)
+        return MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue, sight: sight ?? .explore,
+                          bridges: bridges)
     }
 }
 
@@ -117,7 +125,7 @@ public enum Notice: Hashable, Codable, Sendable {
 public enum NetMessage: Hashable, Codable, Sendable {
     /// Raised whenever the shape of any message changes, so that two Macs that
     /// would not understand each other say so instead.
-    public static let protocolVersion = 7
+    public static let protocolVersion = 8
 
     // From a joining Mac.
     /// The first message. The host turns a Mac away unless both `protocolVersion`

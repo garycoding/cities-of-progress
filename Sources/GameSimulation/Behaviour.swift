@@ -471,10 +471,10 @@ extension Simulation {
     }
 
     /// Every opponent's unit within a car's kill radius dies at once (ruled
-    /// 2026-11-21); founders and cars, which nothing harms, are spared, and
-    /// buildings are not touched.
+    /// 2026-11-21), unless its person has turned the radius off; founders and
+    /// cars, which nothing harms, are spared, and buildings are not touched.
     mutating func clearAround(_ i: Int) {
-        guard let radius = catalogue.car?.killRadius else { return }
+        guard let radius = catalogue.car?.killRadius, entities[i].killRadiusOff != true else { return }
         let owner = entities[i].owner, here = entities[i].position
         for j in entities.indices where entities[j].alive && entities[j].isPerson && !entities[j].isUnharmable
             && teamOf(entities[j].owner) != teamOf(owner) && entities[j].position.distance(to: here) <= radius {

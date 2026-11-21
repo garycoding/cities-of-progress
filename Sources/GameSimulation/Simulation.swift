@@ -33,6 +33,8 @@ public struct Simulation: GameSimulating {
     public var isPaused = false
     /// What the people see of the map; nil is `.explore` (`MapSight`).
     public internal(set) var sight: MapSight?
+    /// True when the match's setup forbids bridges (ruled 2026-11-21); nil is allowed.
+    public internal(set) var noBridges: Bool?
     /// In player order; `players[i].id == PlayerID(i)`.
     var players: [PlayerState]
     /// Ordered by `TeamID`.
@@ -83,6 +85,7 @@ public struct Simulation: GameSimulating {
         precondition(map.starts.count >= setup.players.count, "the map has a start for every player")
         catalogue = setup.catalogue
         sight = setup.sight
+        noBridges = setup.noBridges
         width = map.width
         height = map.height
         terrain = map.terrain
@@ -112,7 +115,7 @@ public struct Simulation: GameSimulating {
 
     enum CodingKeys: String, CodingKey {
         case catalogue, width, height, terrain, tick, outcome, isPaused, players, teams, entities, sites, nextEntity, generator
-        case sight
+        case sight, noBridges
     }
 
     public init(from decoder: any Decoder) throws {
@@ -128,6 +131,7 @@ public struct Simulation: GameSimulating {
         outcome = try c.decodeIfPresent(MatchOutcome.self, forKey: .outcome)
         isPaused = try c.decode(Bool.self, forKey: .isPaused)
         sight = try c.decodeIfPresent(MapSight.self, forKey: .sight)
+        noBridges = try c.decodeIfPresent(Bool.self, forKey: .noBridges)
         players = try c.decode([PlayerState].self, forKey: .players)
         teams = try c.decode([TeamState].self, forKey: .teams)
         entities = try c.decode([Entity].self, forKey: .entities)

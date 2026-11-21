@@ -128,11 +128,13 @@ extension Simulation {
         }
         let events = me.events
         players[p].events = []
-        return PlayerView(tick: tick, player: player, age: me.age, resources: me.resources, population: population[p],
-                          populationLimit: populationLimit(p), ageProgress: progress, improvements: me.improvements,
-                          players: summaries(), mapWidth: width, mapHeight: height, terrain: terrain,
-                          visibility: visibility, entities: shown, sites: shownSites, outcrops: outcrops, events: events, outcome: outcome,
-                          isPaused: isPaused)
+        var view = PlayerView(tick: tick, player: player, age: me.age, resources: me.resources, population: population[p],
+                              populationLimit: populationLimit(p), ageProgress: progress, improvements: me.improvements,
+                              players: summaries(), mapWidth: width, mapHeight: height, terrain: terrain,
+                              visibility: visibility, entities: shown, sites: shownSites, outcrops: outcrops, events: events,
+                              outcome: outcome, isPaused: isPaused)
+        view.noBridges = noBridges
+        return view
     }
 
     func summaries() -> [PlayerSummary] {
@@ -167,6 +169,7 @@ extension Simulation {
                               maxHealth: e.maxHealth, activity: activity(of: e),
                               remaining: remaining(of: e))
         view.bridgePlace = e.bridgePlace
+        view.killRadiusOff = e.killRadiusOff
         if e.unitKind == .car, e.doing == .fighting, case .attack(let target) = e.task, let t = index(of: target) {
             view.laserTarget = entities[t].position
         }

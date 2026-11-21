@@ -60,12 +60,19 @@ public struct MatchSetup: Hashable, Codable, Sendable {
     public var catalogue: Catalogue
     /// What the people see of the map; optional so that older saves open, nil being `.explore`.
     public var sight: MapSight?
+    /// Whether bridges may be built (ruled 2026-11-21: a setting of the match);
+    /// optional so that older saves open, nil being allowed.
+    public var noBridges: Bool?
 
     public init(map: GameMap, players: [PlayerSetup], seed: UInt64, catalogue: Catalogue = .standard,
-                sight: MapSight = .explore) {
+                sight: MapSight = .explore, bridges: Bool = true) {
         self.map = map; self.players = players; self.seed = seed; self.catalogue = catalogue
         self.sight = sight == .explore ? nil : sight
+        self.noBridges = bridges ? nil : true
     }
+
+    /// Whether bridges may be built in this match.
+    public var bridges: Bool { noBridges != true }
 }
 
 /// The rules of the game (module `GameSimulation`).

@@ -10,11 +10,15 @@ public struct NewMatchChoice: Hashable, Sendable {
     public var players: [PlayerSetup]
     /// What the people see of the map.
     public var sight: MapSight
+    /// Whether bridges may be built (ruled 2026-11-21).
+    public var bridges: Bool
 
-    public init(players: [PlayerSetup], sight: MapSight = .explore) { self.players = players; self.sight = sight }
+    public init(players: [PlayerSetup], sight: MapSight = .explore, bridges: Bool = true) {
+        self.players = players; self.sight = sight; self.bridges = bridges
+    }
 
     public func setup(map: GameMap, seed: UInt64, catalogue: Catalogue = .standard) -> MatchSetup {
-        MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue, sight: sight)
+        MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue, sight: sight, bridges: bridges)
     }
 }
 
@@ -62,6 +66,8 @@ public struct NewMatchModel: Hashable, Sendable {
     public var matchName: String
     /// What the people in the match see of the map (ruled 2026-11-20).
     public var sight: MapSight = .explore
+    /// Whether bridges may be built in the match (ruled 2026-11-21: a setting of the match).
+    public var bridges = true
     private var nextID: Int
 
     public init(maxPlayers: Int = 2, civilization: Civilization = .sumer, opponent: Civilization = .egypt,
@@ -209,7 +215,7 @@ public struct NewMatchModel: Hashable, Sendable {
             return GameCore.Seat(player: player.id, team: player.team, kind: .host, civilization: seat.civilization,
                                  holder: host.isEmpty ? "Host" : host)
         }
-        return Lobby(name: lobbyName, seats: seats, sight: sight)
+        return Lobby(name: lobbyName, seats: seats, sight: sight, bridges: bridges)
     }
 
     /// The players in seat order, numbered from 0; teams are numbered by first
@@ -223,6 +229,6 @@ public struct NewMatchModel: Hashable, Sendable {
             players.append(PlayerSetup(id: PlayerID(i), civilization: seat.civilization, team: TeamID(team),
                                        controller: seat.controller))
         }
-        return NewMatchChoice(players: players, sight: sight)
+        return NewMatchChoice(players: players, sight: sight, bridges: bridges)
     }
 }
