@@ -23,10 +23,12 @@ struct OpenSites {
 
     init(view: PlayerView, memory: Memory) {
         var byKind = [[Entry]](repeating: [], count: SiteKind.allCases.count)
-        let age = view.age
-        // Through a buffer: this loop visits every site (see `Ground.init`).
+        let age = view.age, width = view.mapWidth
+        // Through a buffer: this loop visits every site (see `Ground.init`). The
+        // water's sites are the boats' (`sendBoats`), never the workers'.
         view.sites.withUnsafeBufferPointer { sites in
-            for i in 0..<sites.count where sites[i].remaining > 0 && sites[i].kind.firstAge <= age {
+            for i in 0..<sites.count where sites[i].remaining > 0 && sites[i].kind.firstAge <= age
+                && !view.terrain[sites[i].tile.y * width + sites[i].tile.x].isWater {
                 byKind[sites[i].kind.rawValue].append(Entry(site: sites[i]))
             }
         }

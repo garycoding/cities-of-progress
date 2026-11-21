@@ -117,6 +117,62 @@ private func moves(_ orders: [Order]) -> [(units: [EntityID], to: MapPosition)] 
     }
 }
 
+// MARK: Boats (ruled 2026-11-21)
+
+/// The Stone age opening with a pond to the east of the town centre, a shoal of fish in it.
+private func openingByAPond() -> PlayerView {
+    var view = Samples.stoneAgeOpening()
+    let pond = (4...8).flatMap { y in (15...19).map { GridPoint($0, y) } }
+    view.sites.removeAll { pond.contains($0.tile) }
+    for t in pond { view.terrain[t.y * view.mapWidth + t.x] = .deepWater }
+    for (k, t) in [GridPoint(16, 5), GridPoint(17, 5), GridPoint(16, 6), GridPoint(17, 6)].enumerated() {
+        view.sites.append(ResourceSite(id: SiteID(9_000 + k), kind: .fish, tile: t, remaining: 200))
+    }
+    view.sites.sort { $0.id < $1.id }
+    view.populationLimit = 20
+    view.resources = ResourceAmounts([.food: 400, .wood: 400, .stone: 50])
+    return view
+}
+
+@Test func buildsABoatHouseOnTheShoreOfWaterWithFish() {
+    var view = openingByAPond()
+    view.add(.unit(.engineer), owner: TestViews.me, at: 13, 8)
+    var cp = player()
+    let houses = constructs(decide(&cp, view)).filter { $0.kind == .boatHouse }
+    #expect(houses.count == 1)
+    for house in houses {
+        #expect(Placement.touchesWater(Placement.footprint(.boatHouse, at: house.origin), width: view.mapWidth,
+                                       height: view.mapHeight, terrain: view.terrain))
+    }
+}
+
+@Test func aBoatHouseTrainsBoatsAndAnIdleBoatFishes() {
+    var view = openingByAPond()
+    let house = view.add(.building(.boatHouse), owner: TestViews.me, at: 14, 6)
+    let boat = view.add(.unit(.boat), owner: TestViews.me, at: 15.5, 7.5)
+    var cp = player()
+    let orders = decide(&cp, view)
+    #expect(orders.contains(.train(at: house, unit: .boat)))
+    let fished = orders.compactMap { order -> SiteID? in
+        guard case .gather(let units, let site) = order, units == [boat] else { return nil }
+        return site
+    }
+    #expect(fished.count == 1)
+    #expect(fished.allSatisfy { id in view.sites.first { $0.id == id }?.kind == .fish })
+}
+
+@Test func workersAreNeverSentToTheWater() {
+    var view = openingByAPond()
+    // Stone in the pond only: workers look for it on land, never there.
+    view.sites.append(ResourceSite(id: SiteID(9_100), kind: .stone, tile: GridPoint(18, 7), remaining: 250))
+    var cp = player()
+    for order in decide(&cp, view) {
+        guard case .gather(let units, let site) = order, let found = view.sites.first(where: { $0.id == site }) else { continue }
+        let afloat = view.terrain[found.tile.y * view.mapWidth + found.tile.x].isWater
+        #expect(!afloat || units.allSatisfy { view.entity($0)?.kind == .unit(.boat) })
+    }
+}
+
 // MARK: The Bronze age
 
 @Test func buildsTheBronzeAgeBuildings() {

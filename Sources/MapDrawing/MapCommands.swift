@@ -45,7 +45,8 @@ public enum MapCommands {
     /// The order a right-click gives to the player's selected people, or `nil` if
     /// none of the selection is a person of the player's.
     ///
-    /// - Ground: move. A site: workers gather there (others move to it). An own
+    /// - Ground: move. A site: workers gather there, or boats if it is in the
+    ///   water (others move to it). An own
     ///   building that is unfinished or damaged: engineers work there. An own town
     ///   centre or stock pen: workers, scholars and engineers work there. A
     ///   complete farm or alchemist's workshop: workers work there. A complete
@@ -67,8 +68,11 @@ public enum MapCommands {
         case .ground(let position):
             return .move(units: everyone, to: position)
         case .site(let site):
-            let workers = ids { $0 == .worker }
-            return workers.isEmpty ? .move(units: everyone, to: site.tile.centre) : .gather(units: workers, site: site.id)
+            // A site in the water is gathered by boats, one on land by workers (ruled 2026-11-21).
+            let afloat = view.terrain.indices.contains(site.tile.y * view.mapWidth + site.tile.x)
+                && view.terrain[site.tile.y * view.mapWidth + site.tile.x].isWater
+            let gatherers = ids { afloat ? $0 == .boat : $0 == .worker }
+            return gatherers.isEmpty ? .move(units: everyone, to: site.tile.centre) : .gather(units: gatherers, site: site.id)
         case .entity(let entity):
             if entity.owner == view.player, case .building(let kind) = entity.kind {
                 var unfinished = false

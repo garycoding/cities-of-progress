@@ -88,6 +88,10 @@ extension Turn {
             }
         }
         if count(.storagePit) < 4, let cluster = distantCluster() { out.append((.storagePit, cluster, 0...5)) }
+        // A boat house on the shore of the nearest water that holds fish or rocks (ruled 2026-11-21).
+        if count(.boatHouse) == 0, completeBuildings(.townCentre).count > 0, let water = nearestWaterSite(to: base, within: 20) {
+            out.append((.boatHouse, water.tile.centre, 1...8))
+        }
         out += wall()
         // The newest age's buildings first, so that the age's own come before more of the older ones.
         let ranked = out.enumerated().sorted { a, b in

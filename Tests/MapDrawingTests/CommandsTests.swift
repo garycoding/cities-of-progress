@@ -42,6 +42,26 @@ import Testing
                 == .move(units: [scholar], to: tree.tile.centre))
     }
 
+    @Test func aSiteInTheWaterGivesGatherForBoatsOnly() {
+        var view = self.view
+        let worker = id(.unit(.worker))
+        var boat = view.entity(worker)!
+        boat.id = EntityID(9_000)
+        boat.kind = .unit(.boat)
+        view.entities.append(boat)
+        var stone = view.sites.first { $0.kind == .stone }!
+        stone.id = SiteID(9_000)
+        view.sites.append(stone)
+        view.terrain[stone.tile.y * view.mapWidth + stone.tile.x] = .deepWater
+        #expect(MapCommands.contextualOrder(on: .site(stone), view: view, selection: [worker, boat.id])
+                == .gather(units: [boat.id], site: stone.id))
+        #expect(MapCommands.contextualOrder(on: .site(stone), view: view, selection: [worker])
+                == .move(units: [worker], to: stone.tile.centre))
+        let tree = view.sites.first { $0.kind == .tree }!
+        #expect(MapCommands.contextualOrder(on: .site(tree), view: view, selection: [worker, boat.id])
+                == .gather(units: [worker], site: tree.id))
+    }
+
     @Test func ownUnfinishedOrDamagedBuildingGivesWorkForEngineers() {
         let engineer = id(.unit(.engineer)), worker = id(.unit(.worker))
         let tower = view.entities.first { $0.kind == .building(.watchTower) }!
