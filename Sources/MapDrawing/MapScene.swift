@@ -180,8 +180,13 @@ public final class MapScene: SKScene {
     private func makeContext(_ view: PlayerView) -> DrawContext {
         var players: [PlayerID: PlayerSummary] = [:]
         for summary in view.players { players[summary.id] = summary }
+        var decks: [GridPoint: BridgePlace] = [:]
+        for e in view.entities where e.kind == .building(.bridge) {
+            if case .underConstruction = e.activity { continue }
+            if let place = e.bridgePlace { decks[e.tile] = place }
+        }
         return DrawContext(cache: cache, catalogue: session.catalogue, players: players, me: view.player,
-                           myTeam: players[view.player]?.team, frame: animationFrame)
+                           myTeam: players[view.player]?.team, frame: animationFrame, decks: decks)
     }
 
     /// Build and update the nodes from the session's view: the only per-view work.
@@ -309,8 +314,8 @@ public final class MapScene: SKScene {
     }
 
     /// The outline of a bridge being placed: the bank tile under the pointer
-    /// before the drag, then the line from the first bank to the pointer's tile,
-    /// green where a bridge may run and red where it may not.
+    /// before the drag, then the two rows from the first bank to the pointer's
+    /// tile, green where a bridge may run and red where it may not.
     private func updateBridgeOutline(pointer tile: GridPoint) {
         let view = session.view
         let tiles: [GridPoint]
@@ -324,7 +329,9 @@ public final class MapScene: SKScene {
                 t = GridPoint(t.x + step.x, t.y + step.y)
                 line.append(t)
             }
-            tiles = line
+            // Two tiles wide (ruled 2026-11-21): the row beside it, toward the screen's foot.
+            let d = (BridgeRun.of(from: start, to: end) ?? .alongX).across
+            tiles = line + (end == start ? [] : line.map { GridPoint($0.x + d.x, $0.y + d.y) })
             allowed = Placement.canBridge(from: start, to: end, in: view)
         } else {
             tiles = [tile]

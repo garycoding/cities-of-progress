@@ -23,6 +23,31 @@ private let river = (0..<40).flatMap { y in (10...12).map { GridPoint($0, y) } }
         #expect(line(GridPoint(4, 20), GridPoint(5, 20)) == nil)         // no water
     }
 
+    @Test func aBridgeIsTwoRowsOfTheSameLength() {
+        var terrain = Array(repeating: Terrain.grass, count: 40 * 40)
+        for t in river { terrain[t.y * 40 + t.x] = .deepWater }
+        terrain[21 * 40 + 13] = .deepWater      // the river a tile wider beside the second row
+        let rows = { (a: GridPoint, b: GridPoint) in Placement.bridgeRows(from: a, to: b, width: 40, height: 40, terrain: terrain) }
+        #expect(rows(GridPoint(9, 18), GridPoint(13, 18)) == [[GridPoint(10, 18), GridPoint(11, 18), GridPoint(12, 18)],
+                                                              [GridPoint(10, 19), GridPoint(11, 19), GridPoint(12, 19)]])
+        #expect(rows(GridPoint(9, 20), GridPoint(13, 20)) == nil)       // the second row ends in water
+        #expect(Placement.bridgeEnds(from: GridPoint(9, 18), to: GridPoint(13, 18))
+                == [GridPoint(9, 18), GridPoint(13, 18), GridPoint(9, 19), GridPoint(13, 19)])
+    }
+
+    @Test func theDeckRisesFromEachBankToAHeightItKeeps() {
+        let six = (0...6).map { BridgePlace(run: .alongX, lane: 0, index: 0, count: 6).height(at: $0) }
+        #expect(six == [0, 4, 8, 12, 8, 4, 0])
+        let ten = (0...10).map { BridgePlace(run: .alongY, lane: 1, index: 0, count: 10).height(at: $0) }
+        #expect(ten == [0, 4, 8, 12, 12, 12, 12, 12, 8, 4, 0])
+        #expect(BridgePlace(run: .alongX, lane: 0, index: 2, count: 5).middle)
+        #expect(BridgePlace(run: .alongX, lane: 0, index: 2, count: 5).heights == (back: 8, front: 8))
+        // Every drawing a bridge may need is listed once.
+        let poses = BridgePlace.drawings.map { $0.pose(complete: true) }
+        #expect(Set(poses).count == poses.count)
+        #expect(poses.contains(BridgePlace(run: .alongY, lane: 1, index: 7, count: 16).pose(complete: true)))
+    }
+
     @Test func engineersBuildFromTheNearBankAndAnyoneCrosses() {
         var sim = duel(water: river)
         sim.exploreAll(me)
@@ -34,10 +59,17 @@ private let river = (0..<40).flatMap { y in (10...12).map { GridPoint($0, y) } }
                 == .refused(.notYours))
         #expect(sim.apply(.buildBridge(engineers: [engineer], from: GridPoint(9, 20), to: GridPoint(13, 20)), from: me)
                 == .accepted)
-        #expect(sim.resources(me)[.wood] == wood - 3 * 10)
+        #expect(sim.resources(me)[.wood] == wood - 6 * 10)
         let pieces = sim.buildings(me, .bridge)
-        #expect(pieces.count == 3)
-        #expect(pieces.allSatisfy { sim.living($0).bridgeRun == .alongX })
+        #expect(pieces.count == 6)
+        #expect(pieces.allSatisfy { sim.living($0).bridgePlace?.run == .alongX })
+        // Two rows, the second toward the screen's foot, each piece knowing its place along its row.
+        let places = Set(pieces.map { sim.living($0).position.tile })
+        #expect(places == Set([10, 11, 12].flatMap { [GridPoint($0, 20), GridPoint($0, 21)] }))
+        #expect(pieces.allSatisfy { id in
+            let e = sim.living(id), place = e.bridgePlace!
+            return place.count == 3 && place.index == e.position.tile.x - 10 && place.lane == e.position.tile.y - 20
+        })
         // A piece already there blocks a second bridge over it.
         #expect(sim.apply(.buildBridge(engineers: [engineer], from: GridPoint(9, 20), to: GridPoint(13, 20)), from: me)
                 == .refused(.placementBlocked))
