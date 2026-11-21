@@ -610,42 +610,99 @@ struct Clubman: PersonLook {
         }
     }
 
+    /// The wild spiky hair, seen from each side.
+    static func hair(_ view: SpriteView) -> String {
+        switch view {
+        case .side, .frontQuarter:
+            "M-10.2,-59 L-13.8,-63.4 L-9.6,-64.8 L-11.2,-69.8 L-5.8,-67.6 L-4.6,-72.8 L-0.6,-68.6 L2.8,-72.4 "
+                + "L4.4,-67.4 L9,-68.8 L7.6,-64.6 C3,-66.8 -2,-64.4 -4.4,-59.6 C-6.4,-57.4 -8.8,-57.6 -10.2,-59 Z"
+        case .front:
+            "M-10.4,-58.4 L-14,-61.8 L-10.8,-64.4 L-12.6,-69.2 L-7.2,-67.8 L-6,-73.2 L-2.2,-69.2 L0.4,-74 L2.8,-69.2 "
+                + "L6.8,-72.8 L7.4,-67.6 L12.6,-69 L10.8,-64.4 L14,-61.8 L10.4,-58.4 C8.4,-63 4.4,-64.8 0,-63.8 "
+                + "C-4.4,-64.8 -8.4,-63 -10.4,-58.4 Z"
+        case .back:
+            "M-10.8,-54 L-14.4,-58 L-11.4,-61 L-13.6,-66 L-8.4,-66.4 L-8,-72 L-3.4,-68.8 L0,-74 L3.4,-68.8 L8,-72 "
+                + "L8.4,-66.4 L13.6,-66 L11.4,-61 L14.4,-58 L10.8,-54 C7,-57.6 -7,-57.6 -10.8,-54 Z"
+        case .backQuarter:
+            "M-10.8,-53 L-13.6,-58 L-11.4,-61 L-13,-66.4 L-8,-66.8 L-7,-72.4 L-2.6,-69.2 L1,-74 L4,-69.4 L8.6,-71.6 "
+                + "L8.6,-66.6 L13.4,-66 L10.8,-62 L13,-58.6 L10.6,-56.4 C8,-59.6 4.5,-59.5 2,-57.5 C-2,-58.5 -7,-56 -10.8,-53 Z"
+        }
+    }
+
+    /// The stitched scar across the near cheek, where the view shows it.
+    static func scar(_ view: SpriteView) -> String? {
+        switch view {
+        case .side: "M0.2,-57.6 l3.8,4.8 M1,-55.4 l1.7,-1.3 M2.3,-53.8 l1.7,-1.3"
+        case .front: "M-8.4,-57.8 l3.6,4.6 M-7.7,-55.6 l1.6,-1.3 M-6.5,-54 l1.6,-1.3"
+        case .frontQuarter: "M4,-57.8 l3.6,4.6 M4.7,-55.6 l1.6,-1.3 M5.9,-54 l1.6,-1.3"
+        case .back, .backQuarter: nil
+        }
+    }
+
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
         d.figure { d in
+            let hand = d.hand(front: true)
+            let held = d.heldBehind(front: true)
+            func club(_ d: inout Drawing) {
+                switch pose {
+                case .fighting:
+                    let angle = d.rig.frontArm.upper
+                    d.club(at: hand, degrees: d.inView(angle - 4), length: 20)
+                    if frame == 7 && d.view == .side { d.swish(around: d.joints.frontShoulder, radius: 33, from: 175, to: 80) }
+                    if frame == 8 { d.impact(at: hand + P.direction(d.inView(angle - 4)) * 24, size: 1.1) }
+                default:
+                    // Held upright at rest; seen from another side, leaning a
+                    // little outward over the shoulder so that it clears the head.
+                    let outward = d.view == .side ? 0 : 14 * abs(sin(d.yaw * .pi / 180)) * (hand.x < 0 ? 1 : -1)
+                    d.club(at: hand, degrees: d.inView(176) + outward, length: 20)
+                }
+            }
             d.arm(front: false, width: 2.4)
+            if held { club(&d) }
             d.legs()
             // The bare chest.
             d.garment(colour: [P(-11.4, -46), P(9, -48), P(10.6, -28), P(-10.6, -27.4)],
                       outline: [P(-8.4, -47), P(9, -47), P(9.8, -30), P(-9.6, -30)], fill: .colour(Ink.skin)) { d in
-                d.svg.path("M\(num(1.6)),\(num(d.up(P(0, -41)).y)) q3.6,1.8 6.8,-0.2", stroke: .colour(Ink.line), width: 1)
+                let y = d.up(P(0, -41)).y
+                switch d.view {
+                case .side:
+                    d.svg.path("M\(num(1.6)),\(num(y)) q3.6,1.8 6.8,-0.2", stroke: .colour(Ink.line), width: 1)
+                case .front:
+                    d.svg.path("M\(num(-7.2)),\(num(y)) q3,1.6 6,0 M\(num(1.2)),\(num(y)) q3,1.6 6,0", stroke: .colour(Ink.line), width: 1)
+                case .frontQuarter:
+                    d.svg.path("M\(num(-4)),\(num(y)) q2.6,1.4 5.2,0 M\(num(2.8)),\(num(y)) q3.4,1.8 6.6,-0.2",
+                               stroke: .colour(Ink.line), width: 1)
+                case .back, .backQuarter:
+                    // The shoulder blades.
+                    d.svg.path("M\(num(-6.4)),\(num(y - 1.6)) q1.4,3 4,3.4 M\(num(6.4)),\(num(y - 1.6)) q-1.4,3 -4,3.4",
+                               stroke: .colour(Ink.line), width: 1)
+                }
             }
             // The strap across it.
-            d.band([P(-8.6, -46.4), P(-4.4, -47.2), P(10, -31.6), P(6.4, -30.6)], fill: .colour(Ink.darkHide))
+            if d.view == .side {
+                d.band([P(-8.6, -46.4), P(-4.4, -47.2), P(10, -31.6), P(6.4, -30.6)], fill: .colour(Ink.darkHide))
+            } else {
+                d.strap(shoulder: P(-5.4, -46.8), hip: P(8, -31), width: 4.2, fill: .colour(Ink.darkHide))
+            }
             // The kilt, in the team's colour.
             d.garment(colour: [P(-12.6, -31), P(11, -32.4), P(14.6, -14), P(-16.4, -13)],
                       outline: [P(-10.2, -31), P(10.4, -31), P(13, -16), P(-14, -16)], fill: .team) { d in
                 d.svg.path("M-8,-26.4 l4,-2 l4,2 l4,-2 l4,2", stroke: .colour(Ink.line), width: 1.1)
             }
-            d.svg.path("M-14,-16 l3,4 l3,-4 l3,4 l3,-4 l3,4 l3,-4 l3,4 l3,-4", stroke: .colour(Ink.line), width: 1.3)
-            d.svg.line([d.up(P(-10.4, -31.4)), d.up(P(10.6, -31.6))], stroke: .colour(Ink.darkHide), width: 2.4)
-            let hand = d.joints.frontHand
-            switch pose {
-            case .fighting:
-                let angle = d.rig.frontArm.upper
-                d.club(at: hand, degrees: angle - 4, length: 20)
-                if frame == 7 { d.swish(around: d.joints.frontShoulder, radius: 33, from: 175, to: 80) }
-                if frame == 8 { d.impact(at: hand + P.direction(angle - 4) * 24, size: 1.1) }
-            default:
-                d.club(at: hand, degrees: 176, length: 20)
+            if d.view == .side {
+                d.svg.path("M-14,-16 l3,4 l3,-4 l3,4 l3,-4 l3,4 l3,-4 l3,4 l3,-4", stroke: .colour(Ink.line), width: 1.3)
+                d.svg.line([d.up(P(-10.4, -31.4)), d.up(P(10.6, -31.6))], stroke: .colour(Ink.darkHide), width: 2.4)
+            } else {
+                d.zigzag(from: P(-14.5, -16), to: P(14.5, -16), teeth: 5, depth: 4)
+                d.svg.line([d.up(P(-10, -31.4)), d.up(P(10, -31.4))], stroke: .colour(Ink.darkHide), width: 2.4)
             }
+            if !held { club(&d) }
             d.arm(front: true, width: 2.4)
             d.head(nose: Clubman.nose, hair: { d in
-                d.svg.path("M-10.2,-59 L-13.8,-63.4 L-9.6,-64.8 L-11.2,-69.8 L-5.8,-67.6 L-4.6,-72.8 L-0.6,-68.6 L2.8,-72.4 "
-                           + "L4.4,-67.4 L9,-68.8 L7.6,-64.6 C3,-66.8 -2,-64.4 -4.4,-59.6 C-6.4,-57.4 -8.8,-57.6 -10.2,-59 Z",
-                           fill: .colour(Ink.line))
+                d.svg.path(Clubman.hair(d.view), fill: .colour(Ink.line))
             }, features: { d in
                 // A scar across the cheek, stitched.
-                d.svg.path("M0.2,-57.6 l3.8,4.8 M1,-55.4 l1.7,-1.3 M2.3,-53.8 l1.7,-1.3", stroke: .colour(Ink.line), width: 0.9)
+                if let scar = Clubman.scar(d.view) { d.svg.path(scar, stroke: .colour(Ink.line), width: 0.9) }
             }, brow: { d in
                 d.svg.path("M1.2,-65.6 L9,-63", stroke: .colour(Ink.line), width: 2.3)
             })
@@ -695,12 +752,84 @@ struct Slinger: PersonLook {
         }
     }
 
+    /// The headband seen from each side but the side itself.
+    static func headband(_ view: SpriteView) -> String {
+        switch view {
+        case .side: ""
+        case .front: "M-11,-62.6 Q0,-67.4 11,-62.6 L10.8,-65 Q0,-69.8 -10.8,-65 Z"
+        case .frontQuarter: "M-11.2,-61.8 Q1,-66.6 10.8,-65.4 L10.6,-67.8 Q1,-69.2 -10.8,-64.4 Z"
+        case .back: "M-11,-61.4 Q0,-64.6 11,-61.4 L10.8,-63.8 Q0,-67 -10.8,-63.8 Z"
+        case .backQuarter: "M-10.8,-65.4 Q-1,-66.6 11.2,-61.8 L10.8,-64.4 Q-1,-69.2 -10.6,-67.8 Z"
+        }
+    }
+
+    /// The headband's two tails from the knot at `knot`, streaming toward `x`
+    /// (-1 to the screen's left, 1 to its right, 0 hanging), as a dark edge with the hide inside.
+    static func tails(_ d: inout Drawing, from knot: P, toward x: Double, flutter: Double) {
+        let hang = 1 - abs(x)
+        var first = PathData(), second = PathData()
+        first.move(knot)
+        first.quad(knot + P(4.6 * x - 1.6 * hang, 1 + flutter * 0.4 + 3 * hang), knot + P(8.6 * x - 2.4 * hang, 3.4 + flutter + 5 * hang))
+        second.move(knot + P(0.2 * x + 0.6 * hang, 0.8))
+        second.quad(knot + P(3 * x + 2 * hang, 3.4 - flutter * 0.3 + 2 * hang),
+                    knot + P(6 * x + 3 * hang, 6.8 - flutter * 0.6 + 2.6 * hang))
+        for path in [first, second] {
+            d.svg.path(path, stroke: .colour(Ink.line), width: 2.8)
+            d.svg.path(path, stroke: .colour(Ink.hide), width: 1.4)
+        }
+    }
+
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
         d.figure { d in
+            let at = d.hand(front: true)
+            let held = d.heldBehind(front: true)
+            // The pouch of stones at the back hip, and the stone in flight: in
+            // another view, drawn before the body where they are behind it.
+            let pouch = d.project(-10, -21, -4)
+            let flight = Double(max(frame - 8, 0))
+            let stone = d.project(24 + flight * 9, -50 + flight * 1.5, Drawing.shoulderSpread)
+            let stoneBehind = d.view != .side && stone.depth < 0
+            /// The sling's cord as long as it shows in this view, along `degrees` in the figure's plane.
+            func sling(_ d: inout Drawing, degrees: Double, length: Double, loaded: Bool = true) {
+                if d.view == .side { d.sling(at: at, degrees: degrees, length: length, loaded: loaded); return }
+                let u = P.direction(degrees), shown = (pow(u.x * cos(d.yaw * .pi / 180), 2) + u.y * u.y).squareRoot()
+                d.sling(at: at, degrees: d.onScreen(degrees), length: length * max(shown, 0.15), loaded: loaded)
+            }
+            func slingAndStone(_ d: inout Drawing) {
+                switch pose {
+                case .fighting:
+                    if frame < 8 {
+                        let around = Double(frame) / 8 * 360
+                        // Round the hand, in the plane of the picture; seen from another
+                        // side, in the figure's own plane, the swish only where it shows.
+                        sling(&d, degrees: 180 - around, length: 6)
+                        if d.view == .side {
+                            d.swish(around: at, radius: 6.8, from: 180 - around + 140, to: 180 - around + 20)
+                        } else if d.view == .frontQuarter || d.view == .backQuarter {
+                            d.whirl(around: at, radius: 6.8, from: 180 - around + 140, to: 180 - around + 20)
+                        }
+                    } else {
+                        sling(&d, degrees: mix(70, 20, Double(frame - 8) / 3), length: 9, loaded: false)
+                        if !stoneBehind { d.stone(at: d.view == .side ? P(24 + flight * 9, -50 + flight * 1.5) : stone.point) }
+                        if frame == 8 { d.impact(at: d.view == .side ? P(22, -50) : d.project(22, -50, Drawing.shoulderSpread).point, size: 0.6) }
+                    }
+                case .walking:
+                    sling(&d, degrees: d.rig.frontArm.upper * 0.4, length: 9)
+                default:
+                    sling(&d, degrees: 4 * sin(d.phase * 2 * .pi), length: 9)
+                }
+            }
             d.arm(front: false)
+            if held { slingAndStone(&d) }
+            if pose == .fighting && frame >= 8 && stoneBehind { d.stone(at: stone.point) }
             d.legs()
+            let pouchBehind = d.view == .side || pouch.depth < 0
+            func drawPouch(_ d: inout Drawing) {
+                d.svg.ellipse(d.view == .side ? P(-12.4, -21) : pouch.point, 2.6, 3, fill: .colour(Ink.hide),
+                              stroke: .colour(Ink.line), width: 1.1)
+            }
             // A pouch of stones at the back hip.
-            d.svg.ellipse(P(-12.4, -21), 2.6, 3, fill: .colour(Ink.hide), stroke: .colour(Ink.line), width: 1.1)
+            if pouchBehind { drawPouch(&d) }
             d.garment(colour: [P(-11, -46), P(7.5, -48), P(12.6, -16), P(-14.6, -15)],
                       outline: [P(-7.6, -47), P(7.6, -47), P(11.6, -18.4), P(-12.6, -18.4)], fill: .team) { d in
                 // A light zigzag across the chest.
@@ -708,44 +837,73 @@ struct Slinger: PersonLook {
                 d.svg.path("M-11.4,-24.6 l3,-2.2 l3,2.2 l3,-2.2 l3,2.2 l3,-2.2 l3,2.2 l3,-2.2", stroke: .colour(Ink.light), width: 1.2)
             }
             d.svg.line([d.up(P(-10.6, -30)), d.up(P(10.2, -30.6))], stroke: .colour(Ink.darkHide), width: 1.8)
-            let at = d.joints.frontHand
-            switch pose {
-            case .fighting:
-                if frame < 8 {
-                    let around = Double(frame) / 8 * 360
-                    // Round the hand, in the plane of the picture.
-                    d.sling(at: at, degrees: 180 - around, length: 6)
-                    d.swish(around: at, radius: 6.8, from: 180 - around + 140, to: 180 - around + 20)
-                } else {
-                    d.sling(at: at, degrees: mix(70, 20, Double(frame - 8) / 3), length: 9, loaded: false)
-                    let flight = Double(frame - 8)
-                    d.stone(at: P(24 + flight * 9, -50 + flight * 1.5))
-                    if frame == 8 { d.impact(at: P(22, -50), size: 0.6) }
-                }
-            case .walking:
-                d.sling(at: at, degrees: d.rig.frontArm.upper * 0.4, length: 9)
-            default:
-                d.sling(at: at, degrees: 4 * sin(d.phase * 2 * .pi), length: 9)
-            }
+            if !pouchBehind { drawPouch(&d) }
+            if !held { slingAndStone(&d) }
             d.arm(front: true, width: 1.8)
             let flutter = 2 * sin(d.phase * 4 * .pi) + (pose == .walking ? 1.5 : 0)
             d.head(nose: Slinger.nose, behind: { d in
                 // The headband's tails, streaming behind.
-                d.svg.path("M-10.6,-60.4 q-4.6,\(num(1 + flutter * 0.4)) -8.6,\(num(3.4 + flutter))", stroke: .colour(Ink.line), width: 2.8)
-                d.svg.path("M-10.6,-60.4 q-4.6,\(num(1 + flutter * 0.4)) -8.6,\(num(3.4 + flutter))", stroke: .colour(Ink.hide), width: 1.4)
-                d.svg.path("M-10.4,-59.6 q-3,\(num(2.6 - flutter * 0.3)) -6,\(num(6 - flutter * 0.6))", stroke: .colour(Ink.line), width: 2.8)
-                d.svg.path("M-10.4,-59.6 q-3,\(num(2.6 - flutter * 0.3)) -6,\(num(6 - flutter * 0.6))", stroke: .colour(Ink.hide), width: 1.4)
+                switch d.view {
+                case .side, .frontQuarter:
+                    d.svg.path("M-10.6,-60.4 q-4.6,\(num(1 + flutter * 0.4)) -8.6,\(num(3.4 + flutter))", stroke: .colour(Ink.line), width: 2.8)
+                    d.svg.path("M-10.6,-60.4 q-4.6,\(num(1 + flutter * 0.4)) -8.6,\(num(3.4 + flutter))", stroke: .colour(Ink.hide), width: 1.4)
+                    d.svg.path("M-10.4,-59.6 q-3,\(num(2.6 - flutter * 0.3)) -6,\(num(6 - flutter * 0.6))", stroke: .colour(Ink.line), width: 2.8)
+                    d.svg.path("M-10.4,-59.6 q-3,\(num(2.6 - flutter * 0.3)) -6,\(num(6 - flutter * 0.6))", stroke: .colour(Ink.hide), width: 1.4)
+                case .front:
+                    // Behind the head, showing beside it.
+                    Slinger.tails(&d, from: P(-5, -60.4), toward: -1, flutter: flutter)
+                case .back, .backQuarter:
+                    break
+                }
             }, hair: { d in
-                d.svg.path("M-9.4,-59.6 C-10.4,-70.6 4.4,-72.6 9,-65.4 C3.2,-67.6 -2,-64.4 -4.4,-59 C-6.2,-57 -8.4,-57.6 -9.4,-59.6 Z",
-                           fill: .colour(Ink.line))
+                if d.view == .side {
+                    d.svg.path("M-9.4,-59.6 C-10.4,-70.6 4.4,-72.6 9,-65.4 C3.2,-67.6 -2,-64.4 -4.4,-59 C-6.2,-57 -8.4,-57.6 -9.4,-59.6 Z",
+                               fill: .colour(Ink.line))
+                } else {
+                    d.svg.path(Hunter.hair(d.view), fill: .colour(Ink.line))
+                }
                 // The topknot.
-                d.svg.circle(P(-4.2, -70.6), 2.9, fill: .colour(Ink.line))
+                let knot: P
+                switch d.view {
+                case .side: knot = P(-4.2, -70.6)
+                case .front, .back: knot = P(0, -71.4)
+                case .frontQuarter: knot = P(-3.6, -71.2)
+                case .backQuarter: knot = P(2.6, -71.4)
+                }
+                d.svg.circle(knot, 2.9, fill: .colour(Ink.line))
             }, features: { d in
-                for c in [P(1.4, -55.6), P(3.2, -54.4), P(4.8, -55.8)] { d.svg.circle(c, 0.5, fill: .colour(Ink.darkHide)) }
+                let freckles: [P]
+                switch d.view {
+                case .side: freckles = [P(1.4, -55.6), P(3.2, -54.4), P(4.8, -55.8)]
+                case .front: freckles = [P(-7.6, -55.6), P(-5.8, -54.4), P(-4.2, -55.8), P(4.2, -55.8), P(5.8, -54.4), P(7.6, -55.6)]
+                case .frontQuarter: freckles = [P(4.2, -55.6), P(6, -54.4), P(7.6, -55.8), P(-4.4, -55.6), P(-3, -54.6)]
+                case .back, .backQuarter: freckles = []
+                }
+                for c in freckles { d.svg.circle(c, 0.5, fill: .colour(Ink.darkHide)) }
             }, brow: { _ in }, over: { d in
-                // The headband, rising toward the front.
-                d.svg.polygon([P(-11, -62.4), P(9, -67.8), P(9.8, -65.4), P(-10.6, -59.8)].map { $0 + P(-0.5, 0.5) }, fill: .colour(Ink.hide))
-                d.svg.polygon([P(-11, -62.4), P(9, -67.8), P(9.8, -65.4), P(-10.6, -59.8)], fill: .none, stroke: .colour(Ink.line), width: 1.2)
+                if d.view == .side {
+                    // The headband, rising toward the front.
+                    d.svg.polygon([P(-11, -62.4), P(9, -67.8), P(9.8, -65.4), P(-10.6, -59.8)].map { $0 + P(-0.5, 0.5) }, fill: .colour(Ink.hide))
+                    d.svg.polygon([P(-11, -62.4), P(9, -67.8), P(9.8, -65.4), P(-10.6, -59.8)], fill: .none, stroke: .colour(Ink.line), width: 1.2)
+                    return
+                }
+                let band = Slinger.headband(d.view)
+                d.svg.raw("<g transform=\"translate(-0.5,0.5)\">")
+                d.svg.path(band, fill: .colour(Ink.hide))
+                d.svg.raw("</g>")
+                d.svg.path(band, stroke: .colour(Ink.line), width: 1.2)
+                // Seen from behind, the knot and its tails over the back of the head.
+                switch d.view {
+                case .back:
+                    // Tied to one side, so that the knot is not taken for a face.
+                    Slinger.tails(&d, from: P(7.4, -62.2), toward: 0.8, flutter: flutter)
+                    d.svg.ellipse(P(7.4, -62.2), 1.7, 1.5, fill: .colour(Ink.hide), stroke: .colour(Ink.line), width: 1)
+                case .backQuarter:
+                    Slinger.tails(&d, from: P(6.4, -63), toward: 0.6, flutter: flutter)
+                    d.svg.ellipse(P(6.4, -63), 1.6, 1.5, fill: .colour(Ink.hide), stroke: .colour(Ink.line), width: 1)
+                default:
+                    break
+                }
             })
         }
     }
@@ -857,6 +1015,24 @@ extension Drawing {
         let corners = [P(shoulder.x - w, shoulder.y), P(shoulder.x + w, shoulder.y),
                        P(hip.x + w, hip.y), P(hip.x - w, hip.y)]
         svg.polygon(corners.map { up(project(x, $0.y, $0.x).point) }, fill: fill)
+    }
+
+    /// A swung weapon's arc around `centre` in the figure's own plane, as it
+    /// shows in this view (the profile's `swish`, foreshortened).
+    mutating func whirl(around centre: P, radius: Double, from: Double, to: Double) {
+        let squeeze = cos(yaw * .pi / 180)
+        func at(_ degrees: Double, _ r: Double) -> P {
+            let u = P.direction(degrees)
+            return centre + P(u.x * squeeze, u.y) * r
+        }
+        var outer = PathData(), inner = PathData()
+        for i in 0...6 {
+            let t = Double(i) / 6
+            let a = at(mix(from, to, t), radius), b = at(mix(from, to, 0.35 + 0.65 * t), radius - 3)
+            if i == 0 { outer.move(a); inner.move(b) } else { outer.line(a); inner.line(b) }
+        }
+        svg.path(outer, stroke: .colour(Ink.line), width: 1.1, opacity: 0.6)
+        svg.path(inner, stroke: .colour(Ink.line), width: 1, opacity: 0.45)
     }
 
     /// The lowest edge of a shape drawn in profile around the body, as it shows

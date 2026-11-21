@@ -44,7 +44,7 @@ public final class CartoonSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views so far (ruled 2026-11-21): the worker, as the exemplar.
-    static let viewed: Set<UnitKind> = [.worker, .scholar, .engineer]
+    static let viewed: Set<UnitKind> = [.worker, .scholar, .engineer, .clubman, .slinger]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .stone) = subject { return Self.viewed.contains(kind) }
