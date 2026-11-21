@@ -102,6 +102,28 @@ import Testing
                 == .move(units: [scholar], to: house.position))
     }
 
+    @Test func aDoubleClickSelectsThoseOfTheSameKindAndJobOnScreen() {
+        var v = view
+        let workers = v.entities.filter { $0.owner == v.player && $0.kind == .unit(.worker) }.map(\.id)
+        #expect(workers.count >= 2)
+        let extra = EntityID(9001), idle = EntityID(9002), far = EntityID(9003)
+        for (id, job) in [(extra, Job.gathering(.tree)), (idle, .idle), (far, .gathering(.tree))] {
+            v.entities.append(EntityView(id: id, owner: v.player, kind: .unit(.worker), position: MapPosition(x: 5.5, y: 5.5),
+                                         tile: GridPoint(5, 5), facing: .right, health: 25, maxHealth: 25, activity: .idle))
+            v.entities[v.entities.count - 1].job = job
+        }
+        for i in v.entities.indices where v.entities[i].id == workers[0] { v.entities[i].job = .gathering(.tree) }
+        let clubman = id(.unit(.clubman))
+        let onScreen = [workers[0], extra, idle, clubman]   // `far` is off the screen
+        // Lumberjacks on the screen, whether chopping or carrying; not the idle one, the clubman or the one off the screen.
+        #expect(MapCommands.selection(afterDoubleClickOn: workers[0], onScreen: onScreen, view: v) == [workers[0], extra])
+        #expect(MapCommands.selection(afterDoubleClickOn: idle, onScreen: onScreen, view: v) == [idle])
+        // A building, an opponent or nothing: as a single click.
+        let barracks = id(.building(.barracks))
+        #expect(MapCommands.selection(afterDoubleClickOn: barracks, onScreen: onScreen, view: v) == [barracks])
+        #expect(MapCommands.selection(afterDoubleClickOn: nil, onScreen: onScreen, view: v) == [])
+    }
+
     @Test func anOpponentGivesAttack() {
         let clubman = id(.unit(.clubman))
         let enemy = view.entity(id(.unit(.spearman), owner: 1))!

@@ -90,7 +90,9 @@ extension Simulation {
         }
         var shown: [EntityView] = []
         for e in entities where e.alive && (mode == .everything || teamOf(e.owner) == team || isVisible(e, to: team)) {
-            shown.append(entityView(e))
+            var seen = entityView(e)
+            if e.owner == player && e.isPerson { seen.job = job(of: e) }
+            shown.append(seen)
         }
         let explored = teams[team].explored, width = self.width, height = self.height, revealed = mode != .explore
         func known(_ site: ResourceSite) -> Bool {
@@ -122,6 +124,23 @@ extension Simulation {
             PlayerSummary(id: p.id, civilization: p.civilization, team: p.team, isHuman: p.isHuman, age: p.age,
                           isDefeated: p.isDefeated,
                           isFounding: !p.isDefeated && owned.founders[p.id.rawValue] && !owned.others[p.id.rawValue])
+        }
+    }
+
+    /// The job a person has been set, from its task.
+    func job(of e: Entity) -> Job {
+        switch e.task {
+        case .idle: return .idle
+        case .move: return .moving
+        case .gather(_, let kind, _): return .gathering(kind)
+        case .work(let building):
+            guard let b = index(of: building), let kind = entities[b].buildingKind else { return .idle }
+            if e.unitKind == .engineer { return entities[b].complete ? .repairing : .constructing }
+            return .working(kind)
+        case .demolish: return .demolishing
+        case .attack: return .attacking
+        case .trade: return .trading
+        case .carry: return .carrying
         }
     }
 

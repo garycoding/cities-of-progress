@@ -30,6 +30,24 @@ public enum Activity: Hashable, Codable, Sendable {
     case researching(Improvement, Double)
 }
 
+/// What a person has been set to do, as its player sees it: the job it keeps
+/// whilst it walks to and fro (a lumberjack chopping and one carrying wood back
+/// both have the job `gathering(.tree)`), so that a double-click can select
+/// people at the same work (ruled 2026-11-20).
+public enum Job: Hashable, Codable, Sendable {
+    case idle
+    case moving
+    case gathering(SiteKind)
+    /// Working at a building of this kind: tending, farming, crafting, studying, researching.
+    case working(BuildingKind)
+    case constructing
+    case repairing
+    case demolishing
+    case attacking
+    case trading
+    case carrying
+}
+
 /// A person or building as a player sees it.
 public struct EntityView: Hashable, Codable, Sendable {
     public var id: EntityID
@@ -44,6 +62,8 @@ public struct EntityView: Hashable, Codable, Sendable {
     public var health: Int
     public var maxHealth: Int
     public var activity: Activity
+    /// For the player's own people, the job they have been set (`Job`); nil otherwise.
+    public var job: Job?
     /// For a farm, the food it has left before it must be reseeded; for an oil
     /// well, the oil left beneath it; nil for everything else.
     public var remaining: Int?
