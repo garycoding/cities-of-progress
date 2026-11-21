@@ -33,7 +33,8 @@ struct DrawContext {
     }
 }
 
-/// A person or a building on the map: its sprite (mirrored for facing, with the
+/// A person or a building on the map: its sprite (in the view its facing shows,
+/// mirrored for the facings toward the left, with the
 /// team colour laid over its mask), and, where needed, a selection ring, a health
 /// bar and a construction bar. Everything but the sprite is made when first needed,
 /// so that the many people who are neither selected nor hurt cost one sprite each.
@@ -47,17 +48,8 @@ final class EntityNode: SKNode {
         var age: Age
         var pose: SpritePose
         var frame: Int
-    /// The finished bridge pieces by tile, on whose decks people ride (ruled 2026-11-21).
-    var decks: [GridPoint: BridgePlace] = [:]
-
-    /// How high a deck raises someone at `position`, in points: nothing off a bridge.
-    func deckHeight(at position: MapPosition) -> Double {
-        let tile = position.tile
-        guard let place = decks[tile] else { return 0 }
-        let along = place.run == .alongX ? position.x - Double(tile.x) : position.y - Double(tile.y)
-        let (back, front) = place.heights
-        return Double(back) + Double(front - back) * min(max(along, 0), 1)
-    }
+        /// The view a person is seen from (`Facing.view`); `.side` for a building.
+        var view: SpriteView = .side
     }
 
     let body = SKSpriteNode()
@@ -140,7 +132,7 @@ final class EntityNode: SKNode {
             pose = (entity.bridgePlace ?? BridgePlace(run: .alongX, lane: 0, index: 0, count: 1)).pose(complete: pose == .complete)
         }
         let newLook = Look(kind: entity.kind, civilization: summary?.civilization ?? .sumer, age: summary?.age ?? .stone,
-                           pose: pose, frame: context.frame)
+                           pose: pose, frame: context.frame, view: isBuilding ? .side : entity.facing.view)
         if newLook != look {
             let first = look == nil
             look = newLook
@@ -148,7 +140,7 @@ final class EntityNode: SKNode {
             if first, isBuilding { configureBars(for: entity, context: context) }
         }
         if !isBuilding, previous?.facing != entity.facing || previous == nil {
-            body.xScale = entity.facing == .left ? -1 : 1
+            body.xScale = entity.facing.mirrored ? -1 : 1
         }
 
         isSelected = selected
@@ -160,7 +152,7 @@ final class EntityNode: SKNode {
     private func applyLook(_ look: Look, entity: EntityView, context: DrawContext) {
         let subject = SpriteSubject.of(entity, ownerAge: look.age, catalogue: context.catalogue)
         let sprite = context.cache.sprite(for: entity.kind, subject: subject, civilization: look.civilization,
-                                          pose: look.pose, frame: look.frame)
+                                          pose: look.pose, frame: look.frame, view: look.view)
         body.texture = sprite.texture
         body.size = sprite.size
         body.anchorPoint = sprite.anchor

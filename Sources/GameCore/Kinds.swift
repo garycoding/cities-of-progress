@@ -215,8 +215,46 @@ public enum Improvement: Int, CaseIterable, Codable, Sendable, Hashable {
     case refining
 }
 
-/// Which way a person faces on the screen. Artwork is drawn facing right; the
-/// drawing mirrors it for left (docs/architecture.md, "Sprites").
-public enum Facing: Int, Codable, Sendable, Hashable {
+/// Which way a person faces on the screen, in eight directions (ruled
+/// 2026-11-21). Five views are drawn, facing right, down-right, down, up and
+/// up-right; the drawing mirrors them for the other three
+/// (docs/architecture.md, "Sprites"). `right` and `left` keep their values,
+/// so that older saves open.
+public enum Facing: Int, Codable, Sendable, Hashable, CaseIterable {
     case right, left
+    case downRight, down, downLeft, upLeft, up, upRight
+
+    /// The view drawn for this facing.
+    public var view: SpriteView {
+        switch self {
+        case .right, .left: .side
+        case .downRight, .downLeft: .frontQuarter
+        case .down: .front
+        case .up: .back
+        case .upRight, .upLeft: .backQuarter
+        }
+    }
+
+    /// Whether the drawing mirrors the view: for the facings toward the left.
+    public var mirrored: Bool { self == .left || self == .downLeft || self == .upLeft }
+
+    /// The facing nearest a movement of `dx` and `dy` across the map, as it
+    /// runs on the screen (+x to the lower right, +y to the lower left, a tile
+    /// twice as wide as it is high); nil for no movement.
+    public static func of(dx: Double, dy: Double) -> Facing? {
+        let sx = (dx - dy) * 2, sy = dx + dy
+        guard abs(sx) > 1e-9 || abs(sy) > 1e-9 else { return nil }
+        // The nearest eighth of a turn, by comparison alone so that every Mac
+        // agrees: within 22.5 degrees of an axis is that axis, else the diagonal.
+        let t = 0.41421356237309503     // tan(22.5 degrees)
+        let horizontal = abs(sy) <= abs(sx) * t, vertical = abs(sx) <= abs(sy) * t
+        switch (sx > 0, sy > 0) {
+        case _ where horizontal: return sx > 0 ? .right : .left
+        case _ where vertical: return sy > 0 ? .down : .up
+        case (true, true): return .downRight
+        case (false, true): return .downLeft
+        case (false, false): return .upLeft
+        case (true, false): return .upRight
+        }
+    }
 }

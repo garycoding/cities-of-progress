@@ -46,8 +46,22 @@ public struct SpritePose: RawRepresentable, Hashable, Codable, Sendable, Express
     public static let underConstruction: SpritePose = "under-construction"
 }
 
-/// One picture: a subject in a pose, and the frame of that pose. A pose that
-/// moves has `framesPerPose` frames, shown in turn at `frameRate` a second.
+/// Which way a person is seen in a sprite (ruled 2026-11-21: eight facings,
+/// five views drawn): from the side facing right, from the front a quarter
+/// turn toward the right, from the front, from behind, and from behind a
+/// quarter turn toward the right. The drawing mirrors them for the facings
+/// toward the left (`Facing.mirrored`).
+public enum SpriteView: String, Codable, Sendable, Hashable, CaseIterable {
+    case side
+    case frontQuarter = "front-quarter"
+    case front
+    case back
+    case backQuarter = "back-quarter"
+}
+
+/// One picture: a subject in a pose, the frame of that pose, and the view a
+/// person is seen from. A pose that moves has `framesPerPose` frames, shown
+/// in turn at `frameRate` a second.
 public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
     /// The number of frames in a pose that moves (docs/art-style.md).
     public static let framesPerPose = 12
@@ -57,12 +71,28 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
     public var subject: SpriteSubject
     public var pose: SpritePose
     public var frame: Int
+    /// Which way a person is seen (ruled 2026-11-21); `.side` for everything else.
+    public var view: SpriteView
 
-    public init(_ subject: SpriteSubject, _ pose: SpritePose, frame: Int = 0) {
-        self.subject = subject; self.pose = pose; self.frame = frame
+    public init(_ subject: SpriteSubject, _ pose: SpritePose, frame: Int = 0, view: SpriteView = .side) {
+        self.subject = subject; self.pose = pose; self.frame = frame; self.view = view
     }
 
-    public var description: String { "\(subject) \(pose.rawValue) \(frame)" }
+    private enum CodingKeys: String, CodingKey { case subject, pose, frame, view }
+
+    /// A key saved before views opens as the side view.
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        subject = try c.decode(SpriteSubject.self, forKey: .subject)
+        pose = try c.decode(SpritePose.self, forKey: .pose)
+        frame = try c.decode(Int.self, forKey: .frame)
+        view = try c.decodeIfPresent(SpriteView.self, forKey: .view) ?? .side
+    }
+
+    /// The same key in another view.
+    public func seen(_ view: SpriteView) -> SpriteKey { SpriteKey(subject, pose, frame: frame, view: view) }
+
+    public var description: String { "\(subject) \(pose.rawValue) \(frame)" + (view == .side ? "" : " \(view.rawValue)") }
 
     /// The pose a person or building should show for an activity.
     public static func pose(for activity: Activity, isBuilding: Bool) -> SpritePose {
