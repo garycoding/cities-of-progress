@@ -41,7 +41,7 @@ public struct IndustrialWarriorSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views so far.
-    static let viewed: Set<UnitKind> = [.rifleman]
+    static let viewed: Set<UnitKind> = [.rifleman, .fieldGun]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .industrial) = subject { return Self.viewed.contains(kind) }
