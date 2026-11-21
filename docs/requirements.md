@@ -84,6 +84,8 @@ Each item below is a suggestion, not a ruling. Any of them can be struck, change
 - Every player, human or computer, begins with a separate base: a town centre, two workers and an engineer (ruled 2026-11-18), so that a house can always be built.
 - Ground a player has not explored is hidden; explored ground out of sight of the player's units and buildings shows the terrain but not what opponents are doing there.
 - The match's setup offers a setting "Bridges", allowed or not allowed (ruled 2026-11-21; allowed unless the host says otherwise).
+- The match's setup offers a setting "Starting age": the age every player begins in, from the Stone age to the last age the game has (ruled 2026-11-21; the Stone age unless the host says otherwise). A player begun in a later age has the standard start (a town centre, its people and the starting resources) and, besides, the resources the advances to that age would have cost.
+- The match's setup offers a setting "Map": standard, 96 by 96 tiles, or large, 192 by 192 tiles, with four times the room (ruled 2026-11-21; standard unless the host says otherwise). On the large map the scattered deposits, herds and woods are four times as many; each start's own resources are those of the standard map.
 - The match's setup offers a setting, "What you see", with three values for the people in the match (ruled 2026-11-20); computer players always explore, whatever the value:
   - "Explore the map" (the default): as above.
   - "Map shown": the whole map's ground and deposits are shown from the start; what is happening is seen only where the player's or an ally's units and buildings see.

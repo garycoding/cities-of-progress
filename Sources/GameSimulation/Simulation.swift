@@ -101,6 +101,15 @@ public struct Simulation: GameSimulating {
                         teamIndex: teamIDs.firstIndex(of: p.team) ?? 0, isHuman: p.controller == .human,
                         resources: setup.catalogue.startingResources)
         }
+        // A match begun in a later age (ruled 2026-11-21): every player is in
+        // that age from the start, and holds besides the standard stock what
+        // the advances to it would have cost, so that the age's own work can begin.
+        var age = Age.stone
+        while age < setup.firstAge, let advance = catalogue.advance(from: age), let next = age.next {
+            for p in players.indices { players[p].resources = players[p].resources + advance.cost }
+            age = next
+        }
+        for p in players.indices { players[p].age = age }
         tables = Tables(setup.catalogue)
         rebuildCaches()
         for (i, p) in setup.players.enumerated() {

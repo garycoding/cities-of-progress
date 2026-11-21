@@ -60,11 +60,25 @@ public struct Lobby: Hashable, Codable, Sendable {
     /// Whether bridges may be built, chosen by the host (ruled 2026-11-21);
     /// optional so that older lobbies decode, nil being allowed.
     public var noBridges: Bool?
+    /// The age the match begins in, chosen by the host (ruled 2026-11-21);
+    /// optional so that older lobbies decode, nil being the Stone age.
+    public var startingAge: Age?
+    /// The map's size, chosen by the host (ruled 2026-11-21); optional so that
+    /// older lobbies decode, nil being `.standard`.
+    public var mapSize: MapSize?
 
-    public init(name: String, seats: [Seat], sight: MapSight = .explore, bridges: Bool = true) {
+    public init(name: String, seats: [Seat], sight: MapSight = .explore, bridges: Bool = true,
+                startingAge: Age = .stone, mapSize: MapSize = .standard) {
         self.name = name; self.seats = seats; self.sight = sight == .explore ? nil : sight
         self.noBridges = bridges ? nil : true
+        self.startingAge = startingAge == .stone ? nil : startingAge
+        self.mapSize = mapSize == .standard ? nil : mapSize
     }
+
+    /// The age the match begins in.
+    public var firstAge: Age { startingAge ?? .stone }
+    /// The map's size.
+    public var size: MapSize { mapSize ?? .standard }
 
     /// Whether bridges may be built in the match.
     public var bridges: Bool { noBridges != true }
@@ -88,7 +102,7 @@ public struct Lobby: Hashable, Codable, Sendable {
             return PlayerSetup(id: seat.player, civilization: seat.civilization ?? .sumer, team: seat.team, controller: controller)
         }
         return MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue, sight: sight ?? .explore,
-                          bridges: bridges)
+                          bridges: bridges, startingAge: firstAge)
     }
 }
 

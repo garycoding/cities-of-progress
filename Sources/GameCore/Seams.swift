@@ -63,13 +63,20 @@ public struct MatchSetup: Hashable, Codable, Sendable {
     /// Whether bridges may be built (ruled 2026-11-21: a setting of the match);
     /// optional so that older saves open, nil being allowed.
     public var noBridges: Bool?
+    /// The age every player begins in (ruled 2026-11-21: a setting of the
+    /// match); optional so that older saves open, nil being the Stone age.
+    public var startingAge: Age?
 
     public init(map: GameMap, players: [PlayerSetup], seed: UInt64, catalogue: Catalogue = .standard,
-                sight: MapSight = .explore, bridges: Bool = true) {
+                sight: MapSight = .explore, bridges: Bool = true, startingAge: Age = .stone) {
         self.map = map; self.players = players; self.seed = seed; self.catalogue = catalogue
         self.sight = sight == .explore ? nil : sight
         self.noBridges = bridges ? nil : true
+        self.startingAge = startingAge == .stone ? nil : startingAge
     }
+
+    /// The age every player begins in.
+    public var firstAge: Age { startingAge ?? .stone }
 
     /// Whether bridges may be built in this match.
     public var bridges: Bool { noBridges != true }

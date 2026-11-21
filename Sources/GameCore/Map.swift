@@ -102,6 +102,36 @@ public struct ResourceSite: Hashable, Codable, Sendable {
 }
 
 /// What a map generator is asked for.
+/// How big the map is, chosen when the match is set up (ruled 2026-11-21): the
+/// standard map, or one twice as wide and twice as tall, with four times the
+/// room and four times the resources.
+public enum MapSize: String, Hashable, Codable, Sendable, CaseIterable {
+    case standard
+    case large
+
+    /// The map's width and height, in tiles.
+    public var side: Int {
+        switch self {
+        case .standard: 96
+        case .large: 192
+        }
+    }
+
+    public var title: String {
+        switch self {
+        case .standard: "Standard"
+        case .large: "Large"
+        }
+    }
+
+    public var explanation: String {
+        switch self {
+        case .standard: "A map of 96 by 96 tiles."
+        case .large: "A map of 192 by 192 tiles: four times the room, and four times the resources."
+        }
+    }
+}
+
 public struct MapRequest: Hashable, Codable, Sendable {
     public var width: Int
     public var height: Int
@@ -114,6 +144,10 @@ public struct MapRequest: Hashable, Codable, Sendable {
     public init(width: Int = 96, height: Int = 96, playerCount: Int, seed: UInt64, catalogue: Catalogue = .standard) {
         self.width = width; self.height = height; self.playerCount = playerCount; self.seed = seed
         self.catalogue = catalogue
+    }
+
+    public init(size: MapSize, playerCount: Int, seed: UInt64, catalogue: Catalogue = .standard) {
+        self.init(width: size.side, height: size.side, playerCount: playerCount, seed: seed, catalogue: catalogue)
     }
 }
 
