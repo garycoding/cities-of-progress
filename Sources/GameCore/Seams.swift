@@ -21,6 +21,36 @@ public struct PlayerSetup: Hashable, Codable, Sendable {
     }
 }
 
+/// What the people in a match see of the map (ruled 2026-11-20): one setting
+/// with three values, chosen when the match is set up. It applies to the
+/// people only; computer players always explore.
+public enum MapSight: String, Hashable, Codable, Sendable, CaseIterable {
+    /// The map starts black: ground is shown once explored, and what is
+    /// happening only where the player's or an ally's units see.
+    case explore
+    /// The whole map's ground and deposits are shown from the start; what is
+    /// happening, only where the player's or an ally's units see.
+    case mapShown
+    /// The whole map and everything on it, as it is, all the time.
+    case everything
+
+    public var name: String {
+        switch self {
+        case .explore: "Explore the map"
+        case .mapShown: "Map shown"
+        case .everything: "Everything in view"
+        }
+    }
+
+    public var explanation: String {
+        switch self {
+        case .explore: "The map starts black. You see the ground once explored, and what is happening only where your units are."
+        case .mapShown: "The whole map is shown from the start. You see what is happening only where your units are."
+        case .everything: "You see the whole map and everything on it as it is, all the time."
+        }
+    }
+}
+
 /// Everything needed to start a match.
 public struct MatchSetup: Hashable, Codable, Sendable {
     public var map: GameMap
@@ -28,9 +58,13 @@ public struct MatchSetup: Hashable, Codable, Sendable {
     public var players: [PlayerSetup]
     public var seed: UInt64
     public var catalogue: Catalogue
+    /// What the people see of the map; optional so that older saves open, nil being `.explore`.
+    public var sight: MapSight?
 
-    public init(map: GameMap, players: [PlayerSetup], seed: UInt64, catalogue: Catalogue = .standard) {
+    public init(map: GameMap, players: [PlayerSetup], seed: UInt64, catalogue: Catalogue = .standard,
+                sight: MapSight = .explore) {
         self.map = map; self.players = players; self.seed = seed; self.catalogue = catalogue
+        self.sight = sight == .explore ? nil : sight
     }
 }
 
@@ -53,12 +87,19 @@ public protocol GameSimulating: Codable, Sendable {
     mutating func step()
     /// What the player may know now, with the events since the player's last view.
     mutating func view(for player: PlayerID) -> PlayerView
+    /// The same for a computer player playing that seat, which always explores
+    /// whatever `MapSight` the people were given.
+    mutating func computerView(for player: PlayerID) -> PlayerView
     /// A checksum of the whole state, the same in every process for the same
     /// state. Computed field by field from the simulation's own ordered arrays,
     /// never by hashing an encoding that contains a dictionary. It leaves out
     /// the events waiting for each player's next view, since those depend on
     /// when views are taken.
     func checksum() -> UInt64
+}
+
+extension GameSimulating {
+    public mutating func computerView(for player: PlayerID) -> PlayerView { view(for: player) }
 }
 
 /// The map generator (module `MapGeneration`). The same request gives the same map.

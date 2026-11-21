@@ -8,11 +8,13 @@ import GameCore
 /// seed into a `MatchSetup`. The map comes from elsewhere.
 public struct NewMatchChoice: Hashable, Sendable {
     public var players: [PlayerSetup]
+    /// What the people see of the map.
+    public var sight: MapSight
 
-    public init(players: [PlayerSetup]) { self.players = players }
+    public init(players: [PlayerSetup], sight: MapSight = .explore) { self.players = players; self.sight = sight }
 
     public func setup(map: GameMap, seed: UInt64, catalogue: Catalogue = .standard) -> MatchSetup {
-        MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue)
+        MatchSetup(map: map, players: players, seed: seed, catalogue: catalogue, sight: sight)
     }
 }
 
@@ -54,6 +56,8 @@ public struct NewMatchModel: Hashable, Sendable {
     public var hostName: String
     /// The name under which the match is announced and saved; blank for the default.
     public var matchName: String
+    /// What the people in the match see of the map (ruled 2026-11-20).
+    public var sight: MapSight = .explore
     private var nextID: Int
 
     public init(maxPlayers: Int = 2, civilization: Civilization = .sumer, opponent: Civilization = .egypt,
@@ -201,7 +205,7 @@ public struct NewMatchModel: Hashable, Sendable {
             return GameCore.Seat(player: player.id, team: player.team, kind: .host, civilization: seat.civilization,
                                  holder: host.isEmpty ? "Host" : host)
         }
-        return Lobby(name: lobbyName, seats: seats)
+        return Lobby(name: lobbyName, seats: seats, sight: sight)
     }
 
     /// The players in seat order, numbered from 0; teams are numbered by first
@@ -215,6 +219,6 @@ public struct NewMatchModel: Hashable, Sendable {
             players.append(PlayerSetup(id: PlayerID(i), civilization: seat.civilization, team: TeamID(team),
                                        controller: seat.controller))
         }
-        return NewMatchChoice(players: players)
+        return NewMatchChoice(players: players, sight: sight)
     }
 }

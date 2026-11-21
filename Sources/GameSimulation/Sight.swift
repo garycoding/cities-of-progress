@@ -61,7 +61,13 @@ extension Simulation {
         return (others, founders)
     }
 
-    public mutating func view(for player: PlayerID) -> PlayerView {
+    public mutating func view(for player: PlayerID) -> PlayerView { view(for: player, asComputer: false) }
+
+    /// A computer player always explores (ruled 2026-11-20), even in a person's seat.
+    public mutating func computerView(for player: PlayerID) -> PlayerView { view(for: player, asComputer: true) }
+
+    /// What a player sees: `MapSight` decides for a person, a computer player always explores.
+    mutating func view(for player: PlayerID, asComputer: Bool) -> PlayerView {
         guard let p = slot(player) else {
             return PlayerView(tick: tick, player: player, age: .stone, resources: ResourceAmounts(), population: 0,
                               populationLimit: 0, ageProgress: 0, improvements: [], players: summaries(),
@@ -73,18 +79,28 @@ extension Simulation {
         let team = me.teamIndex
         let count = width * height
         let base = team * count
+        let mode = me.isHuman && !asComputer ? sight ?? .explore : .explore
         var visibility = Array(repeating: TileVisibility.unexplored, count: count)
         for k in 0..<count {
-            if seen[base + k] > 0 { visibility[k] = .visible } else if teams[team].explored[k] { visibility[k] = .explored }
+            if mode == .everything || seen[base + k] > 0 {
+                visibility[k] = .visible
+            } else if mode == .mapShown || teams[team].explored[k] {
+                visibility[k] = .explored
+            }
         }
         var shown: [EntityView] = []
-        for e in entities where e.alive && (teamOf(e.owner) == team || isVisible(e, to: team)) {
+        for e in entities where e.alive && (mode == .everything || teamOf(e.owner) == team || isVisible(e, to: team)) {
             shown.append(entityView(e))
         }
-        let shownSites = sites.filter { $0.remaining > 0 && $0.kind.firstAge <= me.age && isExplored($0.tile, by: team) }
+        let explored = teams[team].explored, width = self.width, height = self.height, revealed = mode != .explore
+        func known(_ site: ResourceSite) -> Bool {
+            revealed || (site.tile.x >= 0 && site.tile.y >= 0 && site.tile.x < width && site.tile.y < height
+                         && explored[site.tile.y * width + site.tile.x])
+        }
+        let shownSites = sites.filter { $0.remaining > 0 && $0.kind.firstAge <= me.age && known($0) }
         // A deposit not yet revealed still blocks its tile, so the view shows it as plain rock.
         let outcrops = sites
-            .filter { $0.remaining > 0 && $0.kind.blocksTile && $0.kind.firstAge > me.age && isExplored($0.tile, by: team) }
+            .filter { $0.remaining > 0 && $0.kind.blocksTile && $0.kind.firstAge > me.age && known($0) }
             .map(\.tile)
             .sorted { ($0.y, $0.x) < ($1.y, $1.x) }
         var progress = 0.0

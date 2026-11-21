@@ -31,6 +31,8 @@ public struct Simulation: GameSimulating {
     public internal(set) var tick = 0
     public internal(set) var outcome: MatchOutcome?
     public var isPaused = false
+    /// What the people see of the map; nil is `.explore` (`MapSight`).
+    public internal(set) var sight: MapSight?
     /// In player order; `players[i].id == PlayerID(i)`.
     var players: [PlayerState]
     /// Ordered by `TeamID`.
@@ -80,6 +82,7 @@ public struct Simulation: GameSimulating {
                      "players are numbered from 0 in setup order")
         precondition(map.starts.count >= setup.players.count, "the map has a start for every player")
         catalogue = setup.catalogue
+        sight = setup.sight
         width = map.width
         height = map.height
         terrain = map.terrain
@@ -109,6 +112,7 @@ public struct Simulation: GameSimulating {
 
     enum CodingKeys: String, CodingKey {
         case catalogue, width, height, terrain, tick, outcome, isPaused, players, teams, entities, sites, nextEntity, generator
+        case sight
     }
 
     public init(from decoder: any Decoder) throws {
@@ -120,6 +124,7 @@ public struct Simulation: GameSimulating {
         tick = try c.decode(Int.self, forKey: .tick)
         outcome = try c.decodeIfPresent(MatchOutcome.self, forKey: .outcome)
         isPaused = try c.decode(Bool.self, forKey: .isPaused)
+        sight = try c.decodeIfPresent(MapSight.self, forKey: .sight)
         players = try c.decode([PlayerState].self, forKey: .players)
         teams = try c.decode([TeamState].self, forKey: .teams)
         entities = try c.decode([Entity].self, forKey: .entities)
