@@ -87,3 +87,16 @@ import Testing
     m.removeSeat(1)
     #expect(m.seats.count == 1 && m.seats[0].isHuman && !m.canStart)
 }
+
+@Test func theSightSettingTravelsToTheMatchAndTheLobby() {
+    var m = NewMatchModel()
+    #expect(m.sight == .explore)
+    m.sight = .everything
+    #expect(m.choice.setup(map: Samples.map(), seed: 7).sight == .everything)
+    #expect(m.lobby.sight == .everything)
+    var lobby = m.lobby
+    lobby.seats = lobby.seats.map { var s = $0; if s.civilization == nil { s.civilization = .rome }; return s }
+    #expect(lobby.setup(map: Samples.map(), seed: 7)?.sight == .everything)
+    m.sight = .explore
+    #expect(m.choice.setup(map: Samples.map(), seed: 7).sight == nil)
+}

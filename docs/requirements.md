@@ -81,6 +81,11 @@ Each item below is a suggestion, not a ruling. Any of them can be struck, change
 - Each match is played on a newly generated map with open ground, forest, prey, lakes, rivers and coast, deposits of stone, copper, tin, gold and iron, and oil fields.
 - Every player, human or computer, begins with a separate base: a town centre, two workers and an engineer (ruled 2026-11-18), so that a house can always be built.
 - Ground a player has not explored is hidden; explored ground out of sight of the player's units and buildings shows the terrain but not what opponents are doing there.
+- The match's setup offers one setting, "What you see", with three values for the people in the match (ruled 2026-11-20); computer players always explore, whatever the value:
+  - "Explore the map" (the default): as above.
+  - "Map shown": the whole map's ground and deposits are shown from the start; what is happening is seen only where the player's or an ally's units and buildings see.
+  - "Everything in view": the whole map and everything on it, as it is, all the time.
+- In a match across the network the host chooses the value, people who join see it in the lobby, and it is saved with the match.
 - The founder appears beside an ally's town centre. The town centre it builds costs no resources.
 - A player who rebuilds keeps the age reached and the resources held.
 - The founder rule applies to every player who has a living ally, computer players included.

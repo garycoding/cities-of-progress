@@ -84,7 +84,7 @@ public struct MatchHost<Simulation: GameSimulating, Computer: ComputerPlaying>: 
         let interval = Self.decisionInterval
         for k in computers.indices where (simulation.tick + k) % interval == 0 {
             let player = computerPlayers[k]
-            let view = simulation.view(for: player)
+            let view = simulation.computerView(for: player)
             for order in computers[k].decide(view: view, catalogue: catalogue) {
                 // A refused order reaches the computer player as an event in its next view.
                 _ = simulation.apply(order, from: player)
