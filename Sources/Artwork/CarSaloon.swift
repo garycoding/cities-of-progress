@@ -7,9 +7,9 @@ import GameCore
 /// The colours of the car. It belongs to no age, so it keeps to no age's
 /// palette: a gloss black body whose shape is carried by cool highlights,
 /// very dark blue glass with a sheen, grey aero wheels on dark tyres. The line
-/// is the one every picture shares (`Ink.line`), and the team's colour sits on
-/// a roundel bordered in the light (`Ink.light`), clear of the black, so that
-/// even Tonga's near-black reads against the body.
+/// is the one every picture shares (`Ink.line`), and the team's colour is a
+/// wide stripe along the bonnet edged in the light (`Ink.light`), clear of the
+/// black, so that even Tonga's near-black reads against the body.
 enum CarInk {
     /// The body's gloss black, a charcoal just off black so that the line and
     /// the darker shades still read on it.
@@ -47,8 +47,8 @@ enum CarInk {
 /// flush handles, a wing mirror, slim head and tail lamps, a closed nose with
 /// a slim intake (it is electric, and has no grille and no exhaust), and aero
 /// wheels with five curved vents on dark tyres. No badge, name or wordmark is
-/// drawn anywhere. The team's colour is on a roundel bordered in the light on
-/// the front door.
+/// drawn anywhere. The team's colour is a wide stripe along the bonnet from
+/// the windscreen to the nose, edged in the light (ruled 2026-11-21).
 ///
 /// Standing (and working, the car parked), it stands still; walking, it
 /// drives: the wheels turn forward and the body rides lightly on its springs.
@@ -107,7 +107,6 @@ enum CarSaloon {
             glasshouse(&svg)
             doors(&svg)
             lamps(&svg)
-            roundel(&svg)
         }
         // The near wheels.
         wheel(&svg, at: rearAxle, degrees: spin)
@@ -132,13 +131,14 @@ enum CarSaloon {
         p.line(P(frontAxle.x - edge, sill) + o)
         arc(&p, centre: frontAxle + o, radius: archRadius, from: .pi - low, to: 2 * .pi + low)
         p.line(P(51, sill) + o)
-        // The nose, rounded and closed.
+        // The nose, rounded and closed, up to the bonnet's far edge.
         p.cubic(P(54.6, sill) + o, P(56.6, -10) + o, P(56.6, -13) + o)
-        p.cubic(P(56.6, -15.6) + o, P(55.8, -17.4) + o, P(53.8, -18.4) + o)
-        // The bonnet, falling to the nose.
-        p.cubic(P(44, -21.6) + o, P(30, -23.4) + o, P(20, -24.6) + o)
+        p.cubic(P(56.8, -16.6) + o, P(57.6, -21.6) + o, farEdge(1) + o)
+        // The bonnet's far edge, rising to the windscreen: the bonnet is seen
+        // a little from above, as the map is, so that its top shows.
+        p.cubic(P(42, -28.8) + o, P(26, -30.6) + o, farEdge(0) + o)
         // The windscreen, raked back into the roof.
-        p.cubic(P(13, -28.6) + o, P(7, -32.8) + o, P(-1, -33.8) + o)
+        p.cubic(P(9.4, -31.4) + o, P(5, -33.4) + o, P(-1, -33.8) + o)
         // The roof, arching over the cabin.
         p.cubic(P(-9, -34.6) + o, P(-19, -34) + o, P(-25, -32.2) + o)
         // The fastback, down to the short boot and its lip.
@@ -182,27 +182,24 @@ enum CarSaloon {
         shade.move(P(-58, -11.4)); shade.cubic(P(-20, -11), P(20, -10.6), P(58, -9.6))
         shade.line(P(58, 0)); shade.line(P(-58, 0)); shade.close()
         svg.path(shade, fill: .colour(CarInk.bodyShade))
+        stripe(&svg)
         svg.raw("</g>")
         svg.path(outline(P(0, 0)), stroke: ink, width: 1.3)
         // The swage line, a crisp highlight from the front wing to the tail.
         var swage = PathData()
-        swage.move(P(52.6, -17)); swage.cubic(P(30, -19.4), P(-20, -20.4), P(-55.4, -21.2))
+        swage.move(P(52, -16.6)); swage.cubic(P(30, -19.2), P(-20, -20.4), P(-55.4, -21.2))
         svg.path(swage, stroke: .colour(CarInk.highlight), width: 0.8, opacity: 0.75)
-        // The light along the bonnet's crown and the shoulder over the rear wheel.
-        var bonnet = PathData()
-        bonnet.move(P(51, -19.4)); bonnet.cubic(P(43, -21.8), P(31, -23.4), P(21.6, -24.4))
-        svg.path(bonnet, stroke: .colour(CarInk.highlight), width: 1.4, opacity: 0.45)
+        // The light along the shoulder over the rear wheel.
         var shoulder = PathData()
         shoulder.move(P(-40, -25.6)); shoulder.cubic(P(-45, -24.6), P(-50, -24.2), P(-53.8, -23.6))
         svg.path(shoulder, stroke: .colour(CarInk.highlight), width: 1.2, opacity: 0.5)
         // The light along the roof's crown, brightest over the cabin.
         var crown = PathData()
-        crown.move(P(12.4, -29.2)); crown.cubic(P(6, -32.6), P(-2, -33.2), P(-8, -33.4))
+        crown.move(P(10.6, -30.8)); crown.cubic(P(6, -32.8), P(-2, -33.2), P(-8, -33.4))
         crown.cubic(P(-15, -33.4), P(-21, -32.4), P(-27, -30.6))
         svg.path(crown, stroke: .colour(CarInk.highlight), width: 0.8, opacity: 0.6)
         svg.path("M2,-33.1 C-2,-33.5 -6,-33.6 -10,-33.5", stroke: .colour(CarInk.glint), width: 0.7, opacity: 0.7)
-        // A glint on the nose, and the light catching each wheel arch's lip.
-        svg.path("M55.4,-12.4 C55.8,-14.4 55.4,-16 54.2,-17.2", stroke: .colour(CarInk.glint), width: 0.8, opacity: 0.6)
+        // The light catching each wheel arch's lip.
         for axle in [rearAxle, frontAxle] {
             var lip = PathData()
             arc(&lip, centre: axle, radius: archRadius - 0.9, from: 1.18 * .pi, to: 1.62 * .pi, start: true)
@@ -213,15 +210,59 @@ enum CarSaloon {
         svg.path("M-55.2,-9.6 C-53.6,-8.4 -51.4,-8.2 -48,-8.2", stroke: .colour(CarInk.seam), width: 1.3)
     }
 
+    /// A point of a cubic curve.
+    static func cubic(_ a: P, _ b: P, _ c: P, _ d: P, _ t: Double) -> P {
+        let u = 1 - t
+        return a * (u * u * u) + b * (3 * u * u * t) + c * (3 * u * t * t) + d * (t * t * t)
+    }
+
+    /// A point of the bonnet's near edge, the crease along the top of the
+    /// front wing, from the foot of the windscreen (`t` 0) to the nose (`t` 1).
+    static func nearEdge(_ t: Double) -> P { cubic(P(20, -24.6), P(30, -23.4), P(44, -21.6), P(53.8, -18.4), t) }
+
+    /// A point of the bonnet's far edge, the outline over it, from the
+    /// windscreen (`t` 0) to the nose (`t` 1).
+    static func farEdge(_ t: Double) -> P { cubic(P(13.4, -29.6), P(26, -30.6), P(42, -28.8), P(55.6, -24.4), t) }
+
+    /// The stripe in the team's colour (ruled 2026-11-21): a wide band over
+    /// the bonnet's top from the windscreen to the nose, filling the top
+    /// between the far edge and the crease, and edged along both and across
+    /// the windscreen's foot in the light, so that it stands clear of the
+    /// black. Drawn inside the body's clip, so that the nose rounds it off;
+    /// the glass, drawn after, covers it behind the windscreen's foot.
+    static func stripe(_ svg: inout SVG) {
+        let steps = 16
+        let ts = (0...steps).map { Double($0) / Double(steps) }
+        let ahead = 60.0
+        let crease = ts.map(nearEdge) + [P(57.4, -18)]
+        var band = ts.map { farEdge($0) + P(0, -2) }
+        band.append(P(ahead, farEdge(1).y - 2)); band.append(P(ahead, crease.last!.y))
+        band += crease.reversed()
+        band.append(cowl.top + P(-2, -2))
+        svg.polygon(band, fill: .team)
+        // The light edges: along the far edge, along the crease, and across the windscreen's foot.
+        svg.line(ts.map { farEdge($0) + P(0.1, 1.05) } + [P(57.2, -23.2)], stroke: .colour(Ink.light), width: 0.9)
+        svg.line(crease.map { $0 + P(0, -0.6) }, stroke: .colour(Ink.light), width: 1.1)
+        svg.line([cowl.foot + P(-0.2, -0.9), cowl.top + P(1.2, 0.2)], stroke: .colour(Ink.light), width: 1)
+        // The crease itself, a fine line with the light of the wing under it.
+        svg.line(crease, stroke: .colour(Ink.line), width: 0.6)
+        svg.line(crease.map { $0 + P(0, 0.6) }, stroke: .colour(CarInk.highlight), width: 0.5, opacity: 0.6)
+    }
+
+    /// The foot of the windscreen, seen across the bonnet's top: from the near
+    /// side, where the side glass begins, to the far edge.
+    static let cowl = (foot: P(19.2, -24.9), top: P(13.4, -29.6))
+
     /// The glass: the windscreen's edge, the side windows and the rear glass in
     /// one dark sweep under the roof, divided by the dark pillars, with a sheen.
     static func glasshouse(_ svg: inout SVG) {
         var glass = PathData()
-        glass.move(P(18.6, -24.9))
-        glass.cubic(P(12.4, -28.6), P(6.6, -32.2), P(-1, -32.7))
+        glass.move(cowl.foot)
+        glass.line(cowl.top + P(-0.3, 0.3))
+        glass.cubic(P(9, -31.2), P(5, -32.4), P(-1, -32.7))
         glass.cubic(P(-9, -33.4), P(-18.4, -32.8), P(-24.2, -31.1))
         glass.cubic(P(-31, -29), P(-36.4, -27.4), P(-41.4, -26))
-        glass.cubic(P(-30, -25.9), P(0, -25.2), P(18.6, -24.9))
+        glass.cubic(P(-30, -25.9), P(0, -25.2), cowl.foot)
         glass.close()
         svg.raw("<clipPath id=\"car-glass\"><path d=\"\(glass.text)\"/></clipPath>")
         svg.path(glass, fill: .colour(CarInk.glass))
@@ -241,17 +282,17 @@ enum CarSaloon {
         svg.path(glass, stroke: .colour(Ink.line), width: 0.9)
         // The thin dark rail where the glass meets the body.
         var belt = PathData()
-        belt.move(P(-41, -25.9)); belt.cubic(P(-30, -25.8), P(0, -25.1), P(18.8, -24.8))
+        belt.move(P(-41, -25.9)); belt.cubic(P(-30, -25.8), P(0, -25.1), cowl.foot)
         svg.path(belt, stroke: .colour(CarInk.seam), width: 0.8)
         // The wing mirror on its stalk at the foot of the windscreen.
         BronzePeopleProps.shape(&svg, fill: .colour(CarInk.body), width: 0.8) { o in
             var m = PathData()
-            m.move(P(13.6, -25.4) + o); m.cubic(P(13.4, -27.6) + o, P(15.6, -28.6) + o, P(18.4, -28) + o)
-            m.cubic(P(19.6, -27.6) + o, P(19.6, -25.6) + o, P(18, -25.2) + o)
+            m.move(P(10.6, -25.2) + o); m.cubic(P(10.4, -27.4) + o, P(12.6, -28.4) + o, P(15.4, -27.8) + o)
+            m.cubic(P(16.6, -27.4) + o, P(16.6, -25.4) + o, P(15, -25) + o)
             m.close()
             return m
         }
-        svg.path("M14.6,-27 C15.6,-27.9 17,-28.1 18.2,-27.7", stroke: .colour(CarInk.highlight), width: 0.6, opacity: 0.6)
+        svg.path("M11.6,-26.8 C12.6,-27.7 14,-27.9 15.2,-27.5", stroke: .colour(CarInk.highlight), width: 0.6, opacity: 0.6)
     }
 
     /// The doors' cuts, their flush handles, the bonnet's shut line and the
@@ -283,15 +324,15 @@ enum CarSaloon {
                  fill: .colour(CarInk.seam))
     }
 
-    /// The slim head lamp swept back along the nose, and the slim tail lamp
+    /// The slim head lamp swept back under the bonnet's crease, and the slim tail lamp
     /// along the boot's edge.
     static func lamps(_ svg: inout SVG) {
         var head = PathData()
-        head.move(P(55.8, -16.2)); head.cubic(P(53.6, -18), P(51, -19.2), P(47.6, -19.8))
-        head.cubic(P(47.4, -19), P(48, -18.4), P(48.6, -18.2)); head.cubic(P(51.4, -17.6), P(53.6, -16.4), P(55.6, -14.8))
+        head.move(P(56.4, -16.4)); head.cubic(P(54, -17.2), P(51, -18.4), P(47.6, -19.2))
+        head.cubic(P(47.4, -18.4), P(48, -17.8), P(48.6, -17.6)); head.cubic(P(51.4, -17), P(53.8, -15.8), P(56.2, -14.6))
         head.close()
         svg.path(head, fill: .colour(CarInk.lens), stroke: .colour(Ink.line), width: 0.6)
-        svg.path("M54.6,-15.8 C52.8,-17.2 50.6,-18.2 48.6,-18.8", stroke: .colour(CarInk.lamp), width: 0.6)
+        svg.path("M55.4,-15.6 C53.2,-16.4 50.8,-17.4 48.6,-18.2", stroke: .colour(CarInk.lamp), width: 0.6)
         var tail = PathData()
         tail.move(P(-55.6, -22.6)); tail.cubic(P(-53.4, -23), P(-50.4, -23.2), P(-47.6, -23.6))
         tail.cubic(P(-47.4, -22.6), P(-47.6, -22), P(-48.4, -21.8)); tail.cubic(P(-51, -21.4), P(-53.6, -21.2), P(-55.8, -20.6))
@@ -300,16 +341,6 @@ enum CarSaloon {
         svg.path("M-55,-21.8 C-53,-22.2 -50.6,-22.4 -48.6,-22.7", stroke: .colour(CarInk.tailLit), width: 0.5)
         // A small reflector low on the tail.
         svg.line([P(-56, -12.6), P(-55.6, -10.6)], stroke: .colour(CarInk.tail), width: 0.8)
-    }
-
-    /// The roundel in the team's colour on the front door, bordered in the
-    /// light so that it stands clear of the black.
-    static func roundel(_ svg: inout SVG) {
-        let c = P(5.4, -15)
-        svg.circle(c + P(-0.4, 0.4), 5.4, fill: .colour(Ink.light))
-        svg.circle(c, 5.4, fill: .none, stroke: .colour(Ink.line), width: 0.8)
-        svg.circle(c + P(-0.3, 0.3), 3.9, fill: .team)
-        svg.circle(c, 3.9, fill: .none, stroke: .colour(Ink.line), width: 0.6)
     }
 
     // MARK: The wheels

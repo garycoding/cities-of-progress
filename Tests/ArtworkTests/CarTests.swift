@@ -136,10 +136,14 @@ private struct CarPixels: Equatable {
 }
 
 /// Renders the car for a person to judge, into the directory named by the
-/// environment variable `CAR_RENDERS`; skipped when it is not set.
+/// environment variable `CAR_RENDERS`, each file's name ending with the
+/// environment variable `CAR_RENDERS_SUFFIX` (for example `-v2`) where it is
+/// set, so that a round of corrections keeps the earlier renders; skipped when
+/// `CAR_RENDERS` is not set.
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["CAR_RENDERS"] != nil))
 struct CarRenders {
     private let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["CAR_RENDERS"] ?? "/", isDirectory: true)
+    private let suffix = ProcessInfo.processInfo.environment["CAR_RENDERS_SUFFIX"] ?? ""
 
     /// Each pose's 12 frames enlarged in two rows of six, for looking at frame by frame.
     @Test func posesAsStrips() throws {
@@ -159,7 +163,7 @@ struct CarRenders {
                 context.draw(image, in: CGRect(x: x, y: y, width: Double(cellW), height: Double(cellH)))
                 Preview.label("\(frame)", in: context, at: CGPoint(x: x + 8, y: y + 8), size: 18)
             }
-            try Preview.writePNG(context.makeImage()!, to: strips.appendingPathComponent("car-\(pose.rawValue).png"))
+            try Preview.writePNG(context.makeImage()!, to: strips.appendingPathComponent("car-\(pose.rawValue)\(suffix).png"))
         }
     }
 
@@ -197,7 +201,7 @@ struct CarRenders {
                 frames.append(context.makeImage()!)
             }
         }
-        try Preview.writeGIF(frames, to: directory.appendingPathComponent("car.gif"))
+        try Preview.writeGIF(frames, to: directory.appendingPathComponent("car\(suffix).gif"))
     }
 
     /// The car at game size, and enlarged twice without smoothing, on each
@@ -229,7 +233,7 @@ struct CarRenders {
             let image = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
             Preview.place(image, anchor: sprite.anchor, at: CGPoint(x: 560, y: bottom + 30), in: context, scale: 2)
         }
-        try Preview.writePNG(context.makeImage()!, to: directory.appendingPathComponent("on-every-ground.png"))
+        try Preview.writePNG(context.makeImage()!, to: directory.appendingPathComponent("on-every-ground\(suffix).png"))
     }
 
     /// The car beside the Industrial armoured car and the Industrial worker
@@ -277,6 +281,6 @@ struct CarRenders {
             }
         }
         Preview.label("at game size", in: context, at: CGPoint(x: 1150, y: Double(height) - 84), size: 18)
-        try Preview.writePNG(context.makeImage()!, to: directory.appendingPathComponent("contact-sheet.png"))
+        try Preview.writePNG(context.makeImage()!, to: directory.appendingPathComponent("contact-sheet\(suffix).png"))
     }
 }
