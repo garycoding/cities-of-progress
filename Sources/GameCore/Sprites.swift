@@ -44,6 +44,10 @@ public struct SpritePose: RawRepresentable, Hashable, Codable, Sendable, Express
     public static let fighting: SpritePose = "fighting"
     public static let complete: SpritePose = "complete"
     public static let underConstruction: SpritePose = "under-construction"
+    /// A site on a water tile (ruled 2026-11-21): a rock rising from the water,
+    /// with a waterline and ripples and no shadow on the ground. The drawing
+    /// falls back to `.complete` where it is missing.
+    public static let afloat: SpritePose = "afloat"
 }
 
 /// Which way a person is seen in a sprite (ruled 2026-11-21: eight facings,
