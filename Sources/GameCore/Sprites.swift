@@ -95,9 +95,9 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
         for stats in catalogue.buildings where stats.age <= age {
             for look in ages where look >= stats.age {
                 if stats.kind == .bridge {
-                    for run in BridgeRun.allCases {
-                        keys.append(SpriteKey(.building(.bridge, look), run.pose(complete: true)))
-                        keys.append(SpriteKey(.building(.bridge, look), run.pose(complete: false)))
+                    for place in BridgePlace.drawings {
+                        keys.append(SpriteKey(.building(.bridge, look), place.pose(complete: true)))
+                        keys.append(SpriteKey(.building(.bridge, look), place.pose(complete: false)))
                     }
                     continue
                 }

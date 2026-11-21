@@ -115,11 +115,64 @@ public enum BridgeRun: Int, CaseIterable, Codable, Sendable, Hashable {
         return nil
     }
 
-    /// The pose naming a bridge piece's drawing, complete or under construction.
-    public func pose(complete: Bool) -> SpritePose {
-        let name = self == .alongX ? "along-x" : "along-y"
-        return SpritePose(rawValue: complete ? "bridge-\(name)" : "bridge-\(name)-under-construction")
+    /// The step from a tile to the next across the run: toward the foot of
+    /// the screen, where a bridge's second row lies.
+    public var across: GridPoint { self == .alongX ? GridPoint(0, 1) : GridPoint(1, 0) }
+}
+
+/// A bridge piece's place in its bridge (ruled 2026-11-21): a bridge is two
+/// tiles wide, a lane in each row, and rises from each bank toward its middle.
+public struct BridgePlace: Codable, Sendable, Hashable {
+    /// How much the deck rises over each piece, in points, and how high it may rise.
+    public static let rise = 4, top = 12
+
+    public var run: BridgeRun
+    /// 0 for the row dragged, 1 for the row beside it (`BridgeRun.across`).
+    public var lane: Int
+    /// The piece's place along its row, from 0 at the end nearer the map's
+    /// origin, and how many pieces the row has.
+    public var index: Int
+    public var count: Int
+
+    public init(run: BridgeRun, lane: Int, index: Int, count: Int) {
+        self.run = run; self.lane = lane; self.index = index; self.count = count
     }
+
+    /// The deck's height in points `position` pieces from the row's start (0 to `count`).
+    public func height(at position: Int) -> Int {
+        max(0, min(Self.rise * position, Self.rise * (count - position), Self.top))
+    }
+
+    /// The deck's height at the piece's back edge (nearer the map's origin) and at its front.
+    public var heights: (back: Int, front: Int) { (height(at: index), height(at: index + 1)) }
+
+    /// Whether the piece is the middle of its row, where a gatehouse may stand.
+    public var middle: Bool { index == count / 2 }
+
+    /// The pose naming the piece's drawing, complete or under construction.
+    public func pose(complete: Bool) -> SpritePose {
+        let name = run == .alongX ? "along-x" : "along-y"
+        let (back, front) = heights
+        return SpritePose(rawValue: "bridge-\(name)-lane-\(lane)-from-\(back)-to-\(front)" + (middle ? "-middle" : "")
+                          + (complete ? "" : "-under-construction"))
+    }
+
+    /// One piece of every drawing a bridge may need: each run, lane, pair of
+    /// heights and middle or not, in rows of every length up to `BridgeRule.maxWater`.
+    public static let drawings: [BridgePlace] = {
+        var seen = Set<SpritePose>(), out: [BridgePlace] = []
+        for run in BridgeRun.allCases {
+            for lane in 0...1 {
+                for count in 1...BridgeRule.maxWater {
+                    for index in 0..<count {
+                        let place = BridgePlace(run: run, lane: lane, index: index, count: count)
+                        if seen.insert(place.pose(complete: true)).inserted { out.append(place) }
+                    }
+                }
+            }
+        }
+        return out
+    }()
 }
 
 /// Either kind of thing a player owns on the map.

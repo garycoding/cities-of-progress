@@ -166,7 +166,7 @@ extension Simulation {
                               tile: e.isPerson ? e.position.tile : e.origin, facing: e.facing, health: max(0, e.health),
                               maxHealth: e.maxHealth, activity: activity(of: e),
                               remaining: remaining(of: e))
-        view.bridgeRun = e.bridgeRun
+        view.bridgePlace = e.bridgePlace
         if e.unitKind == .car, e.doing == .fighting, case .attack(let target) = e.task, let t = index(of: target) {
             view.laserTarget = entities[t].position
         }

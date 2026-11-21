@@ -49,10 +49,35 @@ public enum Placement {
     /// the line of `bridgeWater`, every tile of it explored, and no building on
     /// its water.
     public static func canBridge(from a: GridPoint, to b: GridPoint, in view: PlayerView) -> Bool {
-        guard let water = bridgeWater(from: a, to: b, width: view.mapWidth, height: view.mapHeight, terrain: view.terrain)
+        guard let rows = bridgeRows(from: a, to: b, width: view.mapWidth, height: view.mapHeight, terrain: view.terrain)
         else { return false }
         let built = Set(view.entities.compactMap { e -> GridPoint? in if case .building = e.kind { e.tile } else { nil } })
-        return ([a, b] + water).allSatisfy { view.visibility(at: $0) != .unexplored } && !water.contains(where: built.contains)
+        let water = rows.flatMap { $0 }
+        return (bridgeEnds(from: a, to: b) + water).allSatisfy { view.visibility(at: $0) != .unexplored }
+            && !water.contains(where: built.contains)
+    }
+
+    /// The four land tiles a bridge from `a` to `b` rests on: `a` and `b`, and
+    /// the tiles beside them on the second row's side.
+    public static func bridgeEnds(from a: GridPoint, to b: GridPoint) -> [GridPoint] {
+        guard let run = BridgeRun.of(from: a, to: b) else { return [a, b] }
+        let d = run.across
+        return [a, b, GridPoint(a.x + d.x, a.y + d.y), GridPoint(b.x + d.x, b.y + d.y)]
+    }
+
+    /// The water tiles of a bridge's two rows (ruled 2026-11-21: two tiles
+    /// wide): the row dragged from `a` to `b`, and the row beside it toward
+    /// the foot of the screen (`BridgeRun.across`), each in order from `a`'s
+    /// end; nil unless both rows are lines of `bridgeWater` of the same length.
+    public static func bridgeRows(from a: GridPoint, to b: GridPoint, width: Int, height: Int,
+                                  terrain: [Terrain]) -> [[GridPoint]]? {
+        guard let run = BridgeRun.of(from: a, to: b),
+              let first = bridgeWater(from: a, to: b, width: width, height: height, terrain: terrain) else { return nil }
+        let d = run.across
+        guard let second = bridgeWater(from: GridPoint(a.x + d.x, a.y + d.y), to: GridPoint(b.x + d.x, b.y + d.y),
+                                       width: width, height: height, terrain: terrain),
+              second.count == first.count else { return nil }
+        return [first, second]
     }
 
     /// The end of a bridge dragged from `start` toward `pointer`: the pointer's

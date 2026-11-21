@@ -175,9 +175,10 @@ extension Simulation {
         return .accepted
     }
 
-    /// A bridge (ruled 2026-11-21): a piece on each water tile of the line, all
-    /// paid for at once; the engineers begin at the piece beside `from`, and
-    /// each, on finishing a piece, goes on to the next (`nextConstruction`).
+    /// A bridge (ruled 2026-11-21): two tiles wide, a piece on each water tile
+    /// of both rows (`Placement.bridgeRows`), all paid for at once; the
+    /// engineers begin at the piece beside `from`, and each, on finishing a
+    /// piece, goes on to the next (`nextConstruction`).
     mutating func buildBridge(_ ids: [EntityID], from: GridPoint, to: GridPoint, player: PlayerID) -> OrderResult {
         guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
         let engineers = people.filter { entities[$0].unitKind == .engineer }
@@ -185,19 +186,25 @@ extension Simulation {
         let p = player.rawValue
         let stats = tables.building(.bridge)
         guard players[p].age >= stats.age else { return .refused(.ageNotReached(stats.age)) }
-        guard let water = Placement.bridgeWater(from: from, to: to, width: width, height: height, terrain: terrain),
+        guard let rows = Placement.bridgeRows(from: from, to: to, width: width, height: height, terrain: terrain),
               let run = BridgeRun.of(from: from, to: to),
-              ([from, to] + water).allSatisfy({ isExplored($0, byPlayer: p) }),
-              water.allSatisfy({ buildingAt[tileIndex($0)] < 0 })
+              (Placement.bridgeEnds(from: from, to: to) + rows.flatMap { $0 }).allSatisfy({ isExplored($0, byPlayer: p) }),
+              rows.flatMap({ $0 }).allSatisfy({ buildingAt[tileIndex($0)] < 0 })
         else { return .refused(.placementBlocked) }
+        let pieces = rows.flatMap { $0 }
         var cost = ResourceAmounts()
-        for r in Resource.allCases { cost[r] = stats.cost[r] * water.count }
+        for r in Resource.allCases { cost[r] = stats.cost[r] * pieces.count }
         if let short = pay(cost, p) { return .refused(short) }
         var first: EntityID?
-        for t in water {
-            let b = placeBuilding(.bridge, owner: player, origin: t, complete: false)
-            entities[b].bridgeRun = run
-            if first == nil { first = entities[b].id }
+        let count = rows[0].count
+        for (lane, row) in rows.enumerated() {
+            let low = row.map { run == .alongX ? $0.x : $0.y }.min()!
+            for t in row {
+                let b = placeBuilding(.bridge, owner: player, origin: t, complete: false)
+                entities[b].bridgePlace = BridgePlace(run: run, lane: lane, index: (run == .alongX ? t.x : t.y) - low,
+                                                      count: count)
+                if first == nil { first = entities[b].id }
+            }
         }
         for i in engineers { assign(i, .work(first!)) }
         return .accepted
