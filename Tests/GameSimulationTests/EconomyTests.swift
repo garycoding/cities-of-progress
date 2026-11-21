@@ -182,6 +182,27 @@ private let load = Catalogue.standard.gathering.load
         #expect(!sim.living(far).complete)
     }
 
+    @Test func aPersonsJobIsShownToItsPlayerOnly() {
+        var sim = duel(sites: [(.tree, 8, 6)])
+        sim.exploreAll(me)
+        let worker = sim.people(me, .worker)[0], engineer = sim.add(.engineer, me, 6.5, 6.5)
+        #expect(sim.apply(.gather(units: [worker], site: SiteID(0)), from: me) == .accepted)
+        #expect(sim.apply(.construct(engineers: [engineer], building: .house, at: GridPoint(11, 2)), from: me) == .accepted)
+        sim.step()
+        var view = sim.view(for: me)
+        #expect(view.entity(worker)?.job == .gathering(.tree))
+        #expect(view.entity(engineer)?.job == .constructing)
+        // Carrying the wood back, the lumberjack keeps the job.
+        let carrying = sim.run(until: { $0.living(worker).cargo != nil && $0.living(worker).doing != .gathering },
+                               limit: 60 * Tick.rate)
+        #expect(carrying)
+        view = sim.view(for: me)
+        #expect(view.entity(worker)?.job == .gathering(.tree))
+        // An opponent's people carry no job in this player's view.
+        let theirs = sim.add(.worker, them, 7.5, 7.5)
+        #expect(sim.view(for: me).entity(theirs)?.job == nil)
+    }
+
     @Test func constructionIsRefusedWherePlacementForbidsIt() {
         var sim = duel(sites: [(.tree, 8, 6)], water: [GridPoint(12, 8)])
         let engineer = sim.add(.engineer, me, 6.5, 6.5)

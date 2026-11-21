@@ -50,6 +50,16 @@ extension MapScene {
         session.selection = MapCommands.selection(afterClickOn: hit?.id, current: session.selection, additive: additive)
     }
 
+    /// A double-click: select the player's own people on the screen of the kind
+    /// and job of the one clicked.
+    public func doubleClick(at point: CGPoint) {
+        guard session.placing == nil else { return }
+        let hit = MapHitTesting.entity(at: point, in: session.view, geometry: geometry, catalogue: session.catalogue,
+                                       drawnHeight: { [entityNodes] in entityNodes[$0.id]?.drawnHeight })
+        let onScreen = MapHitTesting.ownPeople(in: CGRect(origin: .zero, size: size), view: session.view, geometry: geometry)
+        session.selection = MapCommands.selection(afterDoubleClickOn: hit?.id, onScreen: onScreen, view: session.view)
+    }
+
     /// A dragged box: select the player's own people inside it.
     public func selectBox(from a: CGPoint, to b: CGPoint, additive: Bool = false) {
         let box = CGRect(x: min(a.x, b.x), y: min(a.y, b.y), width: abs(a.x - b.x), height: abs(a.y - b.y))
@@ -174,7 +184,10 @@ extension MapScene {
     public override func mouseDragged(with event: NSEvent) { continueDrag(to: event.location(in: self)) }
 
     public override func mouseUp(with event: NSEvent) {
+        let wasBox = dragIsBox
         endDrag(at: event.location(in: self), additive: event.modifierFlags.contains(.shift))
+        // The first click of a double-click has selected the one clicked; the second widens it.
+        if event.clickCount == 2, !wasBox { doubleClick(at: event.location(in: self)) }
     }
 
     public override func mouseMoved(with event: NSEvent) { pointer = event.location(in: self) }

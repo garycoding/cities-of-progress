@@ -20,6 +20,21 @@ public enum MapCommands {
         return current + [hit]
     }
 
+    /// The selection after a double-click on `hit`: the player's own people of
+    /// the same kind and the same job (`EntityView.job`) among `onScreen`, the
+    /// player's people in the current window (ruled 2026-11-20). A double-click
+    /// on anything else selects as a single click does.
+    public static func selection(afterDoubleClickOn hit: EntityID?, onScreen: [EntityID], view: PlayerView) -> [EntityID] {
+        guard let hit, let clicked = view.entity(hit), clicked.owner == view.player, case .unit = clicked.kind else {
+            return hit.map { [$0] } ?? []
+        }
+        let alike = onScreen.filter { id in
+            guard let e = view.entity(id) else { return false }
+            return e.owner == view.player && e.kind == clicked.kind && e.job == clicked.job
+        }
+        return alike.contains(hit) ? alike : [hit] + alike
+    }
+
     /// The selection after a box that holds `boxed` (the player's own people).
     /// With `additive` they are added to the selection; otherwise they replace it.
     public static func selection(afterBoxHolding boxed: [EntityID], current: [EntityID], additive: Bool) -> [EntityID] {
