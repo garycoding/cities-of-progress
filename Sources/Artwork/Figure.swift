@@ -22,10 +22,10 @@ protocol PersonLook: Sendable {
 extension PersonLook {
     /// A frame of a pose drawn as a sprite's picture and mask, grained alike;
     /// nil where the kind has no such pose.
-    func render(_ pose: SpritePose, frame: Int, canvas: Canvas = .person) -> Rendered? {
+    func render(_ pose: SpritePose, frame: Int, canvas: Canvas = .person, view: SpriteView = .side) -> Rendered? {
         guard let rig = rig(pose, frame) else { return nil }
         return Raster.render(on: canvas) { svg in
-            var drawing = Drawing(layer: svg.layer, rig: rig, phase: Double(frame) / 12)
+            var drawing = Drawing(layer: svg.layer, rig: rig, phase: Double(frame) / 12, view: view)
             draw(&drawing, pose, frame)
             svg = drawing.svg
         }
@@ -181,14 +181,18 @@ struct Drawing {
     /// How far the figure is raised so that its lower foot rests on the ground.
     let bob: Double
 
+    /// The view the figure is seen from (ruled 2026-11-21: five views).
+    let view: SpriteView
+
     /// The pivot of the lean, at the hips.
     static let hips = P(0, -14)
 
-    init(layer: Layer, rig: Rig, phase: Double) {
+    init(layer: Layer, rig: Rig, phase: Double, view: SpriteView = .side) {
         svg = SVG(layer: layer)
         self.rig = rig
         joints = Joints(rig)
         self.phase = phase
+        self.view = view
         // The lower foot rests on the ground. The legs do not lean with the body
         // (`legs()`), so that both feet can stay planted in a lunge.
         bob = -max(joints.backFoot.y, joints.frontFoot.y)
@@ -209,6 +213,7 @@ struct Drawing {
     /// Both legs, upright whatever the body's lean: their angles are taken from
     /// straight down on the ground, not from the leaning body.
     mutating func legs() {
+        if view != .side { legsInView(); return }
         let front = legPath(Joints.frontHip, joints.frontKnee, joints.frontFoot)
         let back = legPath(Joints.backHip, joints.backKnee, joints.backFoot)
         svg.group(turned: -rig.lean, about: Drawing.hips) { svg in
@@ -221,6 +226,7 @@ struct Drawing {
     func worldFoot(front: Bool) -> P { (front ? joints.frontFoot : joints.backFoot) + P(0, bob) }
 
     mutating func arm(front: Bool, width: Double = 1.9) {
+        if view != .side { armsInView(front: front, width: width); return }
         let points = front ? [joints.frontShoulder, joints.frontElbow, joints.frontHand]
             : [joints.backShoulder, joints.backElbow, joints.backHand]
         svg.line(points, stroke: .colour(Ink.line), width: width)
@@ -241,6 +247,10 @@ struct Drawing {
     mutating func head(nose: Nose, behind: (inout Drawing) -> Void = { _ in }, hair: (inout Drawing) -> Void,
                        features: (inout Drawing) -> Void = { _ in }, brow: (inout Drawing) -> Void,
                        over: (inout Drawing) -> Void = { _ in }) {
+        if view != .side {
+            headInView(nose: nose, behind: behind, hair: hair, features: features, brow: brow, over: over)
+            return
+        }
         let tilt = rig.headTilt
         svg.raw("<g transform=\"translate(0,\(num(chest.y))) rotate(\(num(tilt)) 0 -48)\">")
         behind(&self)
@@ -300,7 +310,9 @@ struct Drawing {
     /// raised by the bob and leaned about the hips.
     mutating func figure(_ content: (inout Drawing) -> Void) {
         svg.ellipse(P(0, 0), 13, 3.5, fill: .colour("#000000"), opacity: 0.13)
-        svg.raw("<g transform=\"translate(0,\(num(bob))) rotate(\(num(rig.lean)) \(num(Drawing.hips.x)) \(num(Drawing.hips.y)))\">")
+        // Seen from another side, the lean in the body's own plane turns the figure on the screen by less.
+        let lean = rig.lean * cos(yaw * .pi / 180)
+        svg.raw("<g transform=\"translate(0,\(num(bob))) rotate(\(num(lean)) \(num(Drawing.hips.x)) \(num(Drawing.hips.y)))\">")
         content(&self)
         svg.raw("</g>")
     }
@@ -317,6 +329,12 @@ struct Drawing {
     /// band, then the outline drawn loosely over them.
     mutating func garment(colour: [P], outline: [P], fill: Paint, pattern: (inout Drawing) -> Void = { _ in },
                           width: Double = 1.8) {
+        if view != .side {
+            svg.polygon(turned(colour).map(up), fill: fill)
+            pattern(&self)
+            svg.polygon(turned(outline).map(up), fill: .none, stroke: .colour(Ink.line), width: width)
+            return
+        }
         svg.polygon(colour.map(up), fill: fill)
         pattern(&self)
         svg.polygon(outline.map(up), fill: .none, stroke: .colour(Ink.line), width: width)
@@ -324,11 +342,13 @@ struct Drawing {
 
     /// A band of cloth across the body, in the team's colour unless another is given.
     mutating func band(_ points: [P], fill: Paint = .team) {
+        if view != .side { svg.polygon(turned(points).map(up), fill: fill); return }
         svg.polygon(points.map(up), fill: fill)
     }
 
     /// A zigzag hem from `from` to `to`, its teeth `depth` deep.
     mutating func zigzag(from: P, to: P, teeth: Int, depth: Double, width: Double = 1.3) {
+        let from = onBody(from), to = onBody(to)
         var d = PathData()
         d.move(from)
         for i in 1...(teeth * 2) {

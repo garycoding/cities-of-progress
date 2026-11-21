@@ -39,7 +39,9 @@ public final class GameSprites: SpriteSource {
 
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
         if let known = cache.withLock({ $0[key] }) { return known }
-        let found = batches.lazy.compactMap { $0.sprite(key) }.first
+        let found = batches.lazy.filter { batch in
+            key.view == .side || (batch as? any ViewedSpriteSource)?.drawsViews(of: key.subject) == true
+        }.compactMap { $0.sprite(key) }.first
         cache.withLock { $0[key] = found }
         return found
     }

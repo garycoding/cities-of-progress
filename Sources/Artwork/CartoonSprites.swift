@@ -19,7 +19,7 @@ import Synchronization
 /// with the same grain in every frame (docs/decisions.md, "Verifications"). A
 /// pose's frames are drawn together when the first of them is asked for, and
 /// kept; the source can therefore be called from the main actor during drawing.
-public final class CartoonSprites: SpriteSource {
+public final class CartoonSprites: ViewedSpriteSource {
     /// The frames in each pose's cycle, shown at 12 a second (docs/art-style.md, "Movement").
     public static let framesPerPose = 12
 
@@ -43,26 +43,36 @@ public final class CartoonSprites: SpriteSource {
         poses.flatMap { pose in (0..<Self.framesPerPose).map { SpriteKey(pose.subject, pose.pose, frame: $0) } }
     }
 
+    /// The kinds drawn in all five views so far (ruled 2026-11-21): the worker, as the exemplar.
+    static let viewed: Set<UnitKind> = [.worker]
+
+    public func drawsViews(of subject: SpriteSubject) -> Bool {
+        if case .unit(let kind, .stone) = subject { return Self.viewed.contains(kind) }
+        return false
+    }
+
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
         guard (0..<Self.framesPerPose).contains(key.frame),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)),
+              key.view == .side || drawsViews(of: key.subject),
               case .unit(let kind, _) = key.subject else { return nil }
         if let known = cache.withLock({ $0[key] }) { return known }
-        let drawn = Self.drawPose(kind, key.pose)
+        let drawn = Self.drawPose(kind, key.pose, view: key.view)
         cache.withLock { cache in
             for (frame, sprite) in drawn.enumerated() {
-                if let sprite { cache[SpriteKey(key.subject, key.pose, frame: frame)] = sprite }
+                if let sprite { cache[SpriteKey(key.subject, key.pose, frame: frame, view: key.view)] = sprite }
             }
         }
         return drawn[key.frame]
     }
 
     /// The 12 frames of a pose, drawn side by side on the machine's cores.
-    static func drawPose(_ kind: UnitKind, _ pose: SpritePose, canvas: Canvas = .person) -> [SpriteImage?] {
+    static func drawPose(_ kind: UnitKind, _ pose: SpritePose, canvas: Canvas = .person,
+                         view: SpriteView = .side) -> [SpriteImage?] {
         guard let look = StonePeople.person(kind) else { return Array(repeating: nil, count: framesPerPose) }
         let frames = Mutex<[Int: SpriteImage]>([:])
         DispatchQueue.concurrentPerform(iterations: framesPerPose) { frame in
-            guard let drawn = look.render(pose, frame: frame, canvas: canvas) else { return }
+            guard let drawn = look.render(pose, frame: frame, canvas: canvas, view: view) else { return }
             let sprite = drawn.sprite(anchor: canvas.anchor)
             frames.withLock { $0[frame] = sprite }
         }
