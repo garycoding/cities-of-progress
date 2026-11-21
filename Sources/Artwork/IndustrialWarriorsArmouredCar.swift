@@ -83,6 +83,7 @@ struct IndustrialWarriorsArmouredCar: PersonLook {
     // MARK: Drawing
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         // The wheels roll forward as the car drives (a rolling wheel's angle falls).
         let spin = pose == .walking ? -Double(frame) * Self.turn : 0
         let ride = Self.ride(pose, frame)
@@ -378,6 +379,328 @@ struct IndustrialWarriorsArmouredCar: PersonLook {
             let base = gunRoot + lift + P(4, 3)
             IndustrialWarriorsKit.spentCase(&svg, at: base + P(-Double(age) * 1.2, Double(age) * 1.6), degrees: Double(age) * 70, length: 2.4, width: 1)
             if age >= 2 { IndustrialWarriorsKit.spentCase(&svg, at: base + P(1.6 - Double(age - 1) * 1.2, Double(age - 1) * 1.6), degrees: Double(age) * 50, length: 2.4, width: 1) }
+        }
+    }
+}
+
+// MARK: - The armoured car in the other views
+
+extension IndustrialWarriorsArmouredCar {
+    /// Half the hull's width (the bonnet is taken as wide as the hull), and
+    /// where the wheels stand across it.
+    static let halfWidth = 19.0, wheelSide = 16.6
+    /// Where the pennant's staff stands across the tail: on the far side.
+    static let pennantSide = -15.0
+
+    /// A frame in a view other than the side, after `CarViews`: the near side
+    /// is the side drawing foreshortened, the nose (the radiator's armoured
+    /// doors under the sloping front plate) or the tail is a face of its own,
+    /// the far wheels show beneath, and from straight ahead or behind the end
+    /// shows the whole width with both wheels under it. The turret is a drum
+    /// on the roof, the commander in it drawn by the figure kit in the same view.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let view = d.view, layer = d.svg.layer, phase = d.phase
+        let yaw = view.yaw * .pi / 180, c = cos(yaw), s = sin(yaw)
+        let ahead = view == .front || view == .frontQuarter
+        let endOn = abs(c) < 0.01
+        let w = Self.halfWidth, ink = Paint.colour(Ink.line), plate = Paint.colour(IndustrialWarriorsInk.plate)
+        let spin = pose == .walking ? -Double(frame) * Self.turn : 0
+        let ride = Self.ride(pose, frame)
+        func at(_ x: Double, _ y: Double, _ z: Double) -> P { P(x * c - z * s, y) }
+        /// The side drawing at `z` across, foreshortened.
+        func sideways(_ svg: inout SVG, z: Double, _ content: (inout SVG) -> Void) {
+            svg.raw("<g transform=\"translate(\(num(-z * s)),0) scale(\(num(abs(c))),1)\">")
+            content(&svg)
+            svg.raw("</g>")
+        }
+        func face(_ x: Double, _ y0: Double, _ y1: Double, _ z0: Double = -w, _ z1: Double = w) -> [P] {
+            [at(x, y0, z0), at(x, y0, z1), at(x, y1, z1), at(x, y1, z0)]
+        }
+
+        d.svg.ellipse(P(0, 0.2), abs(54 * c) + abs(w * s) + 3, 4.2, fill: .colour("#000000"), opacity: 0.14)
+
+        // The pennant at the tail on the far side, streaming out beside the car.
+        var banner = Drawing(layer: layer, rig: d.rig, phase: phase)
+        banner.svg = SVG(layer: layer)
+        let wave = pose == .walking ? Double(frame) / 6 : Double(frame) / 12
+        banner.banner(at: P(0, -44), foot: -38, top: -66, wave: wave)
+        let staff = at(-45.4, 0, Self.pennantSide)
+        let stream = endOn ? (ahead ? -0.45 : 0.45) : abs(c)
+        let pennant = "<g transform=\"translate(\(num(staff.x)),\(num(-ride))) scale(\(num(stream)),1)\">" + banner.svg.body + "</g>"
+        if ahead { d.svg.raw(pennant) }
+        if ahead { Self.exhaustInView(&d.svg, pose: pose, frame: frame, ride: ride, at: at) }
+
+        // The far wheels, under the body: the end's two when the side is gone, else the far side's.
+        for axle in [Self.rearAxle, Self.frontAxle] {
+            let near = (axle.x > 0) == ahead
+            if endOn {
+                guard near else { continue }
+                for z in [-Self.wheelSide, Self.wheelSide] { Self.tyreEndOn(&d.svg, at: at(axle.x, axle.y, z)) }
+            } else {
+                sideways(&d.svg, z: -Self.wheelSide) { svg in Self.wheel(&svg, at: axle, degrees: spin + (axle.x > 0 ? 23 : 11), far: true) }
+            }
+        }
+
+        let commanderRig = Self.commanderRig(pose, frame)
+        d.svg.group(at: P(0, -ride)) { svg in
+            // The end: the nose under the sloping front plate, or the tail.
+            if ahead {
+                // The fighting compartment's front plate, sloping back to the roof, with the driver's visor.
+                let slope = [at(13.6, -36, -w), at(13.6, -36, w), at(4, -45, w - 1), at(4, -45, -w + 1)]
+                IndustrialWarriorsKit.shape(&svg, slope, fill: plate, width: 1.3)
+                svg.line([slope[3], slope[2]], stroke: .colour(IndustrialWarriorsInk.plateLight), width: 0.9)
+                IndustrialWarriorsKit.shape(&svg, face(13.6, -36, -17), fill: plate, width: 1.2)
+                let visor = [at(9.4, -41.4, -4), at(9.4, -41.4, 4), at(10.6, -39.6, 4), at(10.6, -39.6, -4)]
+                IndustrialWarriorsKit.shape(&svg, visor, fill: .colour(IndustrialWarriorsInk.plateDark), width: 0.9)
+                svg.line([at(10, -40.2, -3.4), at(10, -40.2, 3.4)], stroke: ink, width: 1.2)
+                // The bonnet's front: the radiator's louvred doors, and the lamps on its corners.
+                if !endOn {
+                    let top = [at(13.6, -36, -w), at(46, -33.4, -w), at(46, -33.4, w), at(13.6, -36, w)]
+                    svg.polygon(top, fill: .colour(IndustrialWarriorsInk.plateLight), stroke: ink, width: 0.8)
+                }
+                IndustrialWarriorsKit.shape(&svg, face(53, -33.4, -17), fill: plate, width: 1.3)
+                IndustrialWarriorsKit.shape(&svg, face(53.4, -31.6, -18.4, -w + 2.4, w - 2.4), fill: .colour(IndustrialWarriorsInk.plateDark), width: 1)
+                for y in stride(from: -29.0, through: -20.0, by: 2.2) {
+                    svg.line([at(53.4, y, -w + 3.2), at(53.4, y + 0.4, w - 3.2)], stroke: .colour(IndustrialWarriorsInk.plateLight), width: 0.6)
+                }
+                for z in [-w + 2.6, w - 2.6] where endOn || z < 0 {
+                    let lamp = at(50, -36.4, z)
+                    svg.circle(lamp, 2.2, fill: .colour(IndustrialWarriorsInk.brass), stroke: ink, width: 0.8)
+                    svg.circle(lamp, 1.1, fill: .colour(IndustrialWarriorsInk.flashCore))
+                }
+                svg.line([at(53, -18, -w), at(53, -18, w)], stroke: .colour(IndustrialWarriorsInk.darkSoot), width: 2.4)
+            } else {
+                // The tail: its plate sloping in to the roof, the seams and rivets, and the chassis' end under it.
+                IndustrialWarriorsKit.shape(&svg, [at(-48, -17, -w), at(-48, -17, w), at(-52, -26, w), at(-50.6, -36, w), at(-45, -44, w - 1),
+                                                   at(-45, -44, -w + 1), at(-50.6, -36, -w), at(-52, -26, -w)], fill: plate, width: 1.4)
+                svg.line([at(-45, -43, -w + 1.4), at(-45, -43, w - 1.4)], stroke: .colour(IndustrialWarriorsInk.plateLight), width: 1)
+                svg.line([at(-50.6, -36, -w), at(-50.6, -36, w)], stroke: ink, width: 0.8)
+                for y in [-38.6, -21] {
+                    for i in 0..<6 { svg.circle(at(-50.6, y, -w + 2 + Double(i) * (2 * w - 4) / 5), 0.55, fill: .colour(IndustrialWarriorsInk.plateDark)) }
+                }
+                // A hatch in the tail, with its handle.
+                IndustrialWarriorsKit.shape(&svg, [at(-51.6, -33.6, -5), at(-51.6, -33.6, 5), at(-51.4, -22.4, 5), at(-51.4, -22.4, -5)], fill: plate, width: 0.9)
+                svg.line([at(-51.6, -28.4, 2.6), at(-51.6, -28.4, 4)], stroke: ink, width: 1.2)
+                svg.line([at(-50, -16.4, -w), at(-50, -16.4, w)], stroke: .colour(IndustrialWarriorsInk.darkSoot), width: 3)
+            }
+            // The near side: the side drawing itself, foreshortened (none from straight ahead or behind).
+            if !endOn {
+                sideways(&svg, z: w) { svg in
+                    Self.chassis(&svg)
+                    Self.hull(&svg)
+                    Self.mudguards(&svg)
+                }
+            } else {
+                // The mudguards over the end's wheels, seen end on.
+                let axle = ahead ? Self.frontAxle : Self.rearAxle
+                for z in [-Self.wheelSide, Self.wheelSide] {
+                    let p = at(axle.x, axle.y, z)
+                    IndustrialWarriorsKit.shape(&svg, [p + P(-3.4, -14.6), p + P(3.4, -14.6), p + P(3.8, -11.6), p + P(-3.8, -11.6)],
+                                                fill: .colour(IndustrialWarriorsInk.darkSoot), width: 1)
+                }
+            }
+            // The turret, the gun and the commander, the gun ahead of the turret or hidden behind it.
+            let gunFirst = !ahead
+            if gunFirst { Self.gunInView(&svg, pose: pose, frame: frame, at: at, c: c, endOn: endOn, ahead: ahead) }
+            // The lid behind him (drawn first from behind too, so that it does not hide his head).
+            Self.hatchInView(&svg, at: at, c: c, s: s)
+            Self.drumInView(&svg, at: at, c: c, s: s, ahead: ahead)
+            if let rig = commanderRig {
+                var man = Drawing(layer: layer, rig: rig, phase: phase, view: view)
+                Self.commanderInView(&man, pose, frame)
+                let place = at(-12, -62, 0)
+                svg.raw("<g transform=\"translate(\(num(place.x)),-62) scale(0.86) translate(0,52)\">")
+                svg.raw(man.svg.body)
+                svg.raw("</g>")
+            }
+            if !gunFirst { Self.gunInView(&svg, pose: pose, frame: frame, at: at, c: c, endOn: endOn, ahead: ahead) }
+        }
+        if !ahead {
+            Self.exhaustInView(&d.svg, pose: pose, frame: frame, ride: ride, at: at)
+            d.svg.raw(pennant)
+        }
+        // The near wheels, turning as the car drives.
+        if !endOn {
+            sideways(&d.svg, z: Self.wheelSide) { svg in
+                Self.wheel(&svg, at: Self.rearAxle, degrees: spin, far: false)
+                Self.wheel(&svg, at: Self.frontAxle, degrees: spin + 13, far: false)
+            }
+        }
+        if pose == .fighting { Self.burstInView(&d.svg, frame: frame, ride: ride, at: at, c: c, ahead: ahead) }
+        if pose == .walking && frame % 6 == 2 {
+            BronzePeopleProps.dust(&d.svg, at: at(ahead ? Self.rearAxle.x - 12 : Self.frontAxle.x + 12, -3, 0), size: 0.8, opacity: 0.35)
+        }
+    }
+
+    /// A solid tyre seen end on under the body: a dark upright band with a sheen.
+    static func tyreEndOn(_ svg: inout SVG, at c: P) {
+        let r = wheelRadius, half = 2.8
+        svg.polygon([c + P(-half, -r), c + P(half, -r), c + P(half, r), c + P(-half, r)], fill: .colour(IndustrialWarriorsInk.rubber), stroke: .colour(Ink.line), width: 1)
+        svg.line([c + P(-half + 1, -r + 2), c + P(-half + 1, r - 2)], stroke: .colour(IndustrialWarriorsInk.paleSoot), width: 0.6, opacity: 0.7)
+    }
+
+    /// The turret's drum on the roof, as wide from every side, its rivets, and
+    /// the vision slit on the side that shows.
+    static func drumInView(_ svg: inout SVG, at: (Double, Double, Double) -> P, c: Double, s: Double, ahead: Bool) {
+        let ink = Paint.colour(Ink.line)
+        let m = at(-12, 0, 0).x, h = 15.0
+        let drum = [P(m - h, -44.6), P(m - h, -60.4), P(m - h + 4, -62.4), P(m + h - 4, -62.4), P(m + h, -60.4), P(m + h, -44.6)]
+        IndustrialWarriorsKit.shape(&svg, drum, fill: .colour(IndustrialWarriorsInk.plate), width: 1.4)
+        svg.line([P(m - h + 1, -59.4), P(m + h - 1, -59.4)], stroke: ink, width: 0.7)
+        svg.line([P(m - h + 3.6, -61.6), P(m + h - 3.6, -61.6)], stroke: .colour(IndustrialWarriorsInk.plateLight), width: 0.9)
+        svg.line([P(m - h + 2.4, -57.6), P(m - h + 2.4, -46)], stroke: .colour(IndustrialWarriorsInk.plateLight), width: 0.8, opacity: 0.8)
+        svg.line([P(m + h - 2.4, -58), P(m + h - 2.4, -46)], stroke: .colour(IndustrialWarriorsInk.plateDark), width: 1.2)
+        for i in 0..<6 {
+            let x = m - h + 3 + Double(i) * (2 * h - 6) / 5
+            svg.circle(P(x, -47), 0.55, fill: .colour(IndustrialWarriorsInk.plateDark))
+            svg.circle(P(x, -57.4), 0.55, fill: .colour(IndustrialWarriorsInk.plateDark))
+        }
+        if abs(c) > 0.01 {
+            let slit = at(-11, -53.6, 15)
+            svg.line([slit + P(-3 * abs(c), 0), slit + P(3 * abs(c), 0)], stroke: ink, width: 1.3)
+        }
+    }
+
+    /// The hatch's lid thrown open at the turret's back, standing up behind the commander.
+    static func hatchInView(_ svg: inout SVG, at: (Double, Double, Double) -> P, c: Double, s: Double) {
+        let foot = at(-24, -62.4, 0), top = at(-28.6, -71.6, 0), half = 5.6 * abs(s) + 1.2 * abs(c)
+        IndustrialWarriorsKit.shape(&svg, [foot + P(-half, 0), foot + P(half, 0), top + P(half, 0), top + P(-half, 0)],
+                                    fill: .colour(IndustrialWarriorsInk.plateDark), width: 0.9)
+    }
+
+    /// The machine gun: its side drawing foreshortened ahead of the turret, or
+    /// from straight ahead its mantlet and the muzzle's cone end on.
+    static func gunInView(_ svg: inout SVG, pose: SpritePose, frame: Int, at: (Double, Double, Double) -> P, c: Double, endOn: Bool, ahead: Bool) {
+        let ink = Paint.colour(Ink.line)
+        let kick = pose == .fighting && shots.contains(frame) ? -0.8 : 0
+        if endOn {
+            guard ahead else { return }
+            let m = at(gunRoot.x, gunRoot.y, 0)
+            IndustrialWarriorsKit.shape(&svg, [m + P(-3.6, -3.4), m + P(3.6, -3.4), m + P(3.6, 3.4), m + P(-3.6, 3.4)],
+                                        fill: .colour(IndustrialWarriorsInk.plateDark), width: 1)
+            svg.circle(m + P(-0.3, 0.3), 2.6, fill: .colour(IndustrialWarriorsInk.steel))
+            svg.circle(m, 2.6, fill: .none, stroke: ink, width: 1.1)
+            svg.circle(m, 1.6, fill: .colour(IndustrialWarriorsInk.steelDark), stroke: ink, width: 0.7)
+            svg.circle(m, 0.7, fill: ink)
+            return
+        }
+        svg.raw("<g transform=\"scale(\(num(abs(c))),1)\">")
+        IndustrialWarriorsKit.shape(&svg, [P(-1, -58.6), P(4.4, -58), P(5.2, -55.4), P(4.4, -52.8), P(-1, -52.2)], fill: .colour(IndustrialWarriorsInk.plateDark), width: 1)
+        machineGun(&svg, root: gunRoot + P(kick, 0))
+        svg.raw("</g>")
+    }
+
+    /// Exhaust from the tail pipe, as `exhaust` has it, its puffs drifting back along the car as it shows.
+    static func exhaustInView(_ svg: inout SVG, pose: SpritePose, frame: Int, ride: Double, at: (Double, Double, Double) -> P) {
+        let period = pose == .walking ? 4 : 6, life = pose == .walking ? 8 : 6
+        for born in stride(from: 0, to: 12, by: period) {
+            let age = (frame - born + 12) % 12
+            guard age < life else { continue }
+            let t = Double(age) / Double(life)
+            let drift = pose == .walking ? 4.4 : 2.2
+            let p = at(-57 - 1.6 - Double(age) * drift, -16.6 - ride - 1.6 - Double(age) * 1.6, 6)
+            let r = 1.6 + t * 3.2
+            IndustrialWarriorsKit.smoke(&svg, at: p, puffs: [(P(0, 0), r), (P(-r * 0.8, -r * 0.5), r * 0.75)], opacity: 0.75 * (1 - t),
+                                        colour: IndustrialWarriorsInk.exhaust)
+        }
+    }
+
+    /// The burst, as `burst` has it: the flash at the muzzle along the gun as
+    /// it shows, the smoke drifting up, and the spent cases on the roof.
+    static func burstInView(_ svg: inout SVG, frame: Int, ride: Double, at: (Double, Double, Double) -> P, c: Double, ahead: Bool) {
+        let lift = P(0, -ride)
+        let k = max(abs(c), 0.3), endOn = abs(c) < 0.01
+        let mouth = at(Self.muzzle(.fighting, frame).x, gunRoot.y, 0) + lift
+        if shots.contains(frame) && (ahead || !endOn) {
+            let seed: Double = [0: 0.0, 1: 20, 2: 8, 6: 14, 7: 2, 8: 24][frame] ?? 0
+            let size = frame % 6 == 1 ? 1.2 : 1
+            IndustrialWarriorsKit.flash(&svg, at: mouth + P(1.2 * k, 0), degrees: endOn ? 180 : 90, length: 14 * size * k, girth: 4.6 * size, points: 10, seed: seed)
+        }
+        for start in [0, 6] {
+            let age = frame - start
+            guard age >= 0 && age < 6 else { continue }
+            let a = Double(age)
+            let m = at(Self.muzzle(.fighting, 3).x, gunRoot.y, 0) + lift
+            let puffs: [(P, Double)] = [(P((4 + a * 0.8) * k, -1 - a * 1.6), 2 + a * 0.5), (P((8 + a * 0.4) * k, -2.6 - a * 2), 1.6 + a * 0.5)]
+            IndustrialWarriorsKit.smoke(&svg, at: m, puffs: age < 3 ? Array(puffs.prefix(age + 1)) : puffs, opacity: [0.7, 0.75, 0.7, 0.5, 0.32, 0.16][age] as Double)
+        }
+        for start in [0, 6] {
+            let age = frame - start
+            guard age >= 1 && age <= 3 else { continue }
+            let base = at(gunRoot.x + 4, gunRoot.y + 3, 0) + lift
+            IndustrialWarriorsKit.spentCase(&svg, at: base + P(-Double(age) * 1.2 * k, Double(age) * 1.6), degrees: Double(age) * 70, length: 2.4, width: 1)
+        }
+    }
+
+    /// The commander in a view other than the side: the tunic's shoulders,
+    /// the brick scarf, the clipped moustache where the face shows, and the
+    /// leather helmet with the goggles pushed up.
+    static func commanderInView(_ m: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let rig = m.rig
+        m.svg.raw("<g transform=\"translate(0,\(num(m.bob))) rotate(\(num(rig.lean)) \(num(Drawing.hips.x)) \(num(Drawing.hips.y)))\">")
+        m.garment(colour: [P(-12.6, -46.4), P(9.6, -48.2), P(12, -36), P(-13, -36)],
+                  outline: [P(-9.2, -47.4), P(9.2, -47.4), P(11.4, -36.4), P(-12.4, -36.4)], fill: .colour(IndustrialWarriorsInk.green))
+        IndustrialWarriorsKit.shape(&m.svg, [m.up(P(-7, -50)), m.up(P(7, -50)), m.up(P(7.6, -46.4)), m.up(P(-7.6, -46.4))],
+                                    fill: .colour(IndustrialWarriorsInk.brick), width: 0.9)
+        let flutter = pose == .walking ? 1.2 * BronzePeopleKit.wave(frame, times: 2) : 0.3 * BronzePeopleKit.wave(frame)
+        // The scarf's end blowing out behind him, to whichever side his back shows.
+        if m.view != .front {
+            let dir = m.view == .back ? 1.0 : -1.0
+            IndustrialWarriorsKit.shape(&m.svg, [m.up(P(dir * 4, -48.6)), m.up(P(dir * (11 + flutter), -46.6 + flutter * 0.5)), m.up(P(dir * (10.4 + flutter), -44)),
+                                                 m.up(P(dir * 4.6, -46))], fill: .colour(IndustrialWarriorsInk.brick), width: 0.8)
+        }
+        let ink = Paint.colour(Ink.line)
+        m.head(nose: .bulb, hair: { _ in }, features: { m in
+            guard IndustrialViews.seesFront(m) else { return }
+            let half = [P(0, -54.2), P(2.4, -54.8), P(4.2, -53.8), P(3.8, -52.4), P(2.2, -52.8), P(0, -52.4)]
+            m.svg.polygon(IndustrialViews.symmetric(m, half), fill: .colour(IndustrialWarriorsInk.hair), stroke: ink, width: 0.5)
+        }, brow: { m in
+            m.svg.path("M2,-63.4 q3,-1.6 6.6,-0.6", stroke: ink, width: 1.6)
+        }, over: { m in
+            helmetInView(&m)
+        })
+        m.svg.raw("</g>")
+    }
+
+    /// The leather helmet seen from this side: over the crown and the ears,
+    /// open on the face, the seam over the crown, and the goggles on the brow
+    /// (their strap round the back from behind).
+    static func helmetInView(_ m: inout Drawing) {
+        let ink = Paint.colour(Ink.line), leather = Paint.colour(IndustrialWarriorsInk.leather)
+        let front = IndustrialViews.seesFront(m)
+        let fx = IndustrialViews.face(m).x
+        BronzePeopleProps.shape(&m.svg, fill: leather, width: 1.3) { o in
+            var p = PathData()
+            if m.view == .front {
+                p.move(P(-11.6, -52) + o); p.cubic(P(-13.4, -64) + o, P(-8, -71.4) + o, P(0, -71.4) + o)
+                p.cubic(P(8, -71.4) + o, P(13.4, -64) + o, P(11.6, -52) + o)
+                p.line(P(8.4, -52.6) + o); p.cubic(P(9, -60) + o, P(6, -63.6) + o, P(0, -63.8) + o)
+                p.cubic(P(-6, -63.6) + o, P(-9, -60) + o, P(-8.4, -52.6) + o)
+            } else if m.view == .frontQuarter {
+                p.move(P(-11.8, -52) + o); p.cubic(P(-13.4, -64) + o, P(-8, -71.4) + o, P(0, -71.4) + o)
+                p.cubic(P(7, -71.4) + o, P(11.6, -67) + o, P(11.4, -62.4) + o)
+                p.line(P(4, -63.6) + o); p.cubic(P(-1, -62.6) + o, P(-3, -58) + o, P(-2.6, -52.6) + o)
+            } else {
+                p.move(P(-11.8, -51) + o); p.cubic(P(-13.6, -64) + o, P(-8, -71.6) + o, P(0, -71.6) + o)
+                p.cubic(P(8, -71.6) + o, P(13.6, -64) + o, P(11.8, -51) + o)
+                p.cubic(P(6, -49.6) + o, P(-6, -49.6) + o, P(-11.8, -51) + o)
+            }
+            p.close()
+            return p
+        }
+        m.svg.path("M-7.6,-66.6 C-4,-69.6 4,-69.6 7.6,-66.6", stroke: .colour(IndustrialWarriorsInk.paleWood), width: 0.8, opacity: 0.8)
+        m.svg.path("M0,-71.2 L0,-52", stroke: .colour(IndustrialWarriorsInk.darkLeather), width: 0.7, opacity: front ? 0 : 1)
+        if front {
+            m.svg.path("M\(num(fx - 7)),-52.6 Q\(num(fx)),-47.6 \(num(fx + 5)),-50", stroke: ink, width: 1)
+            m.svg.path("M-11.8,-62.6 C-6,-66 6,-66 11.8,-62.6", stroke: ink, width: 1.6)
+            let lenses: [P] = m.view == .front ? [P(-4.6, -66), P(4.6, -66)] : [P(fx - 3.6, -66.4), P(fx + 2.6, -65.8)]
+            for c in lenses {
+                m.svg.ellipse(c, 2.4, 2, fill: .colour(IndustrialWarriorsInk.brass), stroke: ink, width: 0.7)
+                m.svg.ellipse(c + P(0.2, 0), 1.4, 1.1, fill: .colour(IndustrialWarriorsInk.paleGreen))
+                m.svg.circle(c + P(-0.3, -0.4), 0.4, fill: .colour(IndustrialWarriorsInk.light))
+            }
+        } else {
+            m.svg.path("M-12.2,-62 C-6,-59.4 6,-59.4 12.2,-62", stroke: ink, width: 1.6)
         }
     }
 }

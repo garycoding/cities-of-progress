@@ -19,6 +19,7 @@ import Testing
         (.merchant, IndustrialPeopleSprites(), "industrialist"),
         (.rifleman, IndustrialWarriorSprites(), "rifleman"),
         (.fieldGun, IndustrialWarriorSprites(), "field-gun"),
+        (.armouredCar, IndustrialWarriorSprites(), "armoured-car"),
     ]
 
     @Test func everyKindIsDrawnInEveryView() {
