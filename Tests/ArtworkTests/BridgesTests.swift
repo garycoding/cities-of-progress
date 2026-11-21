@@ -318,10 +318,11 @@ struct BridgesRenders {
                               anchor: sprite.anchor, at: screen(Double(tile.x) + 0.5, Double(tile.y) + 0.5), in: context)
             }
             // People crossing, and a few on the banks; trees by the water.
-            let look = max(age, .bronze)
+            // No merchant before the Bronze age: a Stone-age scene has a second hunter.
+            let trader: UnitKind = age == .stone ? .worker : .merchant
             var things: [(SpriteKey, Double, Double, Civilization?, Bool)] = [
                 (SpriteKey(.unit(.worker, age), .walking, frame: 2), 5.3, 4.5, .sumer, false),
-                (SpriteKey(.unit(.merchant, look), .walking, frame: 7), 7.1, 4.5, .sumer, true),
+                (SpriteKey(.unit(trader, age), .walking, frame: 7), 7.1, 4.5, .sumer, true),
                 (SpriteKey(.unit(.scholar, age), .standing), 8.7, 4.45, .sumer, false),
                 (SpriteKey(.unit(.engineer, age), .walking, frame: 4), 14.5, 10.4, .egypt, true),
                 (SpriteKey(.unit(.worker, age), .walking, frame: 9), 14.5, 12.2, .egypt, false),
