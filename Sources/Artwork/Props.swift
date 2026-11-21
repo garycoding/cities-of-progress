@@ -66,14 +66,17 @@ extension Drawing {
         svg.circle(top - u * 1.2, 2.5, fill: .none, stroke: .colour(Ink.line), width: 1.3)
     }
 
-    /// A stone tablet scored with marks, held at `hand` and turned by `degrees`.
-    mutating func tablet(at hand: P, degrees: Double) {
+    /// A stone tablet scored with marks, held at `hand` and turned by `degrees`;
+    /// seen from the back (`marked` false), its face is blank.
+    mutating func tablet(at hand: P, degrees: Double, marked: Bool = true) {
         svg.group(at: hand, turned: degrees) { svg in
             svg.path("M-3.6,-9.4 h7.6 q1.2,0 1.2,1.2 v9.4 q0,1.2 -1.2,1.2 h-7.6 q-1.2,0 -1.2,-1.2 v-9.4 q0,-1.2 1.2,-1.2 Z",
                      fill: .colour(Ink.stone))
             svg.path("M-3,-10 h7.6 q1.2,0 1.2,1.2 v9.4 q0,1.2 -1.2,1.2 h-7.6 q-1.2,0 -1.2,-1.2 v-9.4 q0,-1.2 1.2,-1.2 Z",
                      stroke: .colour(Ink.line), width: 1.2)
-            svg.path("M-2.4,-7.4 h5.4 M-2.4,-5 h3.8 M-2.4,-2.6 h5 M2.6,-5 l1.2,0", stroke: .colour(Ink.line), width: 0.8)
+            if marked {
+                svg.path("M-2.4,-7.4 h5.4 M-2.4,-5 h3.8 M-2.4,-2.6 h5 M2.6,-5 l1.2,0", stroke: .colour(Ink.line), width: 0.8)
+            }
         }
     }
 

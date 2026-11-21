@@ -190,16 +190,75 @@ struct Elder: PersonLook {
         d.staff(at: hand, degrees: degrees, above: 2.4, below: below)
     }
 
+    /// The white hair at the back of a bald head, seen from each side.
+    static func hair(_ view: SpriteView) -> [String] {
+        switch view {
+        case .side:
+            ["M-10.8,-61.6 C-12.6,-56.4 -10.6,-50.8 -6.4,-48.6 C-6.2,-52.6 -7.4,-56.6 -5.4,-60.6 C-7.6,-60 -9.6,-60.4 -10.8,-61.6 Z"]
+        case .front:
+            ["M-10.6,-61.8 C-12.6,-57 -11.4,-52 -8.4,-50.4 C-8.8,-53.6 -9.2,-57 -7.8,-60.4 C-8.8,-60.6 -9.8,-61 -10.6,-61.8 Z",
+             "M10.6,-61.8 C12.6,-57 11.4,-52 8.4,-50.4 C8.8,-53.6 9.2,-57 7.8,-60.4 C8.8,-60.6 9.8,-61 10.6,-61.8 Z"]
+        case .frontQuarter:
+            ["M-10.8,-61.6 C-12.6,-56.4 -10.6,-50.8 -6.4,-48.6 C-6.2,-52.6 -7.4,-56.6 -5.4,-60.6 C-7.6,-60 -9.6,-60.4 -10.8,-61.6 Z",
+             "M10.4,-61.4 C11.6,-58 11,-55 9.8,-53.4 C9.6,-56 9.2,-58.4 9.4,-60.8 Z"]
+        case .back:
+            ["M-11,-57.4 Q0,-61.6 11,-57.4 C11.6,-53 8,-48.6 0,-48.2 C-8,-48.6 -11.6,-53 -11,-57.4 Z"]
+        case .backQuarter:
+            ["M-7.4,-56.6 Q2,-61.6 11.2,-58.4 C11.8,-53 8,-48.6 1.6,-48.2 C-3.4,-48.4 -6.6,-51 -7.4,-56.6 Z"]
+        }
+    }
+
+    /// The long white beard and moustache, seen from each side but the back:
+    /// the beard, its strands, and the moustache.
+    static func beard(_ view: SpriteView) -> (beard: String, strands: String, moustache: String)? {
+        switch view {
+        case .side:
+            ("M-2.8,-52.6 C0.8,-49.4 6.6,-48.8 10.8,-52.4 C11.6,-46 8.8,-39.6 3.4,-35.6 C2.8,-40.4 0,-44.4 -2.8,-46.8 Z",
+             "M-0.6,-45.8 q2.4,2.6 3.4,6.2 M3.8,-48.2 q2,3 2,6.4",
+             "M5.2,-53.8 q2.8,-1.8 6,-0.4 q-1.4,1.8 -3,1.2 q-1.6,0.8 -3,-0.8 Z")
+        case .front:
+            ("M-7.8,-53.6 C-7.8,-46 -3.2,-40 0,-35.6 C3.2,-40 7.8,-46 7.8,-53.6 C4.6,-50 -4.6,-50 -7.8,-53.6 Z",
+             "M-2.6,-47 q0.4,3.4 1.6,6.4 M2.6,-47 q-0.4,3.4 -1.6,6.4",
+             "M-5.6,-53 q2.8,-2.2 5.6,-0.8 q2.8,-1.4 5.6,0.8 q-1.6,1.8 -3.2,1 q-1.2,0.8 -2.4,0 q-1.2,0.8 -2.4,0 q-1.6,0.8 -3.2,-1 Z")
+        case .frontQuarter:
+            ("M-2.6,-53.4 C-2.4,-46 1.8,-40 4.8,-35.6 C8,-40 11.8,-46 11,-53.6 C8,-50 0,-49.8 -2.6,-53.4 Z",
+             "M2.6,-47 q0.4,3.4 1.6,6.4 M7.4,-47.4 q-0.4,3.4 -1.6,6.4",
+             "M1.2,-53 q2.2,-2 4.4,-0.8 q3,-1.4 6,0.8 q-1.6,1.8 -3.4,1 q-1.2,0.8 -2.6,0 q-1,0.8 -2,0 q-1.4,0.8 -2.4,-1 Z")
+        case .backQuarter:
+            ("M-10.4,-52.8 C-11.8,-47 -10.2,-41 -7.6,-37.2 C-7.4,-42 -6.6,-46.4 -5,-49.6 C-7.2,-50 -9,-51.2 -10.4,-52.8 Z", "", "")
+        case .back:
+            nil
+        }
+    }
+
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
         let sway = d.rig.sway
         d.figure { d in
+            // The stick in the hand that is not holding the tablet, at work; in
+            // another view, drawn before the body where that hand is behind it.
+            let atWork = pose == .working
+            let stickHand = !atWork
+            let stickBehind = d.view == .side ? atWork : d.heldBehind(front: stickHand)
+            func drawStick(_ d: inout Drawing) {
+                if atWork {
+                    stick(&d, at: d.hand(front: false), degrees: d.inView(2))
+                } else {
+                    // Otherwise he leans on it, planted a little ahead of his feet.
+                    stick(&d, at: d.hand(front: true), degrees: d.inView(-4))
+                }
+            }
             // At work, the stick hangs from the hand behind him.
-            if pose == .working { stick(&d, at: d.joints.backHand, degrees: 2) }
+            if stickBehind && d.view == .side { drawStick(&d) }
             d.arm(front: false)
+            if stickBehind && d.view != .side { drawStick(&d) }
+            // The tablet, read from behind, is hidden by him where his hand is.
+            let tabletBehind = atWork && d.heldBehind(front: true)
+            if tabletBehind { tablet(&d) }
             d.legs()
             let hemBack = P(-16 - sway * 1.5, -4), hemFront = P(15 - sway * 1.5, -4)
+            let outline = [P(-8, -47), P(8, -47), hemFront, hemBack]
             d.garment(colour: [P(-11.5, -46), P(8, -48), hemFront + P(1.5, 1.5), hemBack + P(-2, 2)],
-                      outline: [P(-8, -47), P(8, -47), hemFront, hemBack], fill: .colour(Ink.moss)) { d in
+                      outline: outline, fill: .colour(Ink.moss)) { d in
                 // Waves across the robe.
                 for y in [-37.0, -27.0, -17.0, -9.0] {
                     let share = (y + 47) / 43
@@ -214,33 +273,66 @@ struct Elder: PersonLook {
                     }
                     d.svg.path(path, stroke: .colour(Ink.light), width: 1.1)
                 }
-                // The sash, from the back shoulder to the front hip.
-                d.band([P(-9.5, -44), P(-4.5, -47.5), P(11.4, -26.5), P(11.8, -21)])
+                // The sash, from the back shoulder to the front hip; seen from
+                // another side, from the left shoulder across to the right hip.
+                if d.view == .side {
+                    d.band([P(-9.5, -44), P(-4.5, -47.5), P(11.4, -26.5), P(11.8, -21)])
+                } else {
+                    d.strap(shoulder: P(-5, -46.6), hip: P(9.4, -23), width: 5, fill: .team)
+                }
             }
-            d.svg.path("M\(num(hemBack.x)),-4 L\(num(hemFront.x)),-4", stroke: .colour(Ink.line), width: 1.8)
-            if pose == .working {
-                d.tablet(at: d.joints.frontHand + P(-0.6, -1.6), degrees: -14)
-                if frame >= 8 && frame <= 10 { d.insight() }
+            if d.view == .side {
+                d.svg.path("M\(num(hemBack.x)),-4 L\(num(hemFront.x)),-4", stroke: .colour(Ink.line), width: 1.8)
             } else {
-                // Otherwise he leans on it, planted a little ahead of his feet.
-                stick(&d, at: d.joints.frontHand, degrees: -4)
+                let (left, right) = d.hem(of: outline)
+                d.svg.line([left, right], stroke: .colour(Ink.line), width: 1.8)
             }
+            // Seen from the front, the tablet is held up before his face, and drawn after it.
+            let tabletBefore = atWork && d.seesFront
+            if atWork {
+                if !tabletBehind && !tabletBefore { tablet(&d) }
+                if frame >= 8 && frame <= 10 { d.insight() }
+            }
+            if !stickBehind { drawStick(&d) }
             d.arm(front: true)
             d.head(nose: Elder.nose, hair: { d in
                 // White hair at the back of a bald head.
-                d.svg.path("M-10.8,-61.6 C-12.6,-56.4 -10.6,-50.8 -6.4,-48.6 C-6.2,-52.6 -7.4,-56.6 -5.4,-60.6 C-7.6,-60 -9.6,-60.4 -10.8,-61.6 Z",
-                           fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1)
-                d.svg.path("M-4,-65.8 q3.4,-1.8 6.6,-0.8", stroke: .colour(Ink.light), width: 1.2)
+                for tuft in Elder.hair(d.view) {
+                    d.svg.path(tuft, fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1)
+                }
+                switch d.view {
+                case .side: d.svg.path("M-4,-65.8 q3.4,-1.8 6.6,-0.8", stroke: .colour(Ink.light), width: 1.2)
+                case .front, .back: d.svg.path("M-3.4,-66.8 q3.4,-1.6 6.8,0", stroke: .colour(Ink.light), width: 1.2)
+                case .frontQuarter: d.svg.path("M-1.6,-66.6 q3.4,-1.8 6.6,-0.6", stroke: .colour(Ink.light), width: 1.2)
+                case .backQuarter: d.svg.path("M-5,-66.6 q3.2,-0.8 6.6,0.6", stroke: .colour(Ink.light), width: 1.2)
+                }
             }, features: { d in
                 // A long white beard and moustache.
-                d.svg.path("M-2.8,-52.6 C0.8,-49.4 6.6,-48.8 10.8,-52.4 C11.6,-46 8.8,-39.6 3.4,-35.6 C2.8,-40.4 0,-44.4 -2.8,-46.8 Z",
-                           fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1.2)
-                d.svg.path("M-0.6,-45.8 q2.4,2.6 3.4,6.2 M3.8,-48.2 q2,3 2,6.4", stroke: .colour(Ink.line), width: 0.8, opacity: 0.6)
-                d.svg.path("M5.2,-53.8 q2.8,-1.8 6,-0.4 q-1.4,1.8 -3,1.2 q-1.6,0.8 -3,-0.8 Z",
-                           fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1)
+                guard let beard = Elder.beard(d.view) else { return }
+                d.svg.path(beard.beard, fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1.2)
+                if !beard.strands.isEmpty {
+                    d.svg.path(beard.strands, stroke: .colour(Ink.line), width: 0.8, opacity: 0.6)
+                }
+                if !beard.moustache.isEmpty {
+                    d.svg.path(beard.moustache, fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1)
+                }
             }, brow: { d in
                 d.svg.path("M0.2,-64 q4.4,-3.8 9,-1.2 q-4.4,-0.2 -9,1.2 Z", fill: .colour(Ink.light), stroke: .colour(Ink.line), width: 1.1)
             })
+            if tabletBefore {
+                tablet(&d)
+                d.hand(d.hand(front: true))
+            }
+        }
+    }
+
+    /// The tablet he reads at work: from the front, its blank back; from
+    /// behind, its marks.
+    func tablet(_ d: inout Drawing) {
+        if d.view == .side {
+            d.tablet(at: d.joints.frontHand + P(-0.6, -1.6), degrees: -14)
+        } else {
+            d.tablet(at: d.hand(front: true) + P(-0.6, -1.6), degrees: -14 * cos(d.yaw * .pi / 180), marked: !d.seesFront)
         }
     }
 }
@@ -308,64 +400,174 @@ struct Builder: PersonLook {
         return d.world(d.joints.frontHand + u * 11.5 + across * 3.6)
     }()
 
-    func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
-        if pose == .working {
-            // The post stands upright on the ground, outside the leaning body.
-            let top = Builder.postTop + P(0, 0.4)
-            d.svg.ellipse(P(top.x, 0), 4.5, 1.3, fill: .colour("#000000"), opacity: 0.13)
-            d.svg.polygon([P(top.x - 3.1, top.y + 0.8), P(top.x + 1.7, top.y + 0.6), P(top.x + 1.9, 0.8), P(top.x - 3.3, 1)],
-                          fill: .colour(Ink.wood))
-            d.svg.polygon([P(top.x - 2.4, top.y), P(top.x + 2.4, top.y), P(top.x + 2.6, 0), P(top.x - 2.6, 0)], fill: .none,
-                          stroke: .colour(Ink.line), width: 1.3)
-            d.svg.ellipse(top, 2.4, 0.9, fill: .colour(Ink.hide), stroke: .colour(Ink.line), width: 1)
-            d.svg.path("M\(num(top.x - 0.8)),\(num(top.y * 0.7)) v4 M\(num(top.x + 1)),\(num(top.y * 0.35)) v3",
-                       stroke: .colour(Ink.line), width: 0.9)
+    /// The top of the post seen from each side: where the mallet's face lands
+    /// in that view, in the picture's space.
+    static let postTops: [SpriteView: P] = Dictionary(uniqueKeysWithValues: SpriteView.allCases.map { view in
+        if view == .side { return (view, postTop) }
+        let frame = (0..<12).first { workBlow($0).landing } ?? 9
+        let rig = Builder().work(frame)
+        let d = Drawing(layer: .base, rig: rig, phase: 0, view: view)
+        let u = P.direction(d.onScreen(workMallet(rig))), across = P(-u.y, u.x)
+        let face = d.hand(front: true) + u * 11.5 + across * 3.6
+        return (view, face.rotated(rig.lean * cos(view.yaw * .pi / 180), about: Drawing.hips) + P(0, d.bob))
+    })
+
+    /// The post he drives, its top at `top`, standing on the ground.
+    func post(_ d: inout Drawing, top: P) {
+        d.svg.ellipse(P(top.x, 0), 4.5, 1.3, fill: .colour("#000000"), opacity: 0.13)
+        d.svg.polygon([P(top.x - 3.1, top.y + 0.8), P(top.x + 1.7, top.y + 0.6), P(top.x + 1.9, 0.8), P(top.x - 3.3, 1)],
+                      fill: .colour(Ink.wood))
+        d.svg.polygon([P(top.x - 2.4, top.y), P(top.x + 2.4, top.y), P(top.x + 2.6, 0), P(top.x - 2.6, 0)], fill: .none,
+                      stroke: .colour(Ink.line), width: 1.3)
+        d.svg.ellipse(top, 2.4, 0.9, fill: .colour(Ink.hide), stroke: .colour(Ink.line), width: 1)
+        d.svg.path("M\(num(top.x - 0.8)),\(num(top.y * 0.7)) v4 M\(num(top.x + 1)),\(num(top.y * 0.35)) v3",
+                   stroke: .colour(Ink.line), width: 0.9)
+    }
+
+    /// The dark hair below the cap, seen from each side.
+    static func hair(_ view: SpriteView) -> String {
+        switch view {
+        case .side, .frontQuarter: "M-9.8,-60 C-10.6,-63 -9.6,-55 -7.6,-52.8 C-7,-55.4 -6.6,-57.8 -5.2,-59.6 Z"
+        case .front: "M-10.6,-61 C-11.4,-58 -10.6,-55 -9.2,-53.4 C-9,-56 -8.6,-58.4 -7.6,-60.2 Z "
+            + "M10.6,-61 C11.4,-58 10.6,-55 9.2,-53.4 C9,-56 8.6,-58.4 7.6,-60.2 Z"
+        case .back: "M-11,-57 C-11.6,-54.6 -10.8,-52.4 -9.4,-51.2 C-9.2,-53.4 -8.8,-55.2 -8,-56.6 Z "
+            + "M11,-57 C11.6,-54.6 10.8,-52.4 9.4,-51.2 C9.2,-53.4 8.8,-55.2 8,-56.6 Z"
+        case .backQuarter: "M11,-57.4 C11.6,-55 10.8,-52.6 9.4,-51.4 C9.2,-53.6 8.8,-55.4 8,-57 Z"
         }
+    }
+
+    /// The bushy moustache, where the view shows it.
+    static func moustache(_ view: SpriteView) -> String? {
+        switch view {
+        case .side: "M4.4,-54 q3.4,-2.6 7.2,-0.6 q-1,2.4 -3.6,1.4 q-2,1.4 -3.6,-0.8 Z"
+        case .front: "M-5.8,-53.2 q2.8,-2.4 5.8,-0.8 q3,-1.6 5.8,0.8 q-1,2.4 -3.4,1.4 q-1.2,1 -2.4,0 q-1.2,1 -2.4,0 q-2.4,1 -3.4,-1.4 Z"
+        case .frontQuarter: "M0.6,-53.2 q2.4,-2.2 4.8,-0.8 q3.2,-1.6 6.2,0.8 q-1,2.4 -3.6,1.4 q-1.2,1 -2.4,0 q-1,1 -2.2,0 q-2,1 -2.8,-1.4 Z"
+        case .backQuarter: "M-10.4,-54.2 q-1.8,1 -0.8,2.8 q1.6,0.2 2.4,-1.2 Z"
+        case .back: nil
+        }
+    }
+
+    /// The leather cap: its colour, its outline, and the seam over the crown.
+    static func cap(_ view: SpriteView) -> (colour: String, outline: String, seam: String) {
+        switch view {
+        case .side:
+            ("M-11.2,-58.6 C-12.6,-71 2.6,-73.8 9.4,-65.6 L14.2,-64.8 L13.6,-63 L-11.2,-58.6 Z",
+             "M-10.6,-59.4 C-11.4,-70.6 3,-72.8 9.6,-65.2 L14.4,-64.4 L13.8,-62.6 L-10.6,-59.4 Z",
+             "M-1.6,-71.2 q1.6,4.4 1.8,9.4")
+        case .front:
+            // The brim dips toward the viewer over the brow.
+            ("M-11.6,-61.4 C-13,-73.6 13,-73.6 11.6,-61.4 Q11.2,-59.6 9.4,-59.8 Q0,-58.4 -9.4,-59.8 Q-11.2,-59.6 -11.6,-61.4 Z",
+             "M-11,-62 C-12.4,-73.4 12.4,-73.4 11,-62 Q10.8,-60.2 9,-60.4 Q0,-59 -9,-60.4 Q-10.8,-60.2 -11,-62 Z "
+                + "M-10.2,-62.6 Q0,-64.6 10.2,-62.6",
+             "M0,-71.4 v8")
+        case .frontQuarter:
+            ("M-11.6,-59.4 C-13,-72.8 9.4,-75.2 11.8,-63.4 Q14.6,-62.6 13.8,-61 Q6,-58.4 -1.6,-60.2 Q-7,-59 -11.6,-59.4 Z",
+             "M-11,-60 C-12.4,-72.4 9.4,-74.6 11.4,-63.6 Q14,-62.8 13.2,-61.4 Q6,-59 -1.2,-60.8 Q-7,-59.6 -11,-60 Z "
+                + "M-1.2,-60.8 Q5,-63.8 11.4,-63.6",
+             "M1.4,-71.6 q-0.6,4.6 -0.2,8.8")
+        case .back:
+            ("M-11.8,-56.4 C-13.2,-73.6 13.2,-73.6 11.8,-56.4 Q0,-54.4 -11.8,-56.4 Z",
+             "M-11.2,-57 C-12.6,-73.4 12.6,-73.4 11.2,-57 Q0,-55 -11.2,-57 Z",
+             "M0,-71.4 v15.4")
+        case .backQuarter:
+            ("M-12.6,-62.4 L-9.8,-63.6 C-10.6,-74 13.4,-74.6 12,-56.6 Q4,-55.4 -6.4,-58.6 Q-10.6,-60 -12.6,-62.4 Z",
+             "M-12,-62.8 L-9.4,-64 C-10,-73.6 12.8,-74 11.4,-57.2 Q4,-56 -6,-59.2 Q-10.2,-60.6 -12,-62.8 Z",
+             "M-0.6,-71.8 q1.4,6 1.4,15.6")
+        }
+    }
+
+    func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        // The post stands upright on the ground, outside the leaning body: in
+        // profile and from behind, beyond him; from the front, before him.
+        let postTop = Builder.postTops[d.view]!
+        let postBefore = pose == .working && d.seesFront
+        if pose == .working && !postBefore { post(&d, top: postTop + P(0, 0.4)) }
         d.figure { d in
+            let hand = d.hand(front: true)
+            let held = d.heldBehind(front: true)
+            func mallet(_ d: inout Drawing) {
+                switch pose {
+                case .working:
+                    d.mallet(at: hand, degrees: d.inView(Builder.workMallet(d.rig)))
+                case .fighting:
+                    d.mallet(at: hand, degrees: d.inView(d.rig.frontArm.upper + 10))
+                    if frame == 7 && d.view == .side { d.swish(around: d.joints.frontShoulder, radius: 25, from: 160, to: 90) }
+                default:
+                    d.mallet(at: hand, degrees: d.inView(d.rig.frontArm.upper + d.rig.frontArm.bend + 14))
+                }
+            }
             d.arm(front: false)
+            if held { mallet(&d) }
             d.legs()
+            // The apron is on his front: from behind, only its ties show.
+            let apron = d.view == .side || d.seesFront
             d.garment(colour: [P(-13, -46), P(9, -48), P(15, -14), P(-17, -13)],
                       outline: [P(-9, -47), P(9, -47), P(14, -16), P(-15, -16)], fill: .colour(Ink.light)) { d in
                 // Woven stripes.
-                for x in [-9.0, -4.0, 1.0, 6.0] {
-                    d.svg.line([d.up(P(x + 0.4, -44)), P(x * 1.35, -17)], stroke: .colour(Ink.hide), width: 1.6)
+                if d.view == .side {
+                    for x in [-9.0, -4.0, 1.0, 6.0] {
+                        d.svg.line([d.up(P(x + 0.4, -44)), P(x * 1.35, -17)], stroke: .colour(Ink.hide), width: 1.6)
+                    }
+                } else {
+                    for x in [-7.5, -2.5, 2.5, 7.5] {
+                        d.svg.line([d.up(P(x, -44)), P(x * 1.35, -17)], stroke: .colour(Ink.hide), width: 1.6)
+                    }
                 }
                 // The apron, in the team's colour, from a belt at the waist.
-                d.band([P(1.5, -33), P(13.5, -34), P(16, -11.5), P(3.5, -11)])
+                if apron { d.band([P(1.5, -33), P(13.5, -34), P(16, -11.5), P(3.5, -11)]) }
             }
-            d.svg.polygon([P(2.6, -33.6), P(12.4, -33.6), P(14.6, -12.4), P(4.2, -12.4)], fill: .none,
-                          stroke: .colour(Ink.line), width: 1.3)
-            d.svg.line([d.up(P(-10.4, -33.4)), d.up(P(12.6, -34.4))], stroke: .colour(Ink.line), width: 2)
-            // A fringe at the hem.
-            d.svg.path("M-13,-16 v2.6 M-10,-16 v2.6 M-7,-16 v2.6 M-4,-16 v2.6 M-1,-16 v2.6", stroke: .colour(Ink.line), width: 1.1)
-            let hand = d.joints.frontHand
-            switch pose {
-            case .working:
-                d.mallet(at: hand, degrees: Builder.workMallet(d.rig))
-            case .fighting:
-                d.mallet(at: hand, degrees: d.rig.frontArm.upper + 10)
-                if frame == 7 { d.swish(around: d.joints.frontShoulder, radius: 25, from: 160, to: 90) }
-            default:
-                d.mallet(at: hand, degrees: d.rig.frontArm.upper + d.rig.frontArm.bend + 14)
+            if d.view == .side {
+                d.svg.polygon([P(2.6, -33.6), P(12.4, -33.6), P(14.6, -12.4), P(4.2, -12.4)], fill: .none,
+                              stroke: .colour(Ink.line), width: 1.3)
+                d.svg.line([d.up(P(-10.4, -33.4)), d.up(P(12.6, -34.4))], stroke: .colour(Ink.line), width: 2)
+                // A fringe at the hem.
+                d.svg.path("M-13,-16 v2.6 M-10,-16 v2.6 M-7,-16 v2.6 M-4,-16 v2.6 M-1,-16 v2.6", stroke: .colour(Ink.line), width: 1.1)
+            } else {
+                // The fringe all round the hem, but where the apron hangs over it.
+                let over = apron ? d.turned([P(2.6, -33.6), P(12.4, -33.6), P(14.6, -12.4), P(4.2, -12.4)]) : []
+                let (low, high) = (over.map(\.x).min() ?? 0, over.map(\.x).max() ?? 0)
+                var fringe = PathData()
+                for x in stride(from: -12.0, through: 12.0, by: 3) where !apron || x < low - 0.6 || x > high + 0.6 {
+                    fringe.move(P(x, -16)); fringe.line(P(x, -13.4))
+                }
+                d.svg.path(fringe, stroke: .colour(Ink.line), width: 1.1)
+                if apron {
+                    d.svg.polygon(over, fill: .none, stroke: .colour(Ink.line), width: 1.3)
+                } else {
+                    // The apron's ties, knotted at the small of his back.
+                    let knot = d.up(P(d.view == .back ? 0 : -3.6, -33.2))
+                    d.band([P(-10.6, -34.6), P(10.6, -34.6), P(10.6, -32.2), P(-10.6, -32.2)])
+                    d.svg.polygon([knot + P(-0.6, 0.4), knot + P(-2.6, 7), knot + P(-0.4, 6.6)], fill: .team,
+                                  stroke: .colour(Ink.line), width: 0.9)
+                    d.svg.polygon([knot + P(0.6, 0.4), knot + P(3, 6.4), knot + P(1, 7)], fill: .team,
+                                  stroke: .colour(Ink.line), width: 0.9)
+                    d.svg.ellipse(knot, 1.6, 1.3, fill: .team, stroke: .colour(Ink.line), width: 0.9)
+                }
+                let belt = d.up(P(0, -33.9))
+                d.svg.line([belt + P(-10.6, 0), belt + P(10.6, 0)], stroke: .colour(Ink.line), width: 1.1)
+                d.svg.line([belt + P(-10.6, 1.6), belt + P(10.6, 1.6)], stroke: .colour(Ink.line), width: 1.1)
             }
+            if !held { mallet(&d) }
             d.arm(front: true, width: 2.1)
             d.head(nose: Builder.nose, hair: { d in
-                d.svg.path("M-9.8,-60 C-10.6,-63 -9.6,-55 -7.6,-52.8 C-7,-55.4 -6.6,-57.8 -5.2,-59.6 Z", fill: .colour(Ink.line))
+                d.svg.path(Builder.hair(d.view), fill: .colour(Ink.line))
             }, features: { d in
                 // A bushy moustache.
-                d.svg.path("M4.4,-54 q3.4,-2.6 7.2,-0.6 q-1,2.4 -3.6,1.4 q-2,1.4 -3.6,-0.8 Z", fill: .colour(Ink.line))
+                if let moustache = Builder.moustache(d.view) { d.svg.path(moustache, fill: .colour(Ink.line)) }
             }, brow: { d in
                 d.svg.path("M1.6,-64 q3.4,-1.4 6.4,-0.2", stroke: .colour(Ink.line), width: 1.5)
             }, over: { d in
                 // A leather cap with a short brim.
-                d.svg.path("M-11.2,-58.6 C-12.6,-71 2.6,-73.8 9.4,-65.6 L14.2,-64.8 L13.6,-63 L-11.2,-58.6 Z", fill: .colour(Ink.hide))
-                d.svg.path("M-10.6,-59.4 C-11.4,-70.6 3,-72.8 9.6,-65.2 L14.4,-64.4 L13.8,-62.6 L-10.6,-59.4 Z", stroke: .colour(Ink.line), width: 1.5)
-                d.svg.path("M-1.6,-71.2 q1.6,4.4 1.8,9.4", stroke: .colour(Ink.darkHide), width: 1)
+                let cap = Builder.cap(d.view)
+                d.svg.path(cap.colour, fill: .colour(Ink.hide))
+                d.svg.path(cap.outline, stroke: .colour(Ink.line), width: 1.5)
+                d.svg.path(cap.seam, stroke: .colour(Ink.darkHide), width: 1)
             })
         }
+        if postBefore { post(&d, top: postTop + P(0, 0.4)) }
         // The blow landing on the post, over the mallet's head.
         if pose == .working && Builder.workBlow(frame).landing {
-            d.burst(at: Builder.postTop + P(0, -1.4), from: 96, to: 264, size: 1.2)
+            d.burst(at: postTop + P(0, -1.4), from: 96, to: 264, size: 1.2)
         }
     }
 }
@@ -630,5 +832,38 @@ struct Founder: PersonLook {
                 d.svg.path("M-11.2,-63 q10,-6.4 21,-4.2", stroke: .colour(Ink.hide), width: 1.6)
             })
         }
+    }
+}
+
+// MARK: - Seen from other sides
+
+extension Drawing {
+    /// An angle in the figure's upright plane as it shows in this view; in
+    /// profile, the angle exactly as given.
+    func inView(_ degrees: Double) -> Double { view == .side ? degrees : onScreen(degrees) }
+
+    /// Whether what a hand holds is hidden behind the body in this view, so
+    /// that it is drawn before the body; never in profile.
+    func heldBehind(front: Bool) -> Bool { view != .side && armBehind(front: front) }
+
+    /// Whether the view shows the figure's front rather than its back.
+    var seesFront: Bool { view == .front || view == .frontQuarter }
+
+    /// A strap or sash worn across the body, seen from the front or the back:
+    /// from the left shoulder to the right hip, each given as (z, y) across
+    /// the body, `width` across. On the back it runs the same way.
+    mutating func strap(shoulder: P, hip: P, width: Double, fill: Paint) {
+        let x = seesFront ? 5.0 : -5.0, w = width / 2
+        let corners = [P(shoulder.x - w, shoulder.y), P(shoulder.x + w, shoulder.y),
+                       P(hip.x + w, hip.y), P(hip.x - w, hip.y)]
+        svg.polygon(corners.map { up(project(x, $0.y, $0.x).point) }, fill: fill)
+    }
+
+    /// The lowest edge of a shape drawn in profile around the body, as it shows
+    /// in this view: its two lowest corners once turned.
+    func hem(of outline: [P]) -> (P, P) {
+        let lowest = turned(outline).sorted { $0.y > $1.y }.prefix(2)
+        let a = lowest.first!, b = lowest.last!
+        return a.x < b.x ? (a, b) : (b, a)
     }
 }
