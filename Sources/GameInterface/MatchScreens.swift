@@ -156,7 +156,7 @@ public struct NewMatchView: View {
     }
 
     public var body: some View {
-        // Two seats to a row, three once there are more than four, so that six fit in two rows.
+        // Two seats to a row, three once there are more than four, so that five or six fit in two rows.
         let columns = model.seats.count > 4 ? 3 : 2
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {

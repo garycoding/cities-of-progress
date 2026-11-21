@@ -19,9 +19,10 @@ public struct NewMatchChoice: Hashable, Sendable {
 }
 
 /// The new-match screen's state: one seat for each player, each with a
-/// civilization, a controller and a team. The first milestone is one human
-/// against one computer player (`maxPlayers` 2); a match of four or six, with
-/// more human seats and shared teams, adds seats to the same list.
+/// civilization, a controller and a team. A match has two to six seats
+/// (requirement 4); the default is one human against one computer player
+/// (`maxPlayers` 2), and further seats, for people or computer players, are
+/// added to the same list.
 ///
 /// The first seat is the host's: the person at this Mac. A match across the LAN
 /// also has seats open for a person, whom the host leaves to choose their own
@@ -49,6 +50,9 @@ public struct NewMatchModel: Hashable, Sendable {
 
     /// The most people in one match, the host among them (requirement 4).
     public static let maxPeople = 3
+
+    /// How many players a match may have, people and computer players together (requirement 4).
+    public static let playerRange = 2...6
 
     public private(set) var seats: [Seat]
     public var maxPlayers: Int
@@ -166,7 +170,7 @@ public struct NewMatchModel: Hashable, Sendable {
 
     /// Why the match cannot start, or `nil` if it can (requirements 4, 5 and 10).
     public var problem: String? {
-        if ![2, 4, 6].contains(seats.count) { return "A match has two, four or six players." }
+        if !Self.playerRange.contains(seats.count) { return "A match has two to six players." }
         if Set(seats.map(\.team)).count < 2 { return "A match needs at least two teams." }
         if Set(chosenCivilizations).count != chosenCivilizations.count { return "Each player needs a different civilization." }
         if seats.filter(\.isHuman).contains(where: { $0.team != seats[0].team }) { return "All the human players are on one team." }
