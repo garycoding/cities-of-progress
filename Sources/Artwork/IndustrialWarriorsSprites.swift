@@ -16,9 +16,13 @@ import GameCore
 /// drawing falls back to standing where a pose is missing, so the working pose
 /// is not supplied. Every other key returns nil.
 ///
+/// Each kind it has finished is drawn in all five views (ruled 2026-11-21),
+/// the key's view passed to the drawing (`viewed`); for the rest it answers
+/// the side alone.
+///
 /// Each call draws its picture afresh, and the same key always gives the same
 /// pixels. Nothing is kept here: the drawing keeps what it is given.
-public struct IndustrialWarriorSprites: SpriteSource {
+public struct IndustrialWarriorSprites: ViewedSpriteSource {
     /// The poses this source supplies, each at frame 0.
     public let poses: [SpriteKey]
     private let supplied: Set<SpriteKey>
@@ -36,13 +40,22 @@ public struct IndustrialWarriorSprites: SpriteSource {
         poses.flatMap { pose in (0..<SpriteKey.framesPerPose).map { SpriteKey(pose.subject, pose.pose, frame: $0) } }
     }
 
+    /// The kinds drawn in all five views so far.
+    static let viewed: Set<UnitKind> = [.rifleman]
+
+    public func drawsViews(of subject: SpriteSubject) -> Bool {
+        if case .unit(let kind, .industrial) = subject { return Self.viewed.contains(kind) }
+        return false
+    }
+
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
         guard (0..<SpriteKey.framesPerPose).contains(key.frame),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)),
+              key.view == .side || drawsViews(of: key.subject),
               case .unit(let kind, _) = key.subject,
               let look = IndustrialWarriorsLooks.look(kind) else { return nil }
         let canvas = IndustrialWarriorsLooks.canvas(kind)
-        return look.render(key.pose, frame: key.frame, canvas: canvas)?.sprite(anchor: canvas.anchor)
+        return look.render(key.pose, frame: key.frame, canvas: canvas, view: key.view)?.sprite(anchor: canvas.anchor)
     }
 }
 
@@ -158,6 +171,11 @@ enum IndustrialWarriorsKit {
     static func sleeve(_ d: inout Drawing, front: Bool, colour: String, cuff: String, hand: Bool = true) {
         let j = d.joints
         let points = front ? [j.frontShoulder, j.frontElbow, j.frontHand] : [j.backShoulder, j.backElbow, j.backHand]
+        sleeve(&d, points, colour: colour, cuff: cuff, hand: hand)
+    }
+
+    /// The same sleeve through the shoulder, elbow and hand given on the screen, as an arm in another view has them.
+    static func sleeve(_ d: inout Drawing, _ points: [P], colour: String, cuff: String, hand: Bool = true) {
         let cuffAt = points[2] + (points[1] - points[2]) * (2.2 / Joints.forearm)
         d.svg.line([points[0], points[1], cuffAt], stroke: .colour(Ink.line), width: 4.6)
         d.svg.line([points[0], points[1], cuffAt], stroke: .colour(colour), width: 3)
@@ -361,5 +379,128 @@ enum IndustrialWarriorsKit {
             svg.circle(c + u * 2.4, 0.36, fill: ink)
         }
         svg.circle(c, 1.5, fill: .colour(far ? IndustrialWarriorsInk.darkBrass : IndustrialWarriorsInk.brass), stroke: ink, width: 0.6)
+    }
+}
+
+// MARK: - The uniform in the other views
+
+/// The uniform the Industrial warriors share, seen from the four sides other
+/// than the profile (ruled 2026-11-21), on the joints `IndustrialViews` finds.
+enum IndustrialWarriorsViews {
+    static let ink = Paint.colour(Ink.line)
+
+    /// Trousers to the knee, puttees below it and boots, on the turned legs.
+    static func legs(_ d: inout Drawing, trousers: String, darkTrousers: String) {
+        let legs = IndustrialViews.legs(d)
+        let quarter = d.view == .frontQuarter || d.view == .backQuarter
+        d.svg.group(turned: -IndustrialViews.lean(d), about: Drawing.hips) { svg in
+            for (i, leg) in legs.enumerated() {
+                let far = i == 0 && quarter
+                let shin = leg.foot - leg.knee, length = max(BronzePeopleKit.length(shin), 0.01), u = shin * (1 / length)
+                svg.line([leg.hip, leg.knee, leg.knee + u * 1.8], stroke: .colour(Ink.line), width: 5.4)
+                svg.line([leg.hip, leg.knee, leg.knee + u * 1.8], stroke: .colour(far ? darkTrousers : trousers), width: 3.8)
+                let top = leg.knee + u * 1.6, ankle = leg.foot - u * min(1.4, length * 0.3)
+                if BronzePeopleKit.length(ankle - top) > 0.5 {
+                    svg.line([top, ankle], stroke: .colour(Ink.line), width: 3.9)
+                    svg.line([top + u * 0.3, ankle], stroke: .colour(far ? IndustrialWarriorsInk.darkSoot : IndustrialWarriorsInk.soot), width: 2.4)
+                    var wraps = PathData()
+                    let a = P(1, 0)
+                    var t = 1.6
+                    while t < BronzePeopleKit.length(ankle - top) - 0.6 {
+                        let c = top + u * t
+                        wraps.move(c + a * 1.2); wraps.line(c - a * 1.2 + u * 1.1)
+                        t += 2.2
+                    }
+                    svg.path(wraps, stroke: .colour(Ink.line), width: 0.5, opacity: 0.55)
+                }
+                IndustrialViews.boot(&svg, ankle: ankle, foot: leg.foot, toe: leg.toe, colour: IndustrialWarriorsInk.darkLeather, sheen: IndustrialWarriorsInk.leather)
+            }
+        }
+    }
+
+    /// The tunic: its colour and outline turned by the view, the brass buttons
+    /// down the front, two breast pockets, the stand collar and the shoulder straps.
+    static func tunic(_ d: inout Drawing, colour: String, dark: String, pale: String, collar: String, swing: Double) {
+        let lift = d.rig.lift
+        d.garment(colour: [P(-12.6, -46.4), P(9.6, -48.2), P(12, -36), P(11.2, -27.6), P(13.6 + swing * 0.5, -13.2),
+                           P(-14.2 + swing * 0.5, -12.8), P(-12.8, -28)],
+                  outline: [P(-9.2, -47.4), P(9.2, -47.4), P(11.4, -36.4), P(10.6, -28.2), P(12.6 + swing * 0.5, -14.2),
+                            P(-13.2 + swing * 0.5, -14.2), P(-12.2, -28.6)], fill: .colour(colour)) { d in
+            let hem = d.turned([P(-13.2, -15.6), P(12.6, -15.6), P(12.6, -15), P(-13.2, -15)])
+            d.svg.line([P(hem.map(\.x).min()! + 0.6, -15.6), P(hem.map(\.x).max()! - 0.6, -15.6)], stroke: .colour(pale), width: 0.9)
+            if IndustrialViews.seesFront(d) {
+                for i in 0..<5 {
+                    if let b = IndustrialViews.front(d, -44.6 + Double(i) * 3.6 - lift, 0) {
+                        d.svg.circle(b, 0.75, fill: .colour(IndustrialWarriorsInk.brass), stroke: .colour(Ink.line), width: 0.4)
+                    }
+                }
+                for z in [-4.8, 4.8] {
+                    guard let c = IndustrialViews.front(d, -41.4 - lift, z) else { continue }
+                    d.svg.polygon([c + P(-2.2, -1), c + P(2.2, -1), c + P(2.2, 1), c + P(0, 1.6), c + P(-2.2, 1)], fill: .colour(dark))
+                }
+                if let top = IndustrialViews.front(d, -30, 0), let bottom = IndustrialViews.front(d, -15, 0) {
+                    d.svg.line([top, P(bottom.x + swing * 0.4, bottom.y)], stroke: .colour(dark), width: 0.8)
+                }
+            } else if let top = IndustrialViews.back(d, -46 - lift, 0), let waist = IndustrialViews.back(d, -28, 0) {
+                // The seam down the back and the pleat of the skirt.
+                d.svg.line([top, waist, P(waist.x + swing * 0.4, -15)], stroke: .colour(dark), width: 0.8)
+            }
+        }
+        // The stand collar round the neck.
+        IndustrialWarriorsKit.shape(&d.svg, [P(-6.4, -49.8 - lift), P(6.4, -49.8 - lift), P(6.8, -46.4 - lift), P(-6.8, -46.4 - lift)],
+                                    fill: .colour(collar), width: 0.9)
+        // The shoulder straps, each with its button, where the shoulders show.
+        for z in [-1.0, 1.0] {
+            let inner = IndustrialViews.screen(d, IndustrialPoint(0, -47.4 - lift, z * 3.4))
+            let outer = IndustrialViews.screen(d, IndustrialPoint(0, -47 - lift, z * 9.4))
+            guard abs(outer.x - inner.x) > 2 else { continue }
+            IndustrialWarriorsKit.shape(&d.svg, [inner + P(0, -1), outer + P(0, -1), outer + P(0, 1), inner + P(0, 1)], fill: .colour(pale), width: 0.7)
+            d.svg.circle(inner + (outer - inner) * 0.15, 0.55, fill: .colour(IndustrialWarriorsInk.brass))
+        }
+    }
+
+    /// The waist belt of buff webbing, turned by the view, its brass buckle at the front.
+    static func belt(_ d: inout Drawing) {
+        let band = d.turned([P(-13, -31), P(11.6, -31.2), P(11.4, -27.6), P(-13.2, -27.4)]).map(d.up)
+        IndustrialWarriorsKit.shape(&d.svg, band, fill: .colour(IndustrialWarriorsInk.buff), width: 1)
+        if let buckle = IndustrialViews.front(d, -29.4 - d.rig.lift * 0.4, 0) {
+            d.svg.polygon([buckle + P(-1.6, -1.6), buckle + P(1.4, -1.6), buckle + P(1.4, 1.6), buckle + P(-1.6, 1.6)],
+                          fill: .colour(IndustrialWarriorsInk.brass), stroke: .colour(Ink.line), width: 0.6)
+        }
+    }
+
+    /// A peaked cap seen from this side: the soot crown a little wider at
+    /// its top, the band of `band` between piping of the light, the brass badge
+    /// on its front and the black leather peak (drawn in the head's `over`; the
+    /// peak behind the head from behind is drawn by `capPeakBehind`).
+    static func peakedCap(_ d: inout Drawing, band: Paint = .team, badge: Bool = true) {
+        let view = d
+        BronzePeopleProps.shape(&d.svg, fill: .colour(IndustrialWarriorsInk.soot), width: 1.3) { o in
+            var p = PathData()
+            p.move(P(-10.6, -65.6) + o); p.line(P(-12, -73.6) + o)
+            p.cubic(P(-6, -76.8) + o, P(6, -76.8) + o, P(12, -73.6) + o)
+            p.line(P(10.6, -65.6) + o)
+            p.cubic(P(4, -64.8) + o, P(-4, -64.8) + o, P(-10.6, -65.6) + o)
+            p.close()
+            return p
+        }
+        d.svg.path("M-9.6,-73.8 C-4,-75.6 4,-75.6 9.6,-73.8", stroke: .colour(IndustrialWarriorsInk.paleSoot), width: 0.9)
+        BronzePeopleProps.shape(&d.svg, fill: band, width: 0.9, shift: P(-0.4, 0.3)) { o in
+            IndustrialViews.capBand(view, rim: -65.8, height: 3.8, half: 10.8, offset: o)
+        }
+        d.svg.path("M-11.1,-69.8 C-4,-68.8 4,-68.8 11.1,-69.8", stroke: .colour(IndustrialWarriorsInk.light), width: 0.7)
+        if badge, let b = IndustrialViews.capFront(d, y: -71, half: 11.4) {
+            d.svg.ellipse(b, 1.5, 1.7, fill: .colour(IndustrialWarriorsInk.brass), stroke: .colour(Ink.line), width: 0.6)
+        }
+        if IndustrialViews.seesFront(d), let p = IndustrialViews.peak(d, rim: -65.4, reach: 10, drop: 3, half: 9.6) {
+            d.svg.path(p, fill: .colour(IndustrialWarriorsInk.darkLeather), stroke: .colour(Ink.line), width: 1.1)
+        }
+    }
+
+    /// The peak seen behind the head from a back quarter (in the head's `behind`).
+    static func capPeakBehind(_ d: inout Drawing) {
+        if !IndustrialViews.seesFront(d), let p = IndustrialViews.peak(d, rim: -65.4, reach: 10, drop: 3, half: 9.6) {
+            d.svg.path(p, fill: .colour(IndustrialWarriorsInk.darkLeather), stroke: .colour(Ink.line), width: 1.1)
+        }
     }
 }
