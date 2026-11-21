@@ -111,6 +111,27 @@ enum AlchemyViews {
     /// A point of the picture in the body's own units in this view (the inverse of `world`).
     static func body(_ d: Drawing, _ p: P) -> P { (p - P(0, d.bob)).rotated(-lean(d), about: Drawing.hips) }
 
+    /// Draws `content` in the picture's own units from inside `Drawing.figure`,
+    /// undoing the view's lean and the bob, as a look draws what stands on
+    /// the ground or keeps its own direction whatever the body does.
+    static func inPicture(_ d: inout Drawing, _ content: (inout SVG) -> Void) {
+        d.svg.raw("<g transform=\"rotate(\(num(-lean(d))) \(num(Drawing.hips.x)) \(num(Drawing.hips.y))) translate(0,\(num(-d.bob)))\">")
+        content(&d.svg)
+        d.svg.raw("</g>")
+    }
+
+    /// Draws `content`, a long thing drawn from `at` along `degrees` (as it
+    /// shows on the screen), shortened along that direction by `k`: a musket
+    /// or a lance pointing toward the viewer or away.
+    static func foreshortened(_ svg: inout SVG, at a: P, degrees: Double, by k: Double, _ content: (inout SVG) -> Void) {
+        let u = P.direction(degrees)
+        let angle = atan2(u.y, u.x) * 180 / .pi
+        svg.raw("<g transform=\"translate(\(num(a.x)),\(num(a.y))) rotate(\(num(angle))) scale(\(num(k)),1) rotate(\(num(-angle))) "
+                + "translate(\(num(-a.x)),\(num(-a.y)))\">")
+        content(&svg)
+        svg.raw("</g>")
+    }
+
     /// A limb in this view: its root, its joint and its end on the screen
     /// (before the bob and the lean), its depth, and whether it is the
     /// figure's right one, the one nearer the viewer in profile.
@@ -165,7 +186,8 @@ enum AlchemyViews {
         let u = P.direction(degrees)
         let x = u.x * turn(view).c, y = u.y
         let length = (x * x + y * y).squareRoot()
-        guard length > 1e-6 else { return (degrees, 0) }
+        // Straight at the viewer or away, it shows as a point; it is drawn upright, as short as it may be.
+        guard length > 1e-6 else { return (180, 0) }
         return (atan2(x, y) * 180 / .pi, length)
     }
 

@@ -38,7 +38,7 @@ public struct AlchemyWarriorSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views.
-    static let viewed: Set<UnitKind> = []
+    static let viewed: Set<UnitKind> = [.musketeer]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .alchemy) = subject { return Self.viewed.contains(kind) }
