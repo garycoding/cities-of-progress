@@ -275,12 +275,13 @@ extension Drawing {
     }
 
     /// Both eyes from the front or a quarter turn, about the face's centre `x`;
-    /// from a quarter, the farther eye is narrower.
+    /// from a quarter, the eye toward the way the head turns (the screen's
+    /// right) is turned away from the viewer, and so narrower.
     private mutating func frontEyes(at x: Double) {
         let line = Paint.colour(Ink.line)
         let eyes: [(P, Double)] = view == .front
             ? [(P(-4.3, -60), 1), (P(4.3, -60), 1)]
-            : [(P(x - 6, -60), 0.72), (P(x + 1.4, -60), 1)]
+            : [(P(x - 6, -60), 1), (P(x + 1.4, -60), 0.72)]
         for (c, narrow) in eyes {
             switch rig.eyes {
             case .closed:
