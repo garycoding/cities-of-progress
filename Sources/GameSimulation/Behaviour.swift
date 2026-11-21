@@ -479,6 +479,7 @@ extension Simulation {
             && teamOf(entities[j].owner) != teamOf(owner) && entities[j].position.distance(to: here) <= radius {
             let victim = entities[j].owner.rawValue
             record(.destroyed(entities[j].id), for: victim)
+            record(.destroyed(entities[j].id), for: owner.rawValue)
             kill(j)
         }
     }

@@ -34,7 +34,8 @@ struct Pixels: Equatable {
 struct StonePeopleTests {
     /// The batch: every person of the checklist in its Stone-age look, each pose at every frame.
     static let batch: [SpriteKey] = SpriteKey.required(through: .stone).filter {
-        if case .unit(_, .stone) = $0.subject { return true }
+        // The car, of no age, is its own batch.
+        if case .unit(let kind, .stone) = $0.subject { return kind != .car }
         return false
     }.flatMap { key in (0..<12).map { SpriteKey(key.subject, key.pose, frame: $0) } }
 

@@ -41,6 +41,8 @@ final class EntityNode: SKNode {
     let body = SKSpriteNode()
     private var mask: SKSpriteNode?
     private var ring: SKShapeNode?
+    /// A car's kill radius, a glow on the ground (ruled 2026-11-21).
+    private(set) var glow: SKShapeNode?
     private var health: Bar?
     private var construction: Bar?
 
@@ -90,6 +92,7 @@ final class EntityNode: SKNode {
             position = CGPoint(x: s.x, y: s.y)
             zPosition = Projection.depth(entity.position)
         }
+        if entity.kind == .unit(.car) { updateGlow(owner: entity.owner, context: context) }
 
         let isBuilding: Bool
         if case .building = entity.kind { isBuilding = true } else { isBuilding = false }
@@ -149,6 +152,41 @@ final class EntityNode: SKNode {
         let span = Double(size.x + size.y)
         barWidth = max(30, span * 14)
         barHeight = max(barHeight, Stature.building(kind) + span * 6 + 10)
+    }
+
+    /// The glow on the ground out to a car's kill radius, in its owner's team
+    /// colour, fading outward: drawn above the ground and beneath every person
+    /// and building, wherever the car stands.
+    private func updateGlow(owner: PlayerID, context: DrawContext) {
+        guard let radius = context.catalogue.car?.killRadius else { return }
+        let node: SKShapeNode
+        if let existing = glow { node = existing } else {
+            node = SKShapeNode()
+            for (k, share) in [1.0, 0.8, 0.6, 0.4].enumerated() {
+                let path = CGMutablePath()
+                let points = (0..<72).map { n -> CGPoint in
+                    let a = Double(n) / 72 * 2 * Double.pi
+                    let s = Projection.screen(MapPosition(x: cos(a) * radius * share, y: sin(a) * radius * share))
+                    return CGPoint(x: s.x, y: s.y)
+                }
+                path.addLines(between: points)
+                path.closeSubpath()
+                let band = SKShapeNode(path: path)
+                band.lineWidth = k == 0 ? 2 : 0
+                band.name = "glow"
+                node.addChild(band)
+            }
+            addChild(node)
+            glow = node
+        }
+        let t = context.players[owner].map { TeamColour.of($0.civilization) } ?? TeamColour(red: 1, green: 1, blue: 1)
+        for (k, band) in node.children.enumerated() {
+            guard let band = band as? SKShapeNode else { continue }
+            band.fillColor = NSColor(srgbRed: t.red, green: t.green, blue: t.blue, alpha: 0.05 + 0.025 * Double(k))
+            band.strokeColor = NSColor(srgbRed: t.red, green: t.green, blue: t.blue, alpha: k == 0 ? 0.55 : 0)
+        }
+        // Above the ground (-10 000) and beneath every entity, whose depth is never negative.
+        node.zPosition = -5_000 - zPosition
     }
 
     private func updateRing(entity: EntityView, context: DrawContext) {

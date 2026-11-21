@@ -14,9 +14,13 @@ public enum MapKey: Equatable, Sendable {
     case arrow(ArrowKey)
     /// A number key, 0 to 9: with Command it sets a group, alone it recalls one.
     case digit(Int)
+    /// Shift-C: the person's car (ruled 2026-11-21).
+    case summonCar
 
     init?(_ event: NSEvent) {
+        let modifiers = event.modifierFlags.intersection([.shift, .command, .option, .control])
         switch event.keyCode {
+        case 8 where modifiers == .shift: self = .summonCar
         case 53: self = .escape
         case 123: self = .arrow(.left)
         case 124: self = .arrow(.right)
@@ -128,6 +132,9 @@ extension MapScene {
             return true
         case .arrow(let arrow):
             heldArrows.insert(arrow)
+            return true
+        case .summonCar:
+            session.issue(.summonCar)
             return true
         case .digit(let number):
             if command {
