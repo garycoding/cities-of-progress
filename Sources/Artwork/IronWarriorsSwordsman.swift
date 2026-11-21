@@ -80,6 +80,7 @@ struct IronWarriorsSwordsman: PersonLook {
     }
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let sway = d.rig.sway
         d.figure { d in
             d.arm(front: false, width: 2.1)
@@ -163,6 +164,142 @@ struct IronWarriorsSwordsman: PersonLook {
                 IronWarriorsKit.helmet(&d, crest: .brush)
             })
         }
+    }
+
+    // MARK: The other views
+
+    /// How far to his left the shield is held, seen from another side: on the
+    /// forearm, before the left half of his body.
+    static let shieldAside = -7.0
+
+    /// The swordsman seen from the front, from behind, or from a quarter turn.
+    /// From the front the shield covers the left of his body; from behind it
+    /// shows past his left side, and the strap he slings it by, in the team's
+    /// colour, crosses his back.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let view = d.view, behind = IronViews.fromBehind(view)
+        let (c, _) = IronViews.turn(view)
+        let sway = d.rig.sway
+        d.figure { d in
+            let push = pose == .fighting ? Self.strokes[frame].push : 0
+            let lift = pose == .walking ? 0.6 * sway : 0
+            let shieldAt = IronViews.at(view, d.up(P(9 + push, -30.4)), z: Self.shieldAside) + P(0, lift)
+            let hand = d.hand(front: true)
+            let sword = IronViews.tool(view, Self.swordDegrees(pose, frame, rig: d.rig))
+            let blade = 13 * sword.share
+            let swordBehind = d.armBehind(front: true)
+            func drawSword(_ d: inout Drawing) {
+                IronWarriorsKit.gladius(&d.svg, at: hand, degrees: sword.degrees, blade: blade)
+                if pose == .fighting && (frame == 5 || frame == 9) {
+                    d.impact(at: IronWarriorsKit.gladiusPoint(at: hand, degrees: sword.degrees, blade: blade) + P.direction(sword.degrees) * 1.6,
+                             size: 1)
+                }
+            }
+            if behind { Self.shieldBack(&d.svg, at: shieldAt, width: view == .back ? 15.4 : 11.4) }
+            if swordBehind { drawSword(&d) }
+            d.arm(front: false, width: 2.1)
+            d.legs()
+            // Low boots: the straps of the sandal over each foot.
+            let legs = [false, true].map { IronViews.leg(d, front: $0) }
+            d.svg.group(turned: -d.rig.lean * c, about: Drawing.hips) { svg in
+                for leg in legs {
+                    let u = P.direction(BronzePeopleKit.degrees(from: leg.knee, to: leg.foot))
+                    svg.line([leg.foot - u * 3.6, leg.foot, leg.toe], stroke: .colour(Ink.line), width: 3.4)
+                    svg.line([leg.foot - u * 3.2, leg.foot + (leg.toe - leg.foot) * 0.1], stroke: .colour(IronWarriorsInk.leather), width: 1.4)
+                }
+            }
+            let skirt = [P(-12.2, -28.6), P(11.6, -28.6), P(13.4, -14.6), P(-14.8, -14.6)]
+            d.garment(colour: [P(-13.6, -29), P(12.2, -30), P(14.6, -13.2), P(-16.4, -12.6)], outline: skirt,
+                      fill: .colour(IronWarriorsInk.deepSea)) { d in
+                let hem = IronViews.span(d, skirt, at: -16.2)
+                d.svg.line([P(hem.left + 0.4, -16.2), P(hem.right - 0.4, -16.2)], stroke: .colour(IronWarriorsInk.paleSea), width: 1.4)
+            }
+            let armour = [P(-8.6, -47.2), P(9, -47.2), P(12, -27.6), P(-13.2, -27.6)]
+            d.garment(colour: [P(-12.6, -46.4), P(9.4, -48.4), P(12.6, -26.4), P(-14, -26)], outline: armour,
+                      fill: .colour(IronWarriorsInk.iron)) { d in
+                var hoops = PathData(), shine = PathData()
+                for i in 0..<5 {
+                    let y = -43.6 + Double(i) * 3.4
+                    let across = IronViews.span(d, armour, at: y)
+                    let left = across.left + 0.6, right = across.right - 0.6, middle = (left + right) / 2
+                    hoops.move(d.up(P(left, y))); hoops.quad(d.up(P(middle, y + 1.2)), d.up(P(right, y)))
+                    shine.move(d.up(P(left + 1.6, y - 1.3))); shine.quad(d.up(P(middle, y - 0.3)), d.up(P(right - 2.4, y - 1.4)))
+                }
+                d.svg.path(shine, stroke: .colour(IronWarriorsInk.ironLight), width: 0.9)
+                d.svg.path(hoops, stroke: .colour(IronWarriorsInk.ironDark), width: 1.1)
+            }
+            // The scarf of legion red, round the neck.
+            IronWarriorsKit.shape(&d.svg, IronViews.around(d, [P(-6.4, -48.6), P(7.6, -48.8), P(8.6, -45.4), P(1, -44.2), P(-6.8, -45.4)]),
+                                  fill: .colour(IronWarriorsInk.legion), width: 1.1)
+            // The studded belt, and the leather straps hanging before him.
+            let belt = IronViews.span(d, armour, at: -27.6)
+            d.svg.line([d.up(P(belt.left - 0.4, -27.4)), d.up(P(belt.right + 0.4, -27.6))], stroke: .colour(Ink.line), width: 3.4)
+            d.svg.line([d.up(P(belt.left, -27.4)), d.up(P(belt.right, -27.6))], stroke: .colour(IronWarriorsInk.leather), width: 2)
+            if behind {
+                // The shield's strap, from the right shoulder across his back to the left hip.
+                let strap = [IronViews.at(view, d.up(P(-4, -47.4)), z: 6.4), IronViews.at(view, d.up(P(-4, -46.6)), z: 9.4),
+                             IronViews.at(view, d.up(P(-5, -28.6)), z: -9.6), IronViews.at(view, d.up(P(-5, -31.6)), z: -10.6)]
+                IronWarriorsKit.shape(&d.svg, strap, fill: .team, width: 1)
+            } else {
+                let swing = pose == .walking ? 0.8 * sway * c : 0
+                for x in [3.6, 6.6, 9.6] {
+                    let top = IronViews.at(view, d.up(P(x, -26.4)), z: (6.6 - x) * 1.2)
+                    let bottom = IronViews.at(view, P(x + 0.4, -17.4), z: (6.6 - x) * 1.2) + P(swing, 0)
+                    d.svg.line([top, bottom], stroke: .colour(Ink.line), width: 2.4)
+                    d.svg.line([top, bottom], stroke: .colour(IronWarriorsInk.leather), width: 1.1)
+                    d.svg.circle(bottom, 0.9, fill: .colour(IronWarriorsInk.ironLight), stroke: .colour(Ink.line), width: 0.5)
+                }
+                // The shield, held before him, its face toward his front.
+                let k = view == .front ? 1.0 : 0.76
+                d.svg.raw("<g transform=\"translate(\(num(shieldAt.x)),0) scale(\(num(k)),1) translate(\(num(-shieldAt.x)),0)\">")
+                Self.shield(&d.svg, at: shieldAt)
+                d.svg.raw("</g>")
+            }
+            if !swordBehind { drawSword(&d) }
+            d.arm(front: true, width: 2.1)
+            // The iron plates over each shoulder.
+            for z in [-Drawing.shoulderSpread, Drawing.shoulderSpread] {
+                let s = IronViews.at(view, P(0.5, -44 - d.rig.lift), z: z)
+                let flip = z < 0 ? -1.0 : 1.0
+                IronWarriorsKit.shape(&d.svg, [s + P(-3.6 * flip, 0.6), s + P(-2 * flip, -2.8), s + P(2.4 * flip, -2.6), s + P(3.8 * flip, 0.8),
+                                               s + P(3.2 * flip, 2.4), s + P(-3.2 * flip, 2.2)], fill: .colour(IronWarriorsInk.iron), width: 1.1)
+                IronWarriorsKit.shape(&d.svg, [s + P(-2.8 * flip, 2.2), s + P(3 * flip, 2.4), s + P(2.8 * flip, 4.6), s + P(-2.4 * flip, 4.4)],
+                                      fill: .colour(IronWarriorsInk.iron), width: 1)
+            }
+            d.head(nose: .curve, hair: { _ in }, features: { d in
+                // A scar across the cheek, and the shadow of a beard along the jaw.
+                switch d.view {
+                case .front:
+                    d.svg.path("M-6.8,-56.8 l3.4,2.6", stroke: .colour(Ink.line), width: 0.8, opacity: 0.7)
+                    d.svg.path("M-5.8,-55 l0.8,-1 M-4.6,-54.2 l0.8,-1", stroke: .colour(Ink.line), width: 0.6, opacity: 0.6)
+                    d.svg.path("M-6.6,-49.8 C-3,-47.4 3,-47.4 6.6,-49.8", stroke: .colour(Ink.line), width: 1, opacity: 0.45)
+                case .frontQuarter:
+                    d.svg.path("M6.2,-56.8 l3.4,2.6", stroke: .colour(Ink.line), width: 0.8, opacity: 0.7)
+                    d.svg.path("M7.2,-55 l0.8,-1 M8.4,-54.2 l0.8,-1", stroke: .colour(Ink.line), width: 0.6, opacity: 0.6)
+                    d.svg.path("M-1.4,-49.8 C2,-47.6 6.6,-47.6 10,-49.8", stroke: .colour(Ink.line), width: 1, opacity: 0.45)
+                default:
+                    break
+                }
+            }, brow: { d in
+                d.svg.path("M1.4,-63.4 l7,-0.4", stroke: .colour(Ink.line), width: 2.1)
+            }, over: { d in
+                IronWarriorsKit.helmet(&d, crest: .brush)
+            })
+        }
+    }
+
+    /// The back of the shield centred on `c` and `width` across, seen from behind
+    /// him: bare timber with a leather grip across, and the edge of its painted
+    /// face, in the team's colour, curving round its outer side.
+    static func shieldBack(_ svg: inout SVG, at c: P, width w: Double) {
+        let h = 27.6
+        svg.path(BronzePeopleProps.rounded(c, width: w, height: h, radius: 3.2, degrees: 0, shift: P(-0.8, 0.7)),
+                 fill: .colour(IronWarriorsInk.paleWood))
+        svg.path(BronzePeopleProps.rounded(c + P(-w / 2 + 1.6, 0), width: 3, height: h - 2, radius: 1.4, degrees: 0, shift: P(0, 0)),
+                 fill: .team)
+        svg.line([c + P(-w / 2 + 4, -2), c + P(w / 2 - 2, -2)], stroke: .colour(Ink.line), width: 2.6)
+        svg.line([c + P(-w / 2 + 4, -2), c + P(w / 2 - 2, -2)], stroke: .colour(IronWarriorsInk.leather), width: 1.4)
+        svg.path(BronzePeopleProps.rounded(c, width: w, height: h, radius: 3.2, degrees: 0, shift: P(0, 0)), stroke: .colour(Ink.line), width: 1.6)
     }
 
     /// A tall curved shield centred on `c`: its face in the team's colour,

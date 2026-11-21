@@ -189,6 +189,7 @@ struct IronWarriorsCatapult: PersonLook {
     // MARK: Drawing
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let layer = d.svg.layer
         let phase = d.phase
         let spin = pose == .walking ? -Double(frame) * Self.turn : 0
@@ -377,8 +378,20 @@ struct IronWarriorsCatapult: PersonLook {
 
     /// A linen tunic hemmed in sea green, drawn on a crewman.
     static func tunic(_ d: inout Drawing, fill: String, hem: String) {
+        let outline = [P(-8, -47), P(8.4, -47), P(11.6, -17), P(-12.2, -17)]
+        if d.view != .side {
+            // Seen from another side, the hem and the belt run across the tunic's width as the view turns it.
+            d.garment(colour: [P(-11.6, -46), P(8.6, -48), P(12.6, -15.6), P(-13.6, -15)], outline: outline, fill: .colour(fill)) { d in
+                let across = IronViews.span(d, outline, at: -19)
+                d.svg.line([P(across.left + 0.4, -19), P(across.right - 0.4, -19)], stroke: .colour(hem), width: 1.6)
+            }
+            let belt = IronViews.span(d, outline, at: -29.6)
+            d.svg.line([d.up(P(belt.left, -29.6)), d.up(P(belt.right, -29.8))], stroke: .colour(Ink.line), width: 2.8)
+            d.svg.line([d.up(P(belt.left + 0.4, -29.6)), d.up(P(belt.right - 0.4, -29.8))], stroke: .colour(IronWarriorsInk.leather), width: 1.4)
+            return
+        }
         d.garment(colour: [P(-11.6, -46), P(8.6, -48), P(12.6, -15.6), P(-13.6, -15)],
-                  outline: [P(-8, -47), P(8.4, -47), P(11.6, -17), P(-12.2, -17)], fill: .colour(fill)) { d in
+                  outline: outline, fill: .colour(fill)) { d in
             d.svg.line([P(-11.8, -19), P(11.4, -19)], stroke: .colour(hem), width: 1.6)
         }
         d.svg.line([d.up(P(-11.6, -29.6)), d.up(P(10.6, -29.8))], stroke: .colour(Ink.line), width: 2.8)
@@ -392,14 +405,39 @@ struct IronWarriorsCatapult: PersonLook {
             tunic(&d, fill: IronWarriorsInk.light, hem: IronWarriorsInk.deepSea)
             d.arm(front: true)
             d.head(nose: .button, hair: { d in
+                if d.view != .side { IronPeopleFarmer.curls(&d, colour: IronPeopleInk.hair, curl: IronPeopleInk.paleLeather); return }
                 d.svg.path("M-10.6,-56 C-11.6,-59 -11,-61.6 -9.4,-63.4 L-7.2,-58.6 Z", fill: .colour(Ink.line))
             }, features: { d in
                 // A short full beard.
-                d.svg.path("M-1.6,-52 C-0.4,-46.6 4.4,-44.4 8.6,-46.2 C10,-47.6 10.6,-49.4 10.4,-50.6 C7.6,-49.2 4.6,-49.4 2.4,-51.2 Z",
-                           fill: .colour(Ink.line))
+                switch d.view {
+                case .side:
+                    d.svg.path("M-1.6,-52 C-0.4,-46.6 4.4,-44.4 8.6,-46.2 C10,-47.6 10.6,-49.4 10.4,-50.6 C7.6,-49.2 4.6,-49.4 2.4,-51.2 Z",
+                               fill: .colour(Ink.line))
+                case .front:
+                    d.svg.path("M-7.4,-53.6 C-7,-48 -3.4,-45 0,-45 C3.4,-45 7,-48 7.4,-53.6 C4.6,-50.2 2,-49.4 0,-49.6 "
+                               + "C-2,-49.4 -4.6,-50.2 -7.4,-53.6 Z", fill: .colour(Ink.line))
+                case .frontQuarter:
+                    d.svg.path("M-3.6,-52.8 C-2.4,-46.8 2.4,-44.4 6.6,-46 C9.4,-47.4 10.6,-49.4 10.4,-50.8 C7.6,-49.2 4.6,-49 2.4,-50.4 "
+                               + "C0.4,-50.8 -1.6,-51.6 -3.6,-52.8 Z", fill: .colour(Ink.line))
+                default:
+                    break
+                }
             }, brow: { d in
                 d.svg.path("M1.8,-63.6 q3,-1 6.2,0", stroke: .colour(Ink.line), width: 1.6)
             }, over: { d in
+                if d.view == .front || d.view == .back {
+                    // The felt cap seen from straight ahead or behind.
+                    BronzePeopleProps.shape(&d.svg, fill: .colour(IronWarriorsInk.leather), width: 1.4) { o in
+                        var p = PathData()
+                        p.move(P(-11.6, -61.4) + o)
+                        p.cubic(P(-12.4, -74.6) + o, P(12.4, -74.6) + o, P(11.6, -61.4) + o)
+                        p.cubic(P(5, -64.4) + o, P(-5, -64.4) + o, P(-11.6, -61.4) + o)
+                        p.close()
+                        return p
+                    }
+                    d.svg.path("M-10.4,-63.6 C-4,-66.8 4,-66.8 10.4,-63.6", stroke: .colour(IronWarriorsInk.darkLeather), width: 1)
+                    return
+                }
                 // A felt cap.
                 BronzePeopleProps.shape(&d.svg, fill: .colour(IronWarriorsInk.leather), width: 1.4) { o in
                     var p = PathData()
@@ -419,25 +457,277 @@ struct IronWarriorsCatapult: PersonLook {
             d.arm(front: false)
             d.legs()
             tunic(&d, fill: IronWarriorsInk.deepSea, hem: IronWarriorsInk.paleSea)
-            IronWarriorsKit.shape(&d.svg, [d.up(P(-6.4, -48.6)), d.up(P(7.6, -48.8)), d.up(P(8.6, -45.4)), d.up(P(1, -44.2)),
-                                           d.up(P(-6.8, -45.4))], fill: .colour(IronWarriorsInk.legion), width: 1.1)
+            let scarf = [P(-6.4, -48.6), P(7.6, -48.8), P(8.6, -45.4), P(1, -44.2), P(-6.8, -45.4)]
+            IronWarriorsKit.shape(&d.svg, d.view == .side ? scarf.map(d.up) : IronViews.around(d, scarf),
+                                  fill: .colour(IronWarriorsInk.legion), width: 1.1)
             // His staff of office, a knotted vine stick.
-            let hand = d.joints.frontHand
+            let hand = d.view == .side ? d.joints.frontHand : d.hand(front: true)
             let degrees = pose == .fighting ? d.rig.frontArm.upper + d.rig.frontArm.bend + 14 : 168.0
-            let u = P.direction(degrees)
-            d.svg.line([hand - u * 4, hand + u * 15], stroke: .colour(Ink.line), width: 2.8)
-            d.svg.line([hand - u * 3.6, hand + u * 14.6], stroke: .colour(IronWarriorsInk.paleWood), width: 1.4)
+            let along = d.view == .side ? (degrees: degrees, share: 1.0) : IronViews.tool(d.view, degrees)
+            let u = P.direction(along.degrees), k = along.share
+            d.svg.line([hand - u * (4 * k), hand + u * (15 * k)], stroke: .colour(Ink.line), width: 2.8)
+            d.svg.line([hand - u * (3.6 * k), hand + u * (14.6 * k)], stroke: .colour(IronWarriorsInk.paleWood), width: 1.4)
             for t in [5.0, 10.0] {
-                d.svg.circle(hand + u * t + P(-u.y, u.x) * 0.9, 0.7, fill: .colour(Ink.line))
+                d.svg.circle(hand + u * (t * k) + P(-u.y, u.x) * 0.9, 0.7, fill: .colour(Ink.line))
             }
             d.arm(front: true)
             d.head(nose: .line, hair: { _ in }, features: { d in
-                d.svg.path("M4.2,-52.8 q3.2,-1.2 6.4,-0.2", stroke: .colour(Ink.line), width: 1.2)
+                if d.view == .side { d.svg.path("M4.2,-52.8 q3.2,-1.2 6.4,-0.2", stroke: .colour(Ink.line), width: 1.2) }
             }, brow: { d in
                 d.svg.path("M1.6,-64 l6.4,1", stroke: .colour(Ink.line), width: 1.8)
             }, over: { d in
                 IronWarriorsKit.helmet(&d, crest: .none)
             })
+        }
+    }
+}
+
+// MARK: - The catapult in the other views
+
+extension IronWarriorsCatapult {
+    /// Where the beams, the wheels and the uprights stand across the engine, in its own units.
+    static let beamZ = 12.0, wheelZ = 16.0, uprightZ = 10.0
+    /// Where the crew stand across the engine, in the picture's units: the
+    /// winder at the windlass's crank on its right, the captain off to its left.
+    static let winderZ = 12.0, captainZ = -30.0
+
+    /// The catapult seen from the front, from behind, or from a quarter turn,
+    /// with the crew before or after it as they are nearer or farther.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let view = d.view, layer = d.svg.layer, phase = d.phase
+        let (c, s) = IronViews.turn(view)
+        let endOn = abs(c) < 0.01
+        // The crew, each drawn on his own and placed where the view puts him.
+        func crew(_ rig: Rig?, at x: Double, z: Double, draw: (inout Drawing) -> Void) -> (body: String, at: P, depth: Double, drawing: Drawing)? {
+            guard let rig else { return nil }
+            var figure = Drawing(layer: layer, rig: rig, phase: phase, view: view)
+            draw(&figure)
+            let placed = IronViews.project(view, P(x, 0), z: z)
+            return (figure.svg.body, placed.point, placed.depth, figure)
+        }
+        let winder = crew(Self.winderRig(pose, frame), at: Self.winder.x, z: Self.winderZ) { Self.drawWinder(&$0, pose, frame) }
+        let captain = crew(Self.captainRig(pose, frame), at: Self.captain.x, z: Self.captainZ) { Self.drawCaptain(&$0, pose, frame) }
+        func place(_ man: (body: String, at: P, depth: Double, drawing: Drawing)?, near: Bool) {
+            guard let man, (man.depth > 0) == near else { return }
+            d.svg.group(at: man.at) { $0.raw(man.body) }
+        }
+        let reach = endOn ? Self.wheelZ * Self.scale + 4 : 52 * c + Self.wheelZ * Self.scale * abs(s)
+        d.svg.ellipse(P(0, 0.2), reach, 4.2, fill: .colour("#000000"), opacity: 0.13)
+        place(winder, near: false); place(captain, near: false)
+        d.svg.raw("<g transform=\"scale(\(num(Self.scale)))\">")
+        if endOn {
+            Self.engineEndOn(&d.svg, view: view, pose: pose, frame: frame)
+        } else {
+            Self.engineQuarter(&d.svg, view: view, pose: pose, frame: frame)
+        }
+        if let stone = Self.flight(frame), pose == .fighting {
+            Self.stone(&d.svg, at: P(stone.x * c, stone.y))
+        }
+        d.svg.raw("</g>")
+        if let winder, pose == .fighting && (frame == 7 || frame == 8) {
+            // The trigger's cord, from the catch at the frame's end to his hand.
+            let hand = IronViews.world(winder.drawing, winder.drawing.hand(front: true)) + winder.at
+            d.svg.line([Self.placed(IronViews.at(view, P(-33, -21), z: 0)), hand], stroke: .colour(Ink.line), width: 0.9)
+        }
+        if let captain, pose == .walking {
+            // The hauling rope, from the frame's front to his hand.
+            let hand = IronViews.world(captain.drawing, captain.drawing.hand(front: false)) + captain.at
+            let start = Self.placed(IronViews.at(view, P(31, -18), z: -Self.beamZ))
+            var rope = PathData()
+            rope.move(start); rope.quad((start + hand) * 0.5 + P(0, 3), hand)
+            d.svg.path(rope, stroke: .colour(Ink.line), width: 1.7)
+            d.svg.path(rope, stroke: .colour(IronWarriorsInk.rope), width: 0.8)
+        }
+        place(winder, near: true); place(captain, near: true)
+    }
+
+    /// A timber across the engine at `x`, from `top` to `bottom`, painted in the team's colour with lozenges in the light.
+    static func crossbeam(_ svg: inout SVG, view: SpriteView, x: Double, top: Double, bottom: Double) {
+        let corners = [IronViews.at(view, P(x, top), z: -beamZ - 1.6), IronViews.at(view, P(x, top), z: beamZ + 1.6),
+                       IronViews.at(view, P(x, bottom), z: beamZ + 1.6), IronViews.at(view, P(x, bottom), z: -beamZ - 1.6)]
+        svg.polygon(corners.map { $0 + P(-0.7, 0.6) }, fill: .team)
+        let left = min(corners[0].x, corners[1].x), right = max(corners[0].x, corners[1].x)
+        var lozenges = PathData()
+        let middle = (top + bottom) / 2, half = (bottom - top) / 2 - 1.4
+        var at = left + 4
+        while at <= right - 4 {
+            let c = P(at, middle)
+            lozenges.move(c + P(0, -half)); lozenges.line(c + P(half * 0.9, 0)); lozenges.line(c + P(0, half)); lozenges.line(c + P(-half * 0.9, 0))
+            lozenges.close()
+            at += 6.4
+        }
+        svg.path(lozenges, fill: .colour(IronWarriorsInk.light))
+        svg.polygon(corners, fill: .none, stroke: .colour(Ink.line), width: 1.4)
+    }
+
+    /// The rope skein across the engine at the pivot, between the side beams.
+    static func skeinAcross(_ svg: inout SVG, view: SpriteView) {
+        let a = IronViews.at(view, pivot, z: -beamZ), b = IronViews.at(view, pivot, z: beamZ)
+        svg.line([a, b], stroke: .colour(Ink.line), width: 6.4)
+        svg.line([a, b], stroke: .colour(IronWarriorsInk.rope), width: 4.2)
+        var twist = PathData()
+        for i in 1..<8 {
+            let p = a + (b - a) * (Double(i) / 8)
+            twist.move(p + P(-0.8, -1.8)); twist.line(p + P(0.8, 1.8))
+        }
+        svg.path(twist, stroke: .colour(IronWarriorsInk.wood), width: 0.7)
+    }
+
+    /// The windlass across the engine's back: its drum between the beams, and its crank on the right end.
+    static func windlassAcross(_ svg: inout SVG, view: SpriteView, handle degrees: Double) {
+        let (c, _) = IronViews.turn(view)
+        let a = IronViews.at(view, drum, z: -beamZ), b = IronViews.at(view, drum, z: beamZ)
+        svg.line([a, b], stroke: .colour(Ink.line), width: 8)
+        svg.line([a, b], stroke: .colour(IronWarriorsInk.rope), width: 5.6)
+        var turns = PathData()
+        for i in 1..<9 {
+            let p = a + (b - a) * (Double(i) / 9)
+            turns.move(p + P(-0.6, -2.6)); turns.line(p + P(0.6, 2.6))
+        }
+        svg.path(turns, stroke: .colour(IronWarriorsInk.wood), width: 0.6)
+        // The crank turns in the engine's own upright plane, at the right end.
+        let end = IronViews.at(view, drum, z: beamZ + 2)
+        let h = end + IronViews.flat(view, P.direction(degrees) * 4.2) + P(c == 0 ? 0 : 0, 0)
+        svg.line([end, h], stroke: .colour(Ink.line), width: 2.4)
+        svg.line([end, h], stroke: .colour(IronWarriorsInk.iron), width: 1)
+        svg.circle(h, 1.3, fill: .colour(IronWarriorsInk.darkWood), stroke: .colour(Ink.line), width: 0.7)
+        svg.circle(end, 1, fill: .colour(IronWarriorsInk.ironDark))
+    }
+
+    /// The crossbar between the uprights' tops, with the leather buffer in its middle.
+    static func crossbar(_ svg: inout SVG, view: SpriteView) {
+        let a = IronViews.at(view, P(16.2, -50.6), z: -uprightZ), b = IronViews.at(view, P(16.2, -50.6), z: uprightZ)
+        svg.line([a, b], stroke: .colour(Ink.line), width: 5.2)
+        svg.line([a, b], stroke: .colour(IronWarriorsInk.paleWood), width: 3.2)
+        let m = (a + b) * 0.5 + IronViews.flat(view, P(-3.4, 0))
+        IronWarriorsKit.shape(&svg, [m + P(-3, -4), m + P(3, -4), m + P(3.2, 4.4), m + P(-3.2, 4.4)], fill: .colour(IronWarriorsInk.leather), width: 1.1)
+        svg.path("M\(num(m.x - 1.6)),\(num(m.y - 2)) l1,0.4 M\(num(m.x - 1.6)),\(num(m.y + 1)) l1,0.4 M\(num(m.x + 0.6)),\(num(m.y - 0.6)) l1,0.4",
+                 stroke: .colour(IronWarriorsInk.rope), width: 0.7)
+    }
+
+    /// From a quarter turn: each side of the frame is the side drawing
+    /// foreshortened and set aside by the engine's width, the far side first;
+    /// the arm, the skein and the windlass between them; and the end nearer
+    /// the viewer, its crossbeam painted in the team's colour.
+    static func engineQuarter(_ svg: inout SVG, view: SpriteView, pose: SpritePose, frame: Int) {
+        let (c, s) = IronViews.turn(view)
+        let spin = pose == .walking ? -Double(frame) * turn : 0
+        let arm = armDegrees(pose, frame)
+        func aside(_ z: Double, _ content: (inout SVG) -> Void) {
+            svg.raw("<g transform=\"translate(\(num(-z * s)),0) scale(\(num(c)),1)\">")
+            content(&svg)
+            svg.raw("</g>")
+        }
+        let frontEnd = s > 0
+        if !frontEnd { crossbeam(&svg, view: view, x: 29.2, top: -21.4, bottom: -14) }
+        aside(-wheelZ) { svg in for w in wheels { wheel(&svg, at: w, degrees: spin + 12, far: true) } }
+        aside(-beamZ) { svg in beam(&svg, offset: P(0, 0), far: true) }
+        aside(-uprightZ) { svg in upright(&svg, offset: P(0, 0), far: true) }
+        if frontEnd { crossbeam(&svg, view: view, x: -32.2, top: -21.4, bottom: -14) }
+        windlassAcross(&svg, view: view, handle: crank(pose, frame))
+        if pose == .fighting && frame >= 1 && frame <= 7 {
+            let hook = pivot + P.direction(arm) * 28
+            let from = IronViews.at(view, drum + P(0, 3.2)), to = IronViews.at(view, hook)
+            svg.line([from, to], stroke: .colour(Ink.line), width: 1.6)
+            svg.line([from, to], stroke: .colour(IronWarriorsInk.rope), width: 0.8)
+        }
+        aside(0) { svg in Self.arm(&svg, degrees: arm, loaded: loaded(pose, frame)) }
+        skeinAcross(&svg, view: view)
+        crossbar(&svg, view: view)
+        aside(uprightZ) { svg in upright(&svg, offset: P(0, 0), far: false) }
+        aside(beamZ) { svg in beam(&svg, offset: P(0, 0), far: false) }
+        if pose == .fighting && frame == 9 {
+            let hit = pivot + P.direction(rest) * 34 + P(2.6, -0.6)
+            svg.raw("<g transform=\"translate(\(num(hit.x * c)),\(num(hit.y)))\">")
+            var burst = Drawing(layer: svg.layer, rig: Rig(), phase: 0)
+            burst.burst(at: P(0, 0), from: 20, to: 150, size: 0.9)
+            svg.raw(burst.svg.body)
+            svg.raw("</g>")
+        }
+        if frontEnd { crossbeam(&svg, view: view, x: 29.2, top: -21.4, bottom: -14) } else { crossbeam(&svg, view: view, x: -32.2, top: -21.4, bottom: -14) }
+        aside(wheelZ) { svg in for w in wheels { wheel(&svg, at: w, degrees: spin, far: false) } }
+    }
+
+    /// A wheel seen edge on: the iron-shod tyre as an upright band, and the hub standing out from it.
+    static func wheelEdgeOn(_ svg: inout SVG, at c: P, outward: Double) {
+        let r = wheelRadius, half = 2.2
+        IronWarriorsKit.shape(&svg, [c + P(-half, -r), c + P(half, -r), c + P(half, r), c + P(-half, r)], fill: .colour(IronWarriorsInk.wood), width: 1.2)
+        svg.line([c + P(-half + 0.6, -r + 0.6), c + P(-half + 0.6, r - 0.6)], stroke: .colour(IronWarriorsInk.iron), width: 0.9)
+        svg.line([c + P(half - 0.6, -r + 0.6), c + P(half - 0.6, r - 0.6)], stroke: .colour(IronWarriorsInk.iron), width: 0.9)
+        IronWarriorsKit.shape(&svg, [c + P(0, -2.4), c + P(outward * 3.4, -2), c + P(outward * 3.4, 2), c + P(0, 2.4)],
+                              fill: .colour(IronWarriorsInk.iron), width: 1)
+    }
+
+    /// Seen end on, from straight ahead or from behind: the wheels edge on at
+    /// each side, the uprights and their crossbar with the buffer, the arm
+    /// rising and falling in its own plane, the skein and the windlass across,
+    /// and the crossbeam at the nearer end painted in the team's colour.
+    static func engineEndOn(_ svg: inout SVG, view: SpriteView, pose: SpritePose, frame: Int) {
+        let front = view == .front
+        let arm = armDegrees(pose, frame)
+        let line = Paint.colour(Ink.line)
+        func uprights() {
+            for z in [-uprightZ, uprightZ] {
+                let x = IronViews.at(view, P(16, 0), z: z).x
+                IronWarriorsKit.shape(&svg, [P(x - 1.8, -53.4), P(x + 1.8, -53.4), P(x + 1.8, -21), P(x - 1.8, -21)],
+                                      fill: .colour(IronWarriorsInk.wood), width: 1.3)
+                for y in [-38.0, -27.0] {
+                    svg.line([P(x - 2, y), P(x + 2, y)], stroke: line, width: 2.2)
+                    svg.line([P(x - 1.8, y), P(x + 1.8, y)], stroke: .colour(IronWarriorsInk.iron), width: 1)
+                }
+            }
+            crossbar(&svg, view: view)
+        }
+        func beams() {
+            // The side beams' iron-capped ends.
+            for z in [-beamZ, beamZ] {
+                let x = IronViews.at(view, P(0, 0), z: z).x
+                IronWarriorsKit.shape(&svg, [P(x - 1.9, -21.8), P(x + 1.9, -21.8), P(x + 1.9, -13.6), P(x - 1.9, -13.6)],
+                                      fill: .colour(IronWarriorsInk.iron), width: 1.1)
+                svg.circle(P(x, -19.2), 0.6, fill: line)
+                svg.circle(P(x, -16.2), 0.6, fill: line)
+            }
+        }
+        func armEndOn() {
+            let u = P.direction(arm)
+            let start = P(0, pivot.y - u.y * 5), end = P(0, pivot.y + u.y * armLength)
+            IronWarriorsKit.shape(&svg, [start + P(-2.6, 0), end + P(-1.7, 0), end + P(1.7, 0), start + P(2.6, 0)],
+                                  fill: .colour(IronWarriorsInk.paleWood), width: 1.3)
+            for t in [0.45, 0.8] {
+                let y = pivot.y + u.y * armLength * t
+                svg.line([P(-2.4, y), P(2.4, y)], stroke: line, width: 2)
+                svg.line([P(-2, y), P(2, y)], stroke: .colour(IronWarriorsInk.iron), width: 0.9)
+            }
+            // The cup at its end, seen across: a bowl, a stone in it when loaded.
+            if loaded(pose, frame) { stone(&svg, at: end + P(0, u.y < 0 ? -2.6 : 2.6)) }
+            svg.ellipse(end, 4, 1.8, fill: .colour(IronWarriorsInk.iron), stroke: line, width: 1.1)
+        }
+        if front {
+            crossbeam(&svg, view: view, x: -32.2, top: -21.4, bottom: -14)
+            windlassAcross(&svg, view: view, handle: crank(pose, frame))
+            armEndOn()
+            skeinAcross(&svg, view: view)
+            uprights()
+            beams()
+            crossbeam(&svg, view: view, x: 29.2, top: -21.4, bottom: -14)
+        } else {
+            crossbeam(&svg, view: view, x: 29.2, top: -21.4, bottom: -14)
+            uprights()
+            skeinAcross(&svg, view: view)
+            armEndOn()
+            beams()
+            windlassAcross(&svg, view: view, handle: crank(pose, frame))
+            crossbeam(&svg, view: view, x: -32.2, top: -21.4, bottom: -14)
+        }
+        // The wheels, edge on at each side: the axle's ends turn, so nothing shows of the turning.
+        for z in [-wheelZ, wheelZ] {
+            let x = IronViews.at(view, P(0, 0), z: z).x
+            wheelEdgeOn(&svg, at: P(x, -9), outward: x < 0 ? -1 : 1)
+        }
+        if pose == .fighting && frame == 9 {
+            var burst = Drawing(layer: svg.layer, rig: Rig(), phase: 0)
+            burst.burst(at: P(0, -52), from: 20, to: 150, size: 0.9)
+            svg.raw(burst.svg.body)
         }
     }
 }
