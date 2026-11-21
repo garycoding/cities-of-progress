@@ -170,30 +170,30 @@ struct CarRenders {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let sprites = CarSprites()
         let colour = TeamColour.of(.sumer)
-        let width = 1440, height = 520, groundLine = 96.0
+        let width = 1440, height = 400, groundLine = 96.0
         let ground = Preview.ground(width: width, height: height, tile: 256, grained: false)
         let scale = 3.6
         let large = CarSaloon.canvas.scaled(to: scale)
         var frames: [CGImage] = []
         for pose in [SpritePose.standing, .walking] {
             let walking = pose == .walking
-            let count = walking ? 48 : 24
+            let count = walking ? 36 : 24
             for i in 0..<count {
                 let frame = i % 12
                 let context = Raster.bitmap(width: width, height: height)!
                 context.draw(ground, in: CGRect(x: 0, y: 0, width: width, height: height))
                 let drawn = try #require(CarSaloon.render(pose, frame: frame, canvas: large))
                 let big = Preview.tinted(base: drawn.base, mask: drawn.mask, colour: colour)
-                let x = walking ? 300 + Double(i) * CarSaloon.groundPerFrame * scale : 300
+                let x = walking ? 260 + Double(i) * CarSaloon.groundPerFrame * scale : 260
                 Preview.place(big, anchor: large.anchor, at: CGPoint(x: x, y: groundLine), in: context)
                 let sprite = try #require(sprites.sprite(SpriteKey(.unit(.car, .stone), pose, frame: frame)))
                 let small = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
-                let sx = walking ? 1180 + Double(i) * CarSaloon.groundPerFrame * 0.5 : 1180
+                let sx = walking ? 1250 + Double(i) * CarSaloon.groundPerFrame * 0.5 : 1250
                 Preview.place(small, anchor: sprite.anchor, at: CGPoint(x: sx, y: groundLine), in: context)
                 Preview.label("A person's car, in Sumer's colour", in: context, at: CGPoint(x: 28, y: Double(height) - 52), size: 26)
                 Preview.label((walking ? "driving: the wheels turn, the body rides its springs" : "standing: parked")
                               + ", 12 frames a second", in: context, at: CGPoint(x: 28, y: 28), size: 22)
-                Preview.label("at game size", in: context, at: CGPoint(x: 1190, y: 60), size: 18)
+                Preview.label("at game size", in: context, at: CGPoint(x: 1200, y: 60), size: 18)
                 frames.append(context.makeImage()!)
             }
         }

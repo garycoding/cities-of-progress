@@ -59,9 +59,6 @@ enum CarSaloon {
 
     static let wheelRadius = 10.0
     static let rearAxle = P(-33, -10), frontAxle = P(33, -10)
-    /// Where the far wheels are drawn, behind and above the near ones, as the
-    /// armoured car's are.
-    static let far = P(3.6, -3.4)
     /// The radius of the wheel arches cut in the body.
     static let archRadius = 12.6
     /// The height of the body's lower edge above the ground.
@@ -103,9 +100,6 @@ enum CarSaloon {
         let spin = pose == .walking ? -Double(frame) * turn : 0
         let ride = Self.ride(pose, frame)
         svg.ellipse(P(1, 0.2), 57, 3.8, fill: .colour("#000000"), opacity: 0.16)
-        // The far wheels, behind the body.
-        wheel(&svg, at: rearAxle + far, degrees: spin + 17, far: true)
-        wheel(&svg, at: frontAxle + far, degrees: spin + 41, far: true)
         // The body, riding its springs.
         svg.group(at: P(0, -ride)) { svg in
             body(&svg)
@@ -115,8 +109,8 @@ enum CarSaloon {
             roundel(&svg)
         }
         // The near wheels.
-        wheel(&svg, at: rearAxle, degrees: spin, far: false)
-        wheel(&svg, at: frontAxle, degrees: spin + 31, far: false)
+        wheel(&svg, at: rearAxle, degrees: spin)
+        wheel(&svg, at: frontAxle, degrees: spin + 31)
         if pose == .walking && frame % 6 == 3 {
             BronzePeopleProps.dust(&svg, at: rearAxle + P(-13, -2.4), size: 0.6, opacity: 0.25)
         }
@@ -258,8 +252,7 @@ enum CarSaloon {
         cuts.move(P(-29.6, -25.8)); cuts.cubic(P(-28, -23.4), P(-25.8, -21.4), P(-23.4, -20.4))
         // The doors' foot above the sill.
         cuts.move(P(-21, -8.6)); cuts.cubic(P(-8, -8.4), P(8, -8.4), P(20.4, -8.8))
-        // The bonnet's shut line, and the boot's.
-        cuts.move(P(19.4, -24.2)); cuts.cubic(P(28, -22.6), P(38, -20.6), P(46, -18))
+        // The boot's shut line (the bonnet's lies on its top, out of sight).
         cuts.move(P(-42.6, -25.4)); cuts.cubic(P(-45, -23.4), P(-48, -22.4), P(-52, -22))
         svg.path(cuts, stroke: .colour(CarInk.seam), width: 0.75)
         var edges = PathData()
@@ -309,19 +302,16 @@ enum CarSaloon {
     // MARK: The wheels
 
     /// An aero wheel: a dark tyre with a sheen on its sidewall, a grey disc
-    /// with five curved vents turned by `degrees`, and a plain centre cap. A
-    /// far wheel is darker, and shows little more than its tyre.
-    static func wheel(_ svg: inout SVG, at c: P, degrees: Double, far: Bool) {
+    /// with five curved vents turned by `degrees`, and a plain centre cap.
+    static func wheel(_ svg: inout SVG, at c: P, degrees: Double) {
         let ink = Paint.colour(Ink.line)
         let r = wheelRadius, disc = 6.9
         svg.circle(c, r, fill: .colour(CarInk.tyre), stroke: ink, width: 1.1)
-        if !far {
-            var sidewall = PathData()
-            arc(&sidewall, centre: c, radius: r - 1.4, from: 1.05 * .pi, to: 1.42 * .pi, start: true)
-            svg.path(sidewall, stroke: .colour(CarInk.tyreSheen), width: 0.9, opacity: 0.8)
-        }
-        svg.circle(c, disc, fill: .colour(far ? CarInk.wheelDark : CarInk.wheel), stroke: ink, width: 0.8)
-        if !far { svg.circle(c, disc - 1.3, fill: .colour(CarInk.wheelLight), opacity: 0.55) }
+        var sidewall = PathData()
+        arc(&sidewall, centre: c, radius: r - 1.4, from: 1.05 * .pi, to: 1.42 * .pi, start: true)
+        svg.path(sidewall, stroke: .colour(CarInk.tyreSheen), width: 0.9, opacity: 0.8)
+        svg.circle(c, disc, fill: .colour(CarInk.wheel), stroke: ink, width: 0.8)
+        svg.circle(c, disc - 1.3, fill: .colour(CarInk.wheelLight), opacity: 0.55)
         // The vents: each a crescent swept back from the rim toward the cap.
         for i in 0..<5 {
             let a = degrees + Double(i) * 72
@@ -334,8 +324,8 @@ enum CarSaloon {
             vent.close()
             svg.path(vent, fill: .colour(CarInk.vent), stroke: ink, width: 0.4)
         }
-        svg.circle(c, 2.3, fill: .colour(far ? CarInk.vent : CarInk.wheelDark), stroke: ink, width: 0.6)
-        if !far { svg.circle(c + P(-0.6, -0.6), 0.6, fill: .colour(CarInk.wheelLight), opacity: 0.8) }
+        svg.circle(c, 2.3, fill: .colour(CarInk.wheelDark), stroke: ink, width: 0.6)
+        svg.circle(c + P(-0.6, -0.6), 0.6, fill: .colour(CarInk.wheelLight), opacity: 0.8)
     }
 
     // MARK: Geometry
