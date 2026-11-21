@@ -404,6 +404,7 @@ public struct PanelModel: Sendable {
         case .rifleman: "f"
         case .fieldGun: "d"
         case .armouredCar: "v"
+        case .car: nil
         case .founder: nil
         }
     }
@@ -492,7 +493,7 @@ public struct PanelModel: Sendable {
             switch kind {
             case .unit(let u):
                 let own = catalogue.stats(u).age
-                return .unit(u, (u.isWarfighter || u == .founder) ? own : max(own, view.age))
+                return .unit(u, (u.isWarfighter || u == .founder || u == .car) ? own : max(own, view.age))
             case .building(let b):
                 return .building(b, max(catalogue.stats(b).age, view.age))
             }

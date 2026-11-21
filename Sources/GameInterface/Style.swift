@@ -222,7 +222,7 @@ struct PersonGlyph: View {
             case .slinger, .archer, .musketeer, .rifleman:
                 mark.addArc(center: CGPoint(x: mid + u * 0.30, y: u * 0.62), radius: u * 0.26,
                             startAngle: .degrees(-70), endAngle: .degrees(70), clockwise: false)
-            case .chariot, .horseman, .catapult, .knight, .cannon, .fieldGun, .armouredCar:
+            case .chariot, .horseman, .catapult, .knight, .cannon, .fieldGun, .armouredCar, .car:
                 mark.addEllipse(in: CGRect(x: mid - u * 0.46, y: u * 0.76, width: u * 0.24, height: u * 0.24))
                 mark.addEllipse(in: CGRect(x: mid + u * 0.22, y: u * 0.76, width: u * 0.24, height: u * 0.24))
             case .engineer:

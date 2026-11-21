@@ -55,7 +55,7 @@ enum IndustrialPeopleLooks {
         case .engineer: IndustrialPeopleMechanic()
         case .merchant: IndustrialPeopleIndustrialist()
         case .founder, .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon,
-             .rifleman, .fieldGun, .armouredCar: nil
+             .rifleman, .fieldGun, .armouredCar, .car: nil
         }
     }
 }

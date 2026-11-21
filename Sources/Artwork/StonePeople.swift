@@ -21,7 +21,7 @@ enum StonePeople {
         case .clubman: Clubman()
         case .slinger: Slinger()
         case .founder: Founder()
-        case .merchant, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar: nil
+        case .merchant, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car: nil
         }
     }
 
@@ -35,7 +35,7 @@ enum StonePeople {
         case .clubman: Clubman.nose
         case .slinger: Slinger.nose
         case .founder: Founder.nose
-        case .merchant, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar: nil
+        case .merchant, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car: nil
         }
     }
 }

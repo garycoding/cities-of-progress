@@ -469,7 +469,7 @@ extension Simulation {
                 let c = cy * buckets.columns + cx
                 for k in Int(buckets.start[c])..<Int(buckets.start[c + 1]) {
                     let j = Int(buckets.items[k])
-                    guard entities[j].alive, teamOf(entities[j].owner) != team, !entities[j].isFounder else { continue }
+                    guard entities[j].alive, teamOf(entities[j].owner) != team, !entities[j].isUnharmable else { continue }
                     let p = entities[j].position
                     let dx = max(minX - p.x, 0, p.x - maxX), dy = max(minY - p.y, 0, p.y - maxY)
                     let d = (dx * dx + dy * dy).squareRoot()

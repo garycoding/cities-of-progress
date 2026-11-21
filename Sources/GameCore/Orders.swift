@@ -67,6 +67,8 @@ public enum Order: Hashable, Codable, Sendable {
     case dismiss(units: [EntityID])
     /// Sow a farm that has run dry again, paying `GatheringStats.farmReseed`.
     case reseed(farm: EntityID)
+    /// A person's car, made beside one of the player's town centres (ruled 2026-11-21).
+    case summonCar
 }
 
 /// Why an order was refused. The interface shows it to the player.

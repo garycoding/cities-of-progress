@@ -243,7 +243,7 @@ enum Placeholders {
             c.strokePath()
             line(c, CGPoint(x: h.x - 2 + 11 * cos(-1.1), y: h.y + 6 + 11 * sin(-1.1)),
                  CGPoint(x: h.x - 2 + 11 * cos(1.1), y: h.y + 6 + 11 * sin(1.1)), colour(0.9, 0.9, 0.85), width: 1)
-        case .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar:
+        case .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car:
             break
         }
     }

@@ -22,7 +22,7 @@ public enum SpriteSubject: Hashable, Codable, Sendable {
         switch entity.kind {
         case .unit(let kind):
             let own = catalogue.stats(kind).age
-            let look = (kind.isWarfighter || kind == .founder) ? own : max(own, ownerAge)
+            let look = (kind.isWarfighter || kind == .founder || kind == .car) ? own : max(own, ownerAge)
             return .unit(kind, look)
         case .building(let kind):
             return .building(kind, max(catalogue.stats(kind).age, ownerAge))
@@ -85,7 +85,7 @@ public struct SpriteKey: Hashable, Codable, Sendable, CustomStringConvertible {
         var keys: [SpriteKey] = []
         let ages = Age.allCases.filter { $0 <= age }
         for stats in catalogue.units where stats.age <= age {
-            let looks: [Age] = stats.kind.isWarfighter || stats.kind == .founder ? [stats.age] : ages.filter { $0 >= stats.age }
+            let looks: [Age] = stats.kind.isWarfighter || stats.kind == .founder || stats.kind == .car ? [stats.age] : ages.filter { $0 >= stats.age }
             for look in looks {
                 for pose in [SpritePose.standing, .walking, .working, .fighting] where pose != .fighting || stats.attack != nil {
                     keys.append(SpriteKey(.unit(stats.kind, look), pose))

@@ -69,6 +69,8 @@ extension Simulation {
         var others = Array(repeating: false, count: players.count)
         var founders = Array(repeating: false, count: players.count)
         for e in entities where e.alive {
+            // A person's car keeps nobody in the match (ruled 2026-11-21).
+            if e.unitKind == .car { continue }
             if e.isFounder { founders[e.owner.rawValue] = true } else { others[e.owner.rawValue] = true }
         }
         return (others, founders)
