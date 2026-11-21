@@ -163,7 +163,7 @@ struct FacingsAlchemyRenders {
         let walk: [(Facing, Double, Double)] = [(.right, 1, -1), (.downRight, 1, 0), (.down, 1, 1), (.downLeft, 0, 1),
                                                (.left, -1, 1), (.upLeft, -1, 0), (.up, -1, -1), (.upRight, 0, -1)]
         let wide = canvas.width / Canvas.person.width, tall = canvas.height / Canvas.person.height
-        let size = Int(360 * max(1, wide * 0.8, tall)), k = 2.0, stride = wide > 1.5 ? 1.0 : 1.6
+        let size = Int(480 * max(1, wide * 0.85, tall)), k = 2.0, stride = wide > 1.5 ? 1.0 : 1.6
         let step = stride / 12
         var path: [(Double, Double)] = []
         var px = 0.0, py = 0.0

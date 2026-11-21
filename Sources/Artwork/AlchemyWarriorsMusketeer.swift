@@ -721,11 +721,11 @@ extension AlchemyWarriorsMusketeer {
         d.band(sash)
         let (knot, knotDepth) = at(-29.2, 150)
         let flap = pose == .walking ? 1.4 * sway : 0.4 * BronzePeopleKit.wave(frame)
-        let lean = AlchemyViews.turn(view).c
+        let aside = AlchemyViews.turn(view).c
         if knotDepth > -1 {
-            AlchemyWarriorsKit.shape(&d.svg, [knot + P(-0.6, -1), knot + P(-4.6 * lean - flap, 9.4), knot + P(-2.6 * lean - flap, 10.6), knot + P(1.2, 0.8)],
+            AlchemyWarriorsKit.shape(&d.svg, [knot + P(-0.6, -1), knot + P(-4.6 * aside - flap, 9.4), knot + P(-2.6 * aside - flap, 10.6), knot + P(1.2, 0.8)],
                                      fill: .team, width: 0.9)
-            AlchemyWarriorsKit.shape(&d.svg, [knot + P(-1, 0), knot + P(-1.6 * lean - flap * 0.6, 12.4), knot + P(0.8 - flap * 0.6, 12), knot + P(1.4, 0.4)],
+            AlchemyWarriorsKit.shape(&d.svg, [knot + P(-1, 0), knot + P(-1.6 * aside - flap * 0.6, 12.4), knot + P(0.8 - flap * 0.6, 12), knot + P(1.4, 0.4)],
                                      fill: .team, width: 0.9)
         }
         d.svg.polygon(d.turned(sash).map(d.up), fill: .none, stroke: line, width: 1.1)

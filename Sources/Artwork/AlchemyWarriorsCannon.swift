@@ -716,14 +716,13 @@ extension AlchemyWarriorsCannon {
 
         // The crew: where each stands, how deep, and his drawing.
         var crew: [(depth: Double, svg: String)] = []
-        var gunnerHand: P?, rammerHands: (near: P, far: P)?
+        var rammerHands: (near: P, far: P)?
         if let r = Self.gunnerRig(pose, frame) {
             var g = Drawing(layer: layer, rig: r, phase: phase, view: view)
             let origin = pose == .walking ? Self.walkingGunner : Self.gunner
             let z = pose == .walking ? 18.0 : Self.gunnerSide
             let at = Self.place(view, origin, z: z)
             Self.gunnerInView(&g, pose, frame, origin: origin, at: at, dx: dx)
-            gunnerHand = at + AlchemyViews.world(g, g.hand(front: true))
             crew.append((origin.x * s + z * c, "<g transform=\"translate(\(num(at.x)),0)\">" + g.svg.body + "</g>"))
         }
         if let (r, origin, mirrored) = Self.rammerRig(pose, frame) {
@@ -747,9 +746,10 @@ extension AlchemyWarriorsCannon {
                                      spongeAtStart: Self.service[frame].sponge, sooty: frame == 6, hiddenTo: Self.place(view, Self.muzzle(dx: dx)))
                 } else if pose == .walking {
                     let (degrees, k) = AlchemyViews.along(own, 100 + 2 * BronzePeopleKit.wave(frame))
-                    let u = P.direction(degrees) * max(k, 0.25) * flip
-                    let u2 = P(u.x * flip * flip, u.y)
-                    Self.spongeStaff(&staff, from: hands.near - u2 * 22, toward: hands.near + u2 * 24, spongeAtStart: false, sooty: false)
+                    // His own direction, mirrored with him into the gun's picture.
+                    let u = P.direction(degrees) * max(k, 0.25)
+                    let along = P(u.x * flip, u.y)
+                    Self.spongeStaff(&staff, from: hands.near - along * 22, toward: hands.near + along * 24, spongeAtStart: false, sooty: false)
                 } else {
                     Self.spongeStaff(&staff, from: P(hands.near.x, 0), toward: P(hands.near.x, -Self.staff), spongeAtStart: false, sooty: false)
                 }
@@ -790,7 +790,6 @@ extension AlchemyWarriorsCannon {
                            + "M\(num(m.x + 1)),\(num(m.y + 5.4)) l2.4,2.6", stroke: .colour(Ink.line), width: 1)
             }
         }
-        _ = gunnerHand
     }
 
     /// The gun from a quarter: the far wheel, the carriage and the barrel, and
