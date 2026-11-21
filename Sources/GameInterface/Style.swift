@@ -199,6 +199,8 @@ struct EntityIcon: View {
         let pose: SpritePose
         switch kind {
         case .unit: pose = .standing
+        // A bridge has no single picture: the icon shows the near lane's middle piece of a bridge of five.
+        case .building(.bridge): pose = BridgePlace(run: .alongX, lane: 1, index: 2, count: 5).pose(complete: true)
         case .building: pose = .complete
         }
         return sprites.sprite(SpriteKey(subject, pose))
