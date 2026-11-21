@@ -271,7 +271,7 @@ struct BridgesRenders {
     /// A river at game size for each age: grass banks, shallow water at its
     /// edges and deep water in its middle, bending from a reach that runs along
     /// y to one that runs along x, crossed by a bridge of six pieces along x
-    /// and one of five along y, with people of the age on each. Everything
+    /// and one of five along y, both finished, with people of the age on each. Everything
     /// standing is drawn by depth, as the drawing draws it, except the
     /// bridges, which the drawing lays beneath whoever crosses them.
     @Test func riverScenes() throws {
@@ -307,9 +307,9 @@ struct BridgesRenders {
                     Preview.place(tile.base, anchor: tile.anchor, at: screen(Double(x) + 0.5, Double(y) + 0.5), in: context)
                 }
             }
-            // The bridges, the farther pieces first: one along x complete, one along y with its last piece building.
+            // The bridges, the farther pieces first, both finished: people walk only over a finished piece.
             let pieces: [(GridPoint, BridgeRun, Bool)] = alongX.map { ($0, .alongX, true) }
-                + alongY.enumerated().map { ($0.element, .alongY, $0.offset < 4) }
+                + alongY.map { ($0, .alongY, true) }
             for (tile, run, complete) in pieces.sorted(by: { ($0.0.x + $0.0.y) < ($1.0.x + $1.0.y) }) {
                 let key = SpriteKey(.building(.bridge, age), run.pose(complete: complete))
                 let sprite = try #require(bridges.sprite(key))
@@ -326,7 +326,7 @@ struct BridgesRenders {
                 (SpriteKey(.unit(.scholar, age), .standing), 8.7, 4.45, .sumer, false),
                 (SpriteKey(.unit(.engineer, age), .walking, frame: 4), 14.5, 10.4, .egypt, true),
                 (SpriteKey(.unit(.worker, age), .walking, frame: 9), 14.5, 12.2, .egypt, false),
-                (SpriteKey(.unit(.engineer, age), .working, frame: 3), 14.5, 14.0, .egypt, false),
+                (SpriteKey(.unit(.engineer, age), .standing), 14.45, 13.7, .egypt, false),
                 (SpriteKey(.unit(.worker, age), .standing), 2.5, 4.8, .sumer, false),
                 (SpriteKey(.site(.tree), .complete), 2.5, 2.5, nil, false),
                 (SpriteKey(.site(.tree), .complete), 12.5, 2.5, nil, false),
@@ -348,7 +348,7 @@ struct BridgesRenders {
                     Preview.place(image, anchor: sprite.anchor, at: p, in: context)
                 }
             }
-            Preview.label("The \(age) age's bridge at game size: six pieces along x (Sumer) and five along y (Egypt), the last still building",
+            Preview.label("The \(age) age's bridge at game size: six pieces along x (Sumer) and five along y (Egypt)",
                           in: context, at: CGPoint(x: 30, y: Double(height) - 50), size: 24)
             try Preview.writePNG(context.makeImage()!, to: directory.appendingPathComponent("bridges-river-\(age)\(suffix).png"))
         }
