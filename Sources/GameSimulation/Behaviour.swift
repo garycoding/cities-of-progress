@@ -62,7 +62,7 @@ extension Simulation {
         let owner = entities[i].owner.rawValue
         let load = catalogue.gathering.load
         var siteIndex = self.siteIndex(of: site)
-        if siteIndex == nil, let next = nearestSite(kind, near: tile, team: players[owner].teamIndex) {
+        if siteIndex == nil, let next = nearestSite(kind, near: tile, player: owner) {
             // The site is exhausted: the worker turns to the nearest other of its kind.
             entities[i].task = .gather(site: sites[next].id, kind: kind, tile: sites[next].tile)
             entities[i].route = Route()
@@ -141,11 +141,11 @@ extension Simulation {
     }
 
     /// The nearest site of a kind with something left, near where the last one was,
-    /// on a tile the team has explored.
-    func nearestSite(_ kind: SiteKind, near tile: GridPoint, team: Int) -> Int? {
+    /// on a tile the player's orders may use (`isExplored(_:byPlayer:)`).
+    func nearestSite(_ kind: SiteKind, near tile: GridPoint, player p: Int) -> Int? {
         var best: Int?
         var bestDistance = Double.infinity
-        for s in sites.indices where sites[s].kind == kind && sites[s].remaining > 0 && isExplored(sites[s].tile, by: team) {
+        for s in sites.indices where sites[s].kind == kind && sites[s].remaining > 0 && isExplored(sites[s].tile, byPlayer: p) {
             let d = sites[s].tile.centre.distance(to: tile.centre)
             if d <= Rule.resiteRadius && d < bestDistance { best = s; bestDistance = d }
         }

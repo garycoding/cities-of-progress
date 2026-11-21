@@ -27,7 +27,9 @@ extension Simulation {
         let owner = entities[i].owner
         let team = teamOf(owner)
         var targetIndex = index(of: target)
-        if let t = targetIndex, !canStrike(owner, t) || !isVisible(entities[t], to: team) { targetIndex = nil }
+        if let t = targetIndex, !canStrike(owner, t) || !(seesEverything(owner.rawValue) || isVisible(entities[t], to: team)) {
+            targetIndex = nil
+        }
         if targetIndex == nil {
             // The target is gone: a warfighter takes the nearest opponent it can see, if any.
             guard kind.isWarfighter, let next = nearestTarget(for: i) else { setIdle(i); return }

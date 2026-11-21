@@ -107,7 +107,7 @@ extension Simulation {
         let workers = people.filter { entities[$0].unitKind == .worker }
         guard !workers.isEmpty else { return .refused(.notYours) }
         let p = player.rawValue
-        guard let s = siteIndex(of: site), isExplored(sites[s].tile, by: players[p].teamIndex) else {
+        guard let s = siteIndex(of: site), isExplored(sites[s].tile, byPlayer: p) else {
             return .refused(.invalidTarget)
         }
         let kind = sites[s].kind
@@ -165,7 +165,7 @@ extension Simulation {
         let p = player.rawValue
         let stats = tables.building(kind)
         guard players[p].age >= stats.age else { return .refused(.ageNotReached(stats.age)) }
-        guard canPlace(kind, at: origin, team: players[p].teamIndex) else { return .refused(.placementBlocked) }
+        guard canPlace(kind, at: origin, player: p) else { return .refused(.placementBlocked) }
         if let short = pay(stats.cost, p) { return .refused(short) }
         let b = placeBuilding(kind, owner: player, origin: origin, complete: false)
         let id = entities[b].id
@@ -174,7 +174,7 @@ extension Simulation {
     }
 
     /// `Placement`'s rule, applied to the full state and the team's exploration.
-    func canPlace(_ kind: BuildingKind, at origin: GridPoint, team: Int) -> Bool {
+    func canPlace(_ kind: BuildingKind, at origin: GridPoint, player p: Int) -> Bool {
         var occupied = Set<GridPoint>(), wanted = Set<GridPoint>()
         let needed = Placement.site(for: kind)
         for t in Placement.footprint(kind, at: origin, catalogue: catalogue) where inMap(t) {
@@ -184,7 +184,7 @@ extension Simulation {
                sites[Int(siteAt[k])].remaining > 0 { wanted.insert(t) }
         }
         return Placement.canPlace(kind, at: origin, width: width, height: height, terrain: terrain, occupied: occupied,
-                                  explored: { isExplored($0, by: team) }, catalogue: catalogue, wanted: wanted)
+                                  explored: { isExplored($0, byPlayer: p) }, catalogue: catalogue, wanted: wanted)
     }
 
     mutating func attack(_ ids: [EntityID], target: EntityID, player: PlayerID) -> OrderResult {
@@ -194,7 +194,9 @@ extension Simulation {
             return .refused(people.contains { entities[$0].isFounder } ? .cannotAttack : .notYours)
         }
         let team = players[player.rawValue].teamIndex
-        guard let t = index(of: target), isVisible(entities[t], to: team) else { return .refused(.invalidTarget) }
+        guard let t = index(of: target), seesEverything(player.rawValue) || isVisible(entities[t], to: team) else {
+            return .refused(.invalidTarget)
+        }
         guard teamOf(entities[t].owner) != team, !entities[t].isFounder else { return .refused(.cannotAttack) }
         for i in able { assign(i, .attack(target)) }
         return .accepted
@@ -302,7 +304,7 @@ extension Simulation {
             return .refused(.notYours)
         }
         let p = player.rawValue
-        guard canPlace(.townCentre, at: origin, team: players[p].teamIndex) else { return .refused(.placementBlocked) }
+        guard canPlace(.townCentre, at: origin, player: p) else { return .refused(.placementBlocked) }
         kill(f)
         removeDead()
         let centre = placeBuilding(.townCentre, owner: player, origin: origin, complete: true)
