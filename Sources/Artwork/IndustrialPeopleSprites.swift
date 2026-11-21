@@ -16,10 +16,14 @@ import GameCore
 /// working, and fighting for those that can attack. Each pose is a cycle of 12
 /// frames (`SpriteKey.frame` 0 to 11). Every other key returns nil.
 ///
+/// Each kind it has finished is drawn in all five views (ruled 2026-11-21),
+/// the key's view passed to the drawing (`viewed`); for the rest it answers
+/// the side alone.
+///
 /// Each call draws its picture afresh, and the same key always gives the same
 /// pixels. Nothing is kept here: the drawing keeps what it is given
 /// (`SpriteCache` in MapDrawing).
-public struct IndustrialPeopleSprites: SpriteSource {
+public struct IndustrialPeopleSprites: ViewedSpriteSource {
     /// The poses this source supplies, each at frame 0.
     public let poses: [SpriteKey]
     private let supplied: Set<SpriteKey>
@@ -37,12 +41,21 @@ public struct IndustrialPeopleSprites: SpriteSource {
         poses.flatMap { pose in (0..<SpriteKey.framesPerPose).map { SpriteKey(pose.subject, pose.pose, frame: $0) } }
     }
 
+    /// The kinds drawn in all five views so far.
+    static let viewed: Set<UnitKind> = [.worker]
+
+    public func drawsViews(of subject: SpriteSubject) -> Bool {
+        if case .unit(let kind, .industrial) = subject { return Self.viewed.contains(kind) }
+        return false
+    }
+
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
         guard (0..<SpriteKey.framesPerPose).contains(key.frame),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)),
+              key.view == .side || drawsViews(of: key.subject),
               case .unit(let kind, _) = key.subject,
               let look = IndustrialPeopleLooks.look(kind) else { return nil }
-        return look.render(key.pose, frame: key.frame, canvas: .person)?.sprite(anchor: Canvas.person.anchor)
+        return look.render(key.pose, frame: key.frame, canvas: .person, view: key.view)?.sprite(anchor: Canvas.person.anchor)
     }
 }
 
