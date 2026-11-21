@@ -64,6 +64,7 @@ public enum InterfaceText {
         case .gold: "gold"
         case .iron: "iron"
         case .oilField: "oil"
+        case .fish: "fish"
         }
     }
 

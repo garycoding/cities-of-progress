@@ -26,7 +26,7 @@ extension TerrainSprites {
         case .copper: drawCopper(&svg)
         case .tin: drawTin(&svg)
         case .gold: drawGold(&svg)
-        case .iron, .oilField: break
+        case .iron, .oilField, .fish: break
         }
     }
 

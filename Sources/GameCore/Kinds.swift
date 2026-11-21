@@ -20,6 +20,10 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
     /// Shift-C; it cannot be harmed, and every enemy unit within
     /// `CarStats.killRadius` dies at once. It belongs to no sector.
     case car
+    /// A boat (ruled 2026-11-21): trained at a boat house, it moves only on
+    /// water and gathers from the sites there as a worker does on land. It
+    /// belongs to no sector.
+    case boat
 
     public var sector: Sector? {
         switch self {
@@ -27,7 +31,7 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .scholar: .scholars
         case .engineer: .engineers
         case .merchant: .merchants
-        case .founder, .car: nil
+        case .founder, .car, .boat: nil
         case .clubman, .slinger, .spearman, .archer, .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon,
              .rifleman, .fieldGun, .armouredCar:
             .warfighters
@@ -45,6 +49,8 @@ public enum UnitKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .merchant: age >= .industrial ? "Industrialist" : age >= .alchemy ? "Banker" : age >= .iron ? "Caravan trader" : "Trader"
         case .founder: "Founder"
         case .car: "Car"
+        case .boat: age >= .industrial ? "Steam trawler" : age >= .alchemy ? "Fishing smack"
+            : age >= .iron ? "Fishing boat" : age >= .bronze ? "Reed boat" : "Dugout"
         case .clubman: "Clubman"
         case .slinger: "Slinger"
         case .spearman: "Spearman"
@@ -74,6 +80,9 @@ public enum BuildingKind: Int, CaseIterable, Codable, Sendable, Hashable {
     /// One water tile's piece of a bridge, built by engineers in a line from
     /// bank to bank (ruled 2026-11-21).
     case bridge
+    /// A boat house on the shore (ruled 2026-11-21): it trains boats and takes
+    /// in what they bring back.
+    case boatHouse
 
     public var name: String {
         switch self {
@@ -94,6 +103,7 @@ public enum BuildingKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .railwayDepot: "Railway depot"
         case .oilWell: "Oil well"
         case .bridge: "Bridge"
+        case .boatHouse: "Boat house"
         }
     }
 }

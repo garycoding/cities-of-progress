@@ -84,7 +84,7 @@ extension AlchemyOldBuildingsPainter {
         case .siegeWorkshop: siegeWorkshop(complete: complete)
         case .stoneWall: stoneWall(complete: complete)
         // The Alchemy age's own buildings are drawn by their own batch.
-        case .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: break
+        case .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge, .boatHouse: break
         }
     }
 }

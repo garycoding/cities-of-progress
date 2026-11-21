@@ -17,7 +17,7 @@ enum Task: Int, Codable, Sendable, CaseIterable {
         case .tin: self = .tin
         case .gold: self = .gold
         case .iron: self = .iron
-        case .oilField: return nil
+        case .oilField, .fish: return nil
         }
     }
 
