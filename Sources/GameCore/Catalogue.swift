@@ -197,8 +197,30 @@ public struct RailwayStats: Hashable, Codable, Sendable {
 /// tiles of it dies at once.
 public struct CarStats: Hashable, Codable, Sendable {
     public var killRadius: Double
+    /// How far the car's laser reaches, in tiles (ruled 2026-11-21).
+    public var laserRange: Double
+    /// Ticks in which the laser burns down any building, whatever its size.
+    public var laserTime: Int
 
-    public init(killRadius: Double) { self.killRadius = killRadius }
+    public init(killRadius: Double, laserRange: Double = 8, laserTime: Int = 4 * Tick.rate) {
+        self.killRadius = killRadius; self.laserRange = laserRange; self.laserTime = laserTime
+    }
+
+    private enum CodingKeys: String, CodingKey { case killRadius, laserRange, laserTime }
+
+    /// A car saved before the laser opens with the standard laser.
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        killRadius = try c.decode(Double.self, forKey: .killRadius)
+        laserRange = try c.decodeIfPresent(Double.self, forKey: .laserRange) ?? 8
+        laserTime = try c.decodeIfPresent(Int.self, forKey: .laserTime) ?? 4 * Tick.rate
+    }
+}
+
+/// A bridge's limits (ruled 2026-11-21): it crosses at most `maxWater` water
+/// tiles, one bridge piece (`BuildingKind.bridge`) on each.
+public enum BridgeRule {
+    public static let maxWater = 16
 }
 
 /// How merchants trade: at a town centre a merchant takes `exchangePerSecond`
@@ -380,6 +402,9 @@ public struct Catalogue: Hashable, Codable, Sendable {
             BuildingStats(kind: .watchTower, age: .bronze, cost: cost([.stone: 80, .wood: 20]), buildTime: s(40), health: 400,
                           armour: 2, footprint: GridPoint(1, 1), sight: 9, attack: Attack(damage: 4, range: 7, interval: s(2))),
             BuildingStats(kind: .palisade, age: .bronze, cost: cost([.wood: 3]), buildTime: s(4), health: 150, armour: 1,
+                          footprint: GridPoint(1, 1), sight: 1),
+            // One water tile's piece of a bridge (ruled 2026-11-21); the cost is for each piece.
+            BuildingStats(kind: .bridge, age: .stone, cost: cost([.wood: 10]), buildTime: s(6), health: 150, armour: 1,
                           footprint: GridPoint(1, 1), sight: 1),
             // The Iron age's buildings. Their figures are provisional until the Iron age's rules are built.
             BuildingStats(kind: .farm, age: .iron, cost: cost([.wood: 60]), buildTime: s(20), health: 150, armour: 0,

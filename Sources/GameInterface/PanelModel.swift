@@ -427,6 +427,8 @@ public struct PanelModel: Sendable {
         case .factory: "y"
         case .railwayDepot: "d"
         case .oilWell: "r"
+        // "x" for a crossing: "b" is the barracks.
+        case .bridge: "x"
         }
     }
 

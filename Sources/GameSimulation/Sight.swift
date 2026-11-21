@@ -71,6 +71,8 @@ extension Simulation {
         for e in entities where e.alive {
             // A person's car keeps nobody in the match (ruled 2026-11-21).
             if e.unitKind == .car { continue }
+            // Nor does a bridge (the session's decision, 2026-11-21).
+            if e.buildingKind == .bridge { continue }
             if e.isFounder { founders[e.owner.rawValue] = true } else { others[e.owner.rawValue] = true }
         }
         return (others, founders)
@@ -160,10 +162,15 @@ extension Simulation {
     }
 
     func entityView(_ e: Entity) -> EntityView {
-        EntityView(id: e.id, owner: e.owner, kind: e.kind, position: e.position,
-                   tile: e.isPerson ? e.position.tile : e.origin, facing: e.facing, health: max(0, e.health),
-                   maxHealth: e.maxHealth, activity: activity(of: e),
-                   remaining: remaining(of: e))
+        var view = EntityView(id: e.id, owner: e.owner, kind: e.kind, position: e.position,
+                              tile: e.isPerson ? e.position.tile : e.origin, facing: e.facing, health: max(0, e.health),
+                              maxHealth: e.maxHealth, activity: activity(of: e),
+                              remaining: remaining(of: e))
+        view.bridgeRun = e.bridgeRun
+        if e.unitKind == .car, e.doing == .fighting, case .attack(let target) = e.task, let t = index(of: target) {
+            view.laserTarget = entities[t].position
+        }
+        return view
     }
 
     /// For a farm, the food left before it must be reseeded; for an oil well,

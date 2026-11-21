@@ -375,6 +375,7 @@ extension Simulation {
         entities[b].health = min(entities[b].health, entities[b].maxHealth)
         let p = entities[b].owner.rawValue
         housing[p] += tables.building(kind).housing
+        if kind == .bridge, inMap(entities[b].origin) { blocked[tileIndex(entities[b].origin)] = false }
         record(.constructed(entities[b].id, kind), for: p)
     }
 

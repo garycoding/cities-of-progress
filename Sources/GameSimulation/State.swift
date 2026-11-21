@@ -188,6 +188,8 @@ struct Entity: Codable, Sendable, Hashable {
     var healthCredit = 0
     /// Food a farm has yielded since it was last sown; optional so that older saves open, nil being none.
     var farmUsed: Int?
+    /// For a bridge piece, the way its bridge runs; optional so that older saves open.
+    var bridgeRun: BridgeRun?
     /// Engineer-ticks of demolition done.
     var demolished = 0
     var queue: [UnitKind] = []

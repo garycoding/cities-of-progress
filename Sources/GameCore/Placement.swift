@@ -45,6 +45,27 @@ public enum Placement {
     /// built over an oil field.
     public static func site(for kind: BuildingKind) -> SiteKind? { kind == .oilWell ? .oilField : nil }
 
+    /// The water tiles a bridge from the land tile `a` to the land tile `b`
+    /// would cross, in order from `a`, or nil if no bridge may run there: the
+    /// line must be straight, both ends on passable ground, every tile between
+    /// them water, and at least one and at most `BridgeRule.maxWater` of them.
+    public static func bridgeWater(from a: GridPoint, to b: GridPoint, width: Int, height: Int,
+                                   terrain: [Terrain]) -> [GridPoint]? {
+        guard let run = BridgeRun.of(from: a, to: b) else { return nil }
+        func inside(_ t: GridPoint) -> Bool { t.x >= 0 && t.y >= 0 && t.x < width && t.y < height }
+        guard inside(a), inside(b), terrain[a.y * width + a.x].isPassable, terrain[b.y * width + b.x].isPassable
+        else { return nil }
+        let step = run == .alongX ? GridPoint(b.x > a.x ? 1 : -1, 0) : GridPoint(0, b.y > a.y ? 1 : -1)
+        var tiles: [GridPoint] = []
+        var t = GridPoint(a.x + step.x, a.y + step.y)
+        while t != b {
+            guard !terrain[t.y * width + t.x].isPassable, tiles.count < BridgeRule.maxWater else { return nil }
+            tiles.append(t)
+            t = GridPoint(t.x + step.x, t.y + step.y)
+        }
+        return tiles.isEmpty ? nil : tiles
+    }
+
     /// Whether a building of `kind` may be placed with its origin at `origin`.
     /// `explored` answers whether the placing player has explored a tile.
     /// `wanted` holds the tiles of the sites of `site(for: kind)` with

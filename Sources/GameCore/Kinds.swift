@@ -71,6 +71,9 @@ public enum BuildingKind: Int, CaseIterable, Codable, Sendable, Hashable {
     case farm, stable, siegeWorkshop, stoneWall
     case castle, alchemistsWorkshop
     case factory, railwayDepot, oilWell
+    /// One water tile's piece of a bridge, built by engineers in a line from
+    /// bank to bank (ruled 2026-11-21).
+    case bridge
 
     public var name: String {
         switch self {
@@ -90,7 +93,32 @@ public enum BuildingKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .factory: "Factory"
         case .railwayDepot: "Railway depot"
         case .oilWell: "Oil well"
+        case .bridge: "Bridge"
         }
+    }
+}
+
+/// The direction in which a bridge runs, as a piece of it is drawn. A bridge
+/// runs straight, along either axis: movement does not cut a corner past
+/// water, so a diagonal bridge could not be crossed.
+public enum BridgeRun: Int, CaseIterable, Codable, Sendable, Hashable {
+    /// Along the map's x axis.
+    case alongX
+    /// Along the map's y axis.
+    case alongY
+
+    /// The run of a line from `a` to `b`, or nil if it is not straight.
+    public static func of(from a: GridPoint, to b: GridPoint) -> BridgeRun? {
+        if a == b { return nil }
+        if a.y == b.y { return .alongX }
+        if a.x == b.x { return .alongY }
+        return nil
+    }
+
+    /// The pose naming a bridge piece's drawing, complete or under construction.
+    public func pose(complete: Bool) -> SpritePose {
+        let name = self == .alongX ? "along-x" : "along-y"
+        return SpritePose(rawValue: complete ? "bridge-\(name)" : "bridge-\(name)-under-construction")
     }
 }
 

@@ -117,7 +117,10 @@ public struct Simulation: GameSimulating {
 
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        catalogue = try c.decode(Catalogue.self, forKey: .catalogue)
+        var saved = try c.decode(Catalogue.self, forKey: .catalogue)
+        // A match saved before bridges (2026-11-21) gains the standard bridge.
+        if !saved.buildings.contains(where: { $0.kind == .bridge }) { saved.buildings.append(Catalogue.standard.stats(.bridge)) }
+        catalogue = saved
         width = try c.decode(Int.self, forKey: .width)
         height = try c.decode(Int.self, forKey: .height)
         terrain = try c.decode([Terrain].self, forKey: .terrain)
@@ -162,7 +165,8 @@ public struct Simulation: GameSimulating {
             if let kind = e.buildingKind {
                 for t in footprintTiles(origin: e.origin, size: e.size) where inMap(t) {
                     buildingAt[tileIndex(t)] = Int32(e.id.rawValue)
-                    blocked[tileIndex(t)] = true
+                    // A finished bridge piece is walked over.
+                    blocked[tileIndex(t)] = !(kind == .bridge && e.complete)
                 }
                 if e.complete { housing[e.owner.rawValue] += tables.building(kind).housing }
             } else if let kind = e.unitKind {
