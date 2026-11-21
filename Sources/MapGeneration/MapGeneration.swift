@@ -348,6 +348,10 @@ struct MapBuilder {
         return candidates.prefix(count).map(\.tile)
     }
 
+    /// Copper and tin deposits each player's start has; the map has no others,
+    /// so a match holds this many of each per player.
+    static let bronzeOrePerPlayer = 5
+
     private mutating func giveKit(to s: Int) {
         let (cx, cy) = centres[s]
         let near = Zone.near(x: cx, y: cy, maxSquared: 11 * 11)
@@ -355,8 +359,8 @@ struct MapBuilder {
             KitItem(kind: .tree, count: 14, minDistance: 6, maxDistance: 8.5, radius: 3),
             KitItem(kind: .prey, count: 4, minDistance: 6.5, maxDistance: 9, radius: 2),
             KitItem(kind: .stone, count: 3, minDistance: 6.5, maxDistance: 9, radius: 2),
-            KitItem(kind: .copper, count: 3, minDistance: 6.5, maxDistance: 9, radius: 2),
-            KitItem(kind: .tin, count: 2, minDistance: 6.5, maxDistance: 9, radius: 2),
+            KitItem(kind: .copper, count: Self.bronzeOrePerPlayer, minDistance: 6.5, maxDistance: 9, radius: 2),
+            KitItem(kind: .tin, count: Self.bronzeOrePerPlayer, minDistance: 6.5, maxDistance: 9, radius: 2),
             KitItem(kind: .gold, count: 3, minDistance: 6.5, maxDistance: 9, radius: 2),
         ]
         var slots = Array(0..<items.count)
@@ -389,17 +393,15 @@ struct MapBuilder {
         for t in best { put(item.kind, t.x, t.y) }
     }
 
-    /// Clusters of every kind over the whole field, away from the starts. Tin
-    /// comes in fewer and smaller clusters than copper.
+    /// Clusters of every kind over the whole field, away from the starts.
+    /// Copper and tin are not scattered: each start's kit holds every one
+    /// (`bronzeOrePerPlayer` of each).
     private mutating func scatter() {
         let area = Double(w * h) / 9216
         func clusters(_ n: Double) -> Int { max(2, Int((n * area).rounded())) }
-        let copperClusters = clusters(6)
         let plan: [(SiteKind, Int, ClosedRange<Int>)] = [
             (.prey, clusters(14), 3...5),
             (.stone, clusters(7), 3...4),
-            (.copper, copperClusters, 3...4),
-            (.tin, max(1, copperClusters * 2 / 5), 2...3),
             (.gold, clusters(5), 3...4),
             (.iron, clusters(5), 3...4),
             (.oilField, clusters(4), 2...3),

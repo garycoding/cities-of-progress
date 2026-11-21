@@ -101,11 +101,14 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
     for kind in SiteKind.allCases { #expect(maps.allSatisfy { $0.sites.contains { $0.kind == kind } }, "a map has no \(kind)") }
 }
 
-@Test func tinIsScarcerThanCopper() {
-    for maps in Maps.byPlayers.values { for map in maps {
-        let copper = map.sites.filter { $0.kind == .copper }.count
-        let tin = map.sites.filter { $0.kind == .tin }.count
-        #expect(tin < copper)
+@Test func copperAndTinAreFivePerPlayer() {
+    for (players, maps) in Maps.byPlayers { for map in maps {
+        #expect(map.sites.filter { $0.kind == .copper }.count == 5 * players)
+        #expect(map.sites.filter { $0.kind == .tin }.count == 5 * players)
+        for start in map.starts {
+            #expect(count(.copper, in: map, within: 14, of: start) == 5, "copper near \(start)")
+            #expect(count(.tin, in: map, within: 14, of: start) == 5, "tin near \(start)")
+        }
     } }
 }
 
