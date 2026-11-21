@@ -280,6 +280,16 @@ public struct PanelModel: Sendable {
                 shortcut: "x", icon: nil, iconSubject: nil, refund: back)]
         }
 
+        // A founder founds one town centre, free; it then becomes an engineer (requirement 26).
+        if own.contains(where: { $0.kind == .unit(.founder) }) {
+            build = [ActionOffer(
+                id: "build-townCentre", section: .build, title: BuildingKind.townCentre.name,
+                detail: "The founder builds it where you click, free, with two workers, and becomes an engineer.",
+                cost: ResourceAmounts(), action: .place(.townCentre), unavailable: gate,
+                shortcut: Self.buildKey(.townCentre), icon: .building(.townCentre),
+                iconSubject: planner.subject(.building(.townCentre)))]
+        }
+
         // Buildings for engineers, of the ages reached.
         if own.contains(where: { $0.kind == .unit(.engineer) }) {
             build = catalogue.buildings.filter { $0.age <= view.age }.map { b in

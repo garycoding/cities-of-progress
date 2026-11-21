@@ -246,8 +246,8 @@ public struct Catalogue: Hashable, Codable, Sendable {
     public var startingPeople: Int
     /// The population limit can never exceed this, however many houses stand.
     public var populationMaximum: Int
-    /// People that come with a town centre built by a founder: one engineer,
-    /// so that a house can be built, and the rest workers (requirement 26).
+    /// Workers that come with a town centre built by a founder, who becomes an
+    /// engineer, so that a house can be built (requirement 26, ruled 2026-11-21).
     public var founderPeople: Int
     /// What merchants do (requirement 15, "Sectors"); optional so that saves
     /// made before merchants traded still open, and then they cannot.
@@ -470,7 +470,7 @@ public struct Catalogue: Hashable, Codable, Sendable {
         return Catalogue(units: units, buildings: buildings, improvements: improvements, advances: advances,
                          gathering: gathering, bonuses: bonuses, upgrades: upgrades,
                          startingResources: cost([.food: 200, .wood: 200, .stone: 50]),
-                         startingPeople: 3, populationMaximum: 200, founderPeople: 6,
+                         startingPeople: 3, populationMaximum: 200, founderPeople: 2,
                          merchants: MerchantStats(exchangePerSecond: 1, exchangeRate: 2.0 / 3.0, load: 20),
                          workshop: WorkshopStats(perSecond: 0.5, woodPerUnit: 2, workers: 3),
                          oilWell: OilWellStats(perSecond: 0.5),

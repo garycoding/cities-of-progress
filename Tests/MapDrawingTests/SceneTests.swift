@@ -328,6 +328,22 @@ import Testing
         #expect(session.placing == nil)
     }
 
+    @Test func aFounderPlacingATownCentreFoundsIt() {
+        var view = Samples.stoneAgeOpening()
+        let founder = EntityID(9100)
+        view.entities.append(EntityView(id: founder, owner: view.player, kind: .unit(.founder),
+                                        position: MapPosition(x: 14.5, y: 16.5), tile: GridPoint(14, 16), facing: .right,
+                                        health: 100, maxHealth: 100, activity: .idle))
+        let (scene, session, log) = scene(view)
+        session.selection = [founder]
+        session.placing = .townCentre
+        let target = point(scene, 16, 18)
+        scene.click(at: target)
+        let origin = Placement.origin(.townCentre, centre: scene.geometry.mapPosition(for: target))
+        #expect(log.orders == [.found(founder: founder, at: origin)])
+        #expect(session.placing == nil)
+    }
+
     @Test func shiftClickKeepsPlacing() {
         let (scene, session, log) = scene(Samples.stoneAgeOpening())
         session.selection = [EntityID(6)]

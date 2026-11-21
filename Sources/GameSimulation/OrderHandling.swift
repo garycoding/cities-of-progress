@@ -297,20 +297,21 @@ extension Simulation {
         return .accepted
     }
 
-    /// A founder builds a town centre, free, with `founderPeople` people beside
-    /// it, and disappears (requirement 26).
+    /// A founder builds a town centre, free, with `founderPeople` workers beside
+    /// it, and becomes an engineer (requirement 26, ruled 2026-11-21), so that
+    /// the player begins again as every player begins.
     mutating func found(_ founder: EntityID, at origin: GridPoint, player: PlayerID) -> OrderResult {
         guard let f = index(of: founder), entities[f].owner == player, entities[f].isFounder else {
             return .refused(.notYours)
         }
         let p = player.rawValue
         guard canPlace(.townCentre, at: origin, player: p) else { return .refused(.placementBlocked) }
-        kill(f)
-        removeDead()
+        finishUpgrade(f, to: .engineer)
+        setIdle(f)
         let centre = placeBuilding(.townCentre, owner: player, origin: origin, complete: true)
         record(.constructed(entities[centre].id, .townCentre), for: p)
         for k in 0..<catalogue.founderPeople {
-            spawnPerson(k == 0 ? .engineer : .worker, owner: player, at: freeTile(besideBuilding: centre, index: k).centre)
+            spawnPerson(.worker, owner: player, at: freeTile(besideBuilding: centre, index: k).centre)
         }
         return .accepted
     }
