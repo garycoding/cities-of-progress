@@ -101,7 +101,7 @@ Each item below is a suggestion, not a ruling. Any of them can be struck, change
 - A player sees only the deposits of the ages that player has reached, whatever an ally can see.
 - The map places every kind of deposit within fair reach of every player.
 - The direction of progress is from gathering to production. Workers gather wood, stone and food, mine bronze, gold and iron, and carry them to a building that accepts them; the alchemist's workshop makes gunpowder; an oil well pumps oil without workers; power stations and data centres produce electricity and data.
-- Tin deposits are scarcer than copper deposits.
+- Each player's start has five copper, five tin and five iron deposits near it, and more are scattered over the field; the map holds as many tin deposits as copper. A copper, tin or iron deposit holds 500.
 - Stone and bronze are little needed after the Alchemy age and wood little after the Industrial age, so that a player attends to six or seven resources in any one age. The screen shows only the resources in use in the player's current age.
 
 | Economy | Starts in | Resources | Stages |

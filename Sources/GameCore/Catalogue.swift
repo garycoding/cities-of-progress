@@ -450,7 +450,7 @@ public struct Catalogue: Hashable, Codable, Sendable {
             farmYield: 300,
             farmReseed: cost([.wood: 60]),
             load: 10,
-            siteAmount: [.tree: 100, .prey: 150, .stone: 300, .copper: 400, .tin: 250, .gold: 400, .iron: 500, .oilField: 2000]
+            siteAmount: [.tree: 100, .prey: 150, .stone: 300, .copper: 500, .tin: 500, .gold: 400, .iron: 500, .oilField: 2000]
         )
         let bonuses: [Bonus] = [
             Bonus(.spearman, against: .chariot, 3),
