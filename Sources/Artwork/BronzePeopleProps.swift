@@ -107,18 +107,20 @@ enum BronzePeopleProps {
 
     /// A bronze pick on a wooden haft: the haft from the hand along `degrees`,
     /// the head across its far end with its long point on the side `point`
-    /// (1 leads a blow that brings the angle down; -1 the other side).
-    static func pick(_ svg: inout SVG, at hand: P, degrees: Double, haft: Double = 22, point: Double = 1) {
+    /// (1 leads a blow that brings the angle down; -1 the other side). Drawn in
+    /// profile, then carried by `map` to where a view shows it (`BronzePeopleViews.held`).
+    static func pick(_ svg: inout SVG, at hand: P, degrees: Double, haft: Double = 22, point: Double = 1,
+                     map: (P) -> P = { $0 }) {
         let u = P.direction(degrees), a = P(-u.y, u.x) * point
         let end = hand + u * haft
-        svg.line([hand - u * 4, end + u * 1.2], stroke: .colour(BronzePeopleInk.handle), width: 2.7)
-        svg.line([hand - u * 4 + a * 0.7, end + a * 0.7], stroke: ink, width: 0.7, opacity: 0.5)
+        svg.line([hand - u * 4, end + u * 1.2].map(map), stroke: .colour(BronzePeopleInk.handle), width: 2.7)
+        svg.line([hand - u * 4 + a * 0.7, end + a * 0.7].map(map), stroke: ink, width: 0.7, opacity: 0.5)
         // The head: a long point curving back toward the hand, a short blunt end, a socket between.
         let head = [end + a * 11.6 - u * 5, end + a * 7.4 - u * 0.6, end + a * 3.6 + u * 1.6, end + a * 0.6 + u * 2.3,
                     end - a * 2.6 + u * 2.2, end - a * 4.8 + u * 1.6, end - a * 5.2 - u * 1.0, end - a * 2.6 - u * 2.1,
                     end + a * 0.8 - u * 2.1, end + a * 4.4 - u * 2.2, end + a * 8.6 - u * 3.4]
-        shape(&svg, head, fill: .colour(BronzePeopleInk.bronze), width: 1.2)
-        svg.line([end + a * 10 - u * 3.6, end + a * 6.4 + u * 0.2, end + a * 2.6 + u * 1.6], stroke: .colour(BronzePeopleInk.bronzeLight),
+        shape(&svg, head.map(map), fill: .colour(BronzePeopleInk.bronze), width: 1.2)
+        svg.line([end + a * 10 - u * 3.6, end + a * 6.4 + u * 0.2, end + a * 2.6 + u * 1.6].map(map), stroke: .colour(BronzePeopleInk.bronzeLight),
                  width: 0.8)
     }
 
@@ -129,15 +131,16 @@ enum BronzePeopleProps {
     }
 
     /// A mason's hammer: a wooden haft and a bronze head, its face leading a
-    /// blow that brings the angle down.
-    static func hammer(_ svg: inout SVG, at hand: P, degrees: Double, haft: Double = 12) {
+    /// blow that brings the angle down. Drawn in profile, then carried by `map`
+    /// to where a view shows it.
+    static func hammer(_ svg: inout SVG, at hand: P, degrees: Double, haft: Double = 12, map: (P) -> P = { $0 }) {
         let u = P.direction(degrees), a = P(-u.y, u.x)
         let head = hand + u * haft
-        svg.line([hand - u * 2.6, head + u * 1.4], stroke: .colour(BronzePeopleInk.handle), width: 2.4)
+        svg.line([hand - u * 2.6, head + u * 1.4].map(map), stroke: .colour(BronzePeopleInk.handle), width: 2.4)
         let corners = [head + a * 5.2 + u * 2.4, head - a * 3.4 + u * 1.9, head - a * 3.4 - u * 1.9, head + a * 5.2 - u * 2.4]
-        shape(&svg, corners, fill: .colour(BronzePeopleInk.bronze))
-        svg.line([head + a * 4.6 + u * 1.5, head - a * 2.6 + u * 1.2], stroke: .colour(BronzePeopleInk.bronzeLight), width: 0.8)
-        svg.line([head - a * 0.6 + u * 2, head - a * 0.6 - u * 2], stroke: ink, width: 0.9)
+        shape(&svg, corners.map(map), fill: .colour(BronzePeopleInk.bronze))
+        svg.line([head + a * 4.6 + u * 1.5, head - a * 2.6 + u * 1.2].map(map), stroke: .colour(BronzePeopleInk.bronzeLight), width: 0.8)
+        svg.line([head - a * 0.6 + u * 2, head - a * 0.6 - u * 2].map(map), stroke: ink, width: 0.9)
     }
 
     /// The face of a hammer drawn by `hammer` with the same arguments.
@@ -203,12 +206,13 @@ enum BronzePeopleProps {
 
     /// A hand balance hanging from `hand`, its beam turned by `tilt` degrees
     /// (positive lowers the front pan): gold rings in the back pan, a bronze
-    /// ingot in the front one.
-    static func balance(_ svg: inout SVG, from hand: P, tilt: Double) {
-        let pivot = hand + P(0, 3.4)
-        svg.line([hand, pivot], stroke: ink, width: 0.8)
+    /// ingot in the front one. The beam is drawn in profile, then carried by
+    /// `map` to where a view shows it; the pans hang plumb from its ends.
+    static func balance(_ svg: inout SVG, from hand: P, tilt: Double, map: (P) -> P = { $0 }) {
         let r = tilt * .pi / 180, along = P(cos(r), sin(r))
-        let back = pivot - along * 7.6, front = pivot + along * 7.6
+        let back = map(hand + P(0, 3.4) - along * 7.6), front = map(hand + P(0, 3.4) + along * 7.6)
+        let pivot = map(hand + P(0, 3.4)), hand = map(hand)
+        svg.line([hand, pivot], stroke: ink, width: 0.8)
         for end in [back, front] {
             let pan = end + P(0, 7.2)
             svg.line([end, pan + P(-3, 0)], stroke: ink, width: 0.7)

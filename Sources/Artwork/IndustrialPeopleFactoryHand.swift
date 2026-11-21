@@ -130,6 +130,7 @@ struct IndustrialPeopleFactoryHand: PersonLook {
     // MARK: Drawing
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let sway = d.rig.sway
         if pose == .working {
             IndustrialPeopleProps.coalHeap(&d.svg, left: Self.heapLeft, right: Self.heapRight, height: Self.heapHeight)
@@ -258,5 +259,233 @@ struct IndustrialPeopleFactoryHand: PersonLook {
         d.svg.path(flecks, stroke: .colour(IndustrialPeopleInk.paleGreen), width: 0.6)
         d.svg.path("M-1.4,-71.8 q2.6,3.4 7.4,5.6", stroke: .colour(IndustrialPeopleInk.darkGreen), width: 0.8)
         d.svg.ellipse(P(-1.2, -72.2), 1.6, 0.9, fill: .colour(IndustrialPeopleInk.darkGreen), stroke: .colour(Ink.line), width: 0.7)
+    }
+}
+
+// MARK: - The factory hand in the other views
+
+extension IndustrialPeopleFactoryHand {
+    /// The shovel whilst he shovels, in the figure's space for this view: its
+    /// grip in the far hand, its direction as a unit vector, and its degrees
+    /// and turn about the upright, toward the heap beside him.
+    static func shovelInView(_ d: Drawing, _ frame: Int, rig: Rig) -> (grip: IndustrialPoint, direction: IndustrialPoint, degrees: Double, yaw: Double) {
+        let grip = IndustrialPeopleKit.body(grips[frame], rig), hold = IndustrialPeopleKit.body(holds[frame], rig)
+        let degrees = IndustrialPeopleKit.degrees(from: grip, to: hold)
+        let yaw = atan2(IndustrialViews.aside(d), 26) * 180 / .pi
+        return (IndustrialPoint(grip.x, grip.y, -3), IndustrialViews.vector(degrees, yaw: yaw), degrees, yaw)
+    }
+
+    /// Where the blade's edge is in the picture in a frame of the shovelling, in this view.
+    static func edgeInView(_ d: Drawing, _ frame: Int) -> P {
+        let rig = IndustrialPeopleFactoryHand().shovelling(frame)
+        let at = Drawing(layer: .base, rig: rig, phase: 0, view: d.view)
+        let s = shovelInView(at, frame, rig: rig)
+        return IndustrialViews.world(at, IndustrialViews.screen(at, s.grip + s.direction * IndustrialPeopleProps.shovelLength))
+    }
+
+    /// A frame in a view other than the side: the same dress and the same work,
+    /// the heap and the skip standing beside him.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let sway = d.rig.sway
+        var ground = SVG(layer: d.svg.layer)
+        var nearer = false
+        if pose == .working {
+            // The heap and the skip, moved so that the bite falls under the blade's edge.
+            let bite = Self.edgeInView(d, 1)
+            let rig1 = shovelling(1)
+            let at1 = Drawing(layer: .base, rig: rig1, phase: 0, view: d.view)
+            let s1 = Self.shovelInView(at1, 1, rig: rig1)
+            nearer = IndustrialViews.depth(at1, s1.grip + s1.direction * IndustrialPeopleProps.shovelLength) > 0
+            IndustrialViews.placed(&ground, d, pivot: Self.bite, to: bite) { svg in
+                IndustrialPeopleProps.coalHeap(&svg, left: Self.heapLeft, right: Self.heapRight, height: Self.heapHeight)
+                IndustrialPeopleProps.skipBack(&svg, left: Self.skipLeft, width: Self.skipWidth, height: Self.skipHeight)
+            }
+            // The pitched lumps, from the blade's edge at the release to the skip.
+            if frame >= Self.release && frame < Self.release + 5 {
+                let k = max(abs(cos(d.yaw * .pi / 180)), 0.6)
+                let skip = bite + P((Self.skipLeft + Self.skipWidth / 2 - Self.bite.x) * k, -Self.skipHeight - 1 - Self.bite.y)
+                let start = Self.edgeInView(d, Self.release) + P(0, -2)
+                let t = Double(frame - Self.release + 1) / 5
+                for (i, (offset, size)) in [(P(0, 0), 1.7), (P(1.6, -1), 1.4), (P(-1.2, 0.8), 1.2), (P(0.8, 1.2), 1.5)].enumerated() {
+                    let p = start + (skip - start) * t + offset * (1 - t * 0.5) + P(0, -16 * t * (1 - t))
+                    if t < 0.95 { IndustrialPeopleProps.coalLump(&ground, at: p, size: size, turn: Double(frame * 40 + i * 70)) }
+                }
+            }
+            IndustrialViews.placed(&ground, d, pivot: Self.bite, to: bite) { svg in
+                IndustrialPeopleProps.skipFront(&svg, left: Self.skipLeft, width: Self.skipWidth, height: Self.skipHeight)
+            }
+            if !nearer { d.svg.raw(ground.body) }
+        }
+        d.figure { d in
+            // The arms as the pose has them, or reaching the shovel whilst he shovels.
+            var arms: [(front: Bool, arm: IndustrialViews.Arm)] = []
+            var shovel: (anchor: P, degrees: Double, yaw: Double, load: Double, depth: Double)?
+            switch pose {
+            case .working:
+                let s = Self.shovelInView(d, frame, rig: d.rig)
+                let near = IndustrialViews.hold(d, front: true, origin: s.grip, direction: s.direction,
+                                                along: (IndustrialPeopleKit.body(Self.holds[frame], d.rig) - IndustrialPeopleKit.body(Self.grips[frame], d.rig)).x
+                                                    / max(abs(sin(s.degrees * .pi / 180)), 0.2))
+                arms = [(false, IndustrialViews.reach(d, front: false, to: s.grip)), (true, IndustrialViews.reach(d, front: true, to: near))]
+                let mid = s.grip + s.direction * 18
+                shovel = (IndustrialViews.screen(d, s.grip), s.degrees, s.yaw, Self.loaded.contains(frame) ? 1 : 0, IndustrialViews.depth(d, mid))
+            default:
+                let near = IndustrialViews.arm(d, front: true)
+                arms = [(false, IndustrialViews.arm(d, front: false)), (true, near)]
+                let degrees: Double, back: Double
+                switch pose {
+                case .standing: degrees = Self.plantedDegrees; back = 0.4
+                case .walking: degrees = Self.trailDegrees + 3 * IndustrialPeopleKit.wave(frame, 0.2, times: 2); back = Self.trailHold
+                default: degrees = d.rig.frontArm.upper - 4; back = 7
+                }
+                let grip = near.held - IndustrialViews.vector(degrees) * back
+                shovel = (IndustrialViews.screen(d, grip), degrees, 0, 0, IndustrialViews.depth(d, grip + IndustrialViews.vector(degrees) * 18))
+            }
+            func drawShovel(_ d: inout Drawing) {
+                guard let s = shovel else { return }
+                IndustrialViews.prop(&d, at: s.anchor, degrees: s.degrees, yaw: s.yaw) { svg, at, degrees in
+                    IndustrialPeopleProps.shovel(&svg, grip: at, degrees: degrees, load: s.load)
+                }
+            }
+            func drawArm(_ d: inout Drawing, _ a: IndustrialViews.Arm, front: Bool) {
+                IndustrialPeopleKit.arm(&d, shoulder: a.shoulder, elbow: a.elbow, hand: a.hand, fill: .team, width: front ? 4.4 : 4.2, rolled: true)
+            }
+            let shovelBehind = (shovel?.depth ?? 0) < -3
+            if shovelBehind { drawShovel(&d) }
+            for (front, a) in arms where a.behind { drawArm(&d, a, front: front) }
+            IndustrialViews.trousers(&d, colour: IndustrialPeopleInk.soot, shade: IndustrialPeopleInk.darkSoot)
+            Self.bodyInView(&d, sway: sway)
+            if !shovelBehind { drawShovel(&d) }
+            for (front, a) in arms where !a.behind { drawArm(&d, a, front: front) }
+            Self.headInView(&d)
+        }
+        if nearer { d.svg.raw(ground.body) }
+    }
+
+    /// The shirt, the braces and the neckerchief, the apron before him and its
+    /// strings round him, in a view other than the side.
+    static func bodyInView(_ d: inout Drawing, sway: Double) {
+        let ink = Paint.colour(Ink.line)
+        let shirt = d.turned([P(-9.4, -47.2), P(9.2, -47.2), P(11.4, -21), P(-11.8, -21)]).map(d.up)
+        d.svg.polygon(shirt.map { $0 + P(-0.7, 0.6) }, fill: .team)
+        if IndustrialViews.seesFront(d) {
+            // The placket and its buttons down the middle of the chest.
+            if let top = IndustrialViews.front(d, -46.6 - d.rig.lift, 0), let bottom = IndustrialViews.front(d, -37 - d.rig.lift, 0) {
+                d.svg.line([top, bottom], stroke: ink, width: 0.8)
+                for y in [-44.0, -40.6] {
+                    if let b = IndustrialViews.front(d, y - d.rig.lift, 0) { d.svg.circle(b + P(0.9, 0), 0.55, fill: .colour(IndustrialPeopleInk.light), stroke: ink, width: 0.4) }
+                }
+            }
+        }
+        d.svg.polygon(shirt, fill: .none, stroke: ink, width: 1.6)
+        // The braces over the shoulders, front and back, buttoned at the waist.
+        for z in [-5.2, 5.2] {
+            for side in [true, false] {
+                let top = side ? IndustrialViews.front(d, -47.2 - d.rig.lift, z) : IndustrialViews.back(d, -47.2 - d.rig.lift, z * 0.8)
+                let bottom = side ? IndustrialViews.front(d, -21.4, z * 1.1) : IndustrialViews.back(d, -21.4, z * 0.4)
+                guard let top, let bottom else { continue }
+                d.svg.line([top, bottom], stroke: ink, width: 3.3)
+                d.svg.line([top, bottom], stroke: .colour(IndustrialPeopleInk.darkLeather), width: 2.1)
+                d.svg.circle(bottom + P(0, -0.6), 0.6, fill: .colour(IndustrialPeopleInk.paleSoot), stroke: ink, width: 0.4)
+            }
+        }
+        // The neckerchief round the neck, knotted at the throat.
+        let lift = d.rig.lift
+        d.svg.polygon([P(-5.8, -48 - lift), P(5.8, -48 - lift), P(5.4, -45.2 - lift), P(-5.4, -45.2 - lift)], fill: .colour(IndustrialPeopleInk.paleSoot),
+                      stroke: ink, width: 0.9)
+        if let knot = IndustrialViews.front(d, -45.4 - lift, 0, half: 6) {
+            d.svg.polygon([knot + P(-0.4, -0.4), knot + P(1.6, -0.6), knot + P(2.2, 4.2), knot + P(0.4, 3.6)], fill: .colour(IndustrialPeopleInk.paleSoot),
+                          stroke: ink, width: 0.8)
+            d.svg.circle(knot, 1.2, fill: .colour(IndustrialPeopleInk.soot), stroke: ink, width: 0.7)
+        }
+        // The apron's strings round the waist, and the apron itself before him.
+        let strings = d.turned([P(-11.6, -25.2), P(12.8, -25.2), P(12.8, -24), P(-11.6, -24)])
+        d.svg.polygon(strings, fill: .colour(IndustrialPeopleInk.paleLeather), stroke: ink, width: 0.6)
+        if IndustrialViews.seesFront(d) {
+            let top = [IndustrialPoint(10, -24.8, -8.6), IndustrialPoint(10, -24.8, 8.6)]
+            let hem = [IndustrialPoint(13 - sway * 1.3, -7.6, 9.4), IndustrialPoint(13 - sway * 1.3, -7.6, -9.4)]
+            let apron = (top + hem).map { IndustrialViews.screen(d, $0) }
+            d.svg.polygon(apron.map { $0 + P(-0.7, 0.6) }, fill: .colour(IndustrialPeopleInk.leather))
+            d.svg.ellipse(apron[0] + (apron[2] - apron[0]) * 0.55, 1.6, 1.1, fill: .colour(IndustrialPeopleInk.darkLeather), opacity: 0.7)
+            d.svg.ellipse(apron[1] + (apron[3] - apron[1]) * 0.7, 1.1, 0.8, fill: .colour(IndustrialPeopleInk.darkLeather), opacity: 0.6)
+            var stitch = PathData()
+            for i in 0..<6 {
+                let p = apron[3] + (apron[2] - apron[3]) * (Double(i) / 6 + 0.06) + P(0, -1)
+                stitch.move(p); stitch.line(p + P(1.1, -0.05))
+            }
+            d.svg.path(stitch, stroke: .colour(IndustrialPeopleInk.paleLeather), width: 0.6)
+            d.svg.polygon(apron, fill: .none, stroke: ink, width: 1.3)
+        } else if let knot = IndustrialViews.back(d, -24.6, 0) {
+            // The strings tied in a bow at his back.
+            d.svg.path("M\(num(knot.x)),\(num(knot.y)) q-3,-2.4 -3.4,0.4 q0.6,1.8 3.4,-0.4 q3,-2.4 3.4,0.4 q-0.6,1.8 -3.4,-0.4 "
+                       + "l-1.4,4.4 M\(num(knot.x)),\(num(knot.y)) l1.2,4.6", fill: .none, stroke: .colour(IndustrialPeopleInk.paleLeather), width: 1)
+        }
+    }
+
+    /// The head in a view other than the side: the sideburns and the hair at
+    /// the nape, the stubble and the moustache where the face shows, and the flat cap.
+    static func headInView(_ d: inout Drawing) {
+        let hair = Paint.colour(IndustrialPeopleInk.brownHair), ink = Paint.colour(Ink.line)
+        d.head(nose: .bulb, behind: { d in
+            if let p = IndustrialViews.peak(d, rim: -64.6, reach: 7, drop: 2.2, half: 9.4), !IndustrialViews.seesFront(d) {
+                d.svg.path(p, fill: .colour(IndustrialPeopleInk.green), stroke: ink, width: 1.2)
+            }
+        }, hair: { d in
+            switch d.view {
+            case .front:
+                for s in [-1.0, 1.0] {
+                    d.svg.polygon([P(9.8 * s, -62.6), P(7.4 * s, -62.6), P(7.8 * s, -55.6), P(9 * s, -52.6), P(10.4 * s, -55)], fill: hair)
+                }
+            case .frontQuarter:
+                d.svg.path("M-11.2,-61.4 C-12.4,-57 -11.6,-53 -9.4,-51.4 L-9.6,-60.6 Z", fill: hair)
+                d.svg.polygon([P(-5.4, -63), P(-3.6, -62.6), P(-3.2, -55), P(-4.6, -53), P(-5.8, -57)], fill: hair)
+                d.svg.polygon([P(9.4, -62.6), P(10.6, -60), P(10.2, -55), P(9.2, -56)], fill: hair)
+            case .back:
+                d.svg.path(IndustrialViews.backHair(d, rim: -62.4), fill: hair)
+            case .backQuarter:
+                d.svg.path(IndustrialViews.backHair(d, rim: -62.4, right: 5.4), fill: hair)
+                d.svg.polygon([P(8.6, -62.4), P(10.4, -62), P(9.8, -55.6), P(8.4, -56.8)], fill: hair)
+            case .side:
+                break
+            }
+        }, features: { d in
+            guard IndustrialViews.seesFront(d) else { return }
+            // Stubble along the jaw, and the bushy moustache drooping at its ends.
+            var stubble = PathData()
+            for p in IndustrialViews.symmetric(d, [P(1.4, -48), P(3.8, -48.8), P(6, -50.2), P(7.8, -52.2)]) {
+                stubble.move(p); stubble.line(p + P(0.3, 0.2))
+            }
+            d.svg.path(stubble, stroke: hair, width: 0.7, opacity: 0.7)
+            let half = [P(0, -54.8), P(2.6, -55.4), P(5, -54.4), P(6.4, -52.2), P(6, -49.8), P(4.6, -51.2), P(2.4, -52.2), P(0, -51.8)]
+            d.svg.polygon(IndustrialViews.symmetric(d, half), fill: hair, stroke: ink, width: 0.9)
+        }, brow: { d in
+            d.svg.path("M1.4,-63.4 q3.4,-2 7.2,-0.4", stroke: hair, width: 2)
+        }, over: { d in
+            Self.capInView(&d)
+        })
+    }
+
+    /// The flat cap of bottle-green tweed seen from this side: its crown pulled
+    /// forward, the short peak, the flecks and the button.
+    static func capInView(_ d: inout Drawing) {
+        let ink = Paint.colour(Ink.line), green = Paint.colour(IndustrialPeopleInk.green)
+        let rim = d.view == .back ? -61.6 : -63.4
+        let view = d
+        BronzePeopleProps.shape(&d.svg, fill: green, width: 1.5) { o in
+            IndustrialViews.crown(view, rim: rim, top: -72.6, half: 12.2, forward: 2.4, flare: 1.4, offset: o)
+        }
+        if IndustrialViews.seesFront(d), let p = IndustrialViews.peak(d, rim: -64.6, reach: 7, drop: 2.2, half: 9.4) {
+            d.svg.path(p, fill: green, stroke: ink, width: 1.2)
+            if let shade = IndustrialViews.capFront(d, y: -64.2) {
+                d.svg.path("M\(num(shade.x - 6)),\(num(shade.y)) q6,-1.2 12,0", stroke: .colour(IndustrialPeopleInk.darkGreen), width: 1)
+            }
+        }
+        let c = 2.4 * IndustrialViews.ahead(d)
+        var flecks = PathData()
+        for (x, y) in [(-8.0, -66.6), (-4.4, -69.4), (-0.6, -67.2), (3.2, -69.6), (6.6, -67.4), (-6.6, -64.6), (8.8, -65.4), (0.8, -70.8)] {
+            flecks.move(P(x + c, y)); flecks.line(P(x + c + 0.7, y - 0.3))
+        }
+        d.svg.path(flecks, stroke: .colour(IndustrialPeopleInk.paleGreen), width: 0.6)
+        d.svg.ellipse(P(c, -72.4), 1.6, 0.9, fill: .colour(IndustrialPeopleInk.darkGreen), stroke: ink, width: 0.7)
     }
 }
