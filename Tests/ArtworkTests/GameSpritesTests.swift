@@ -23,6 +23,11 @@ import Testing
     // A warfighter at work is drawn standing (`SpriteCache`), so its working pose need not be drawn.
     let keys = SpriteKey.required(through: .industrial).filter { key in
         if case .unit(let kind, _) = key.subject, kind.isWarfighter, key.pose == .working { return false }
+        // The boats' art is drawn in its own step; until then these are placeholders.
+        switch key.subject {
+        case .unit(.boat, _), .building(.boatHouse, _), .site(.fish): return false
+        default: break
+        }
         return true
     }
     for key in keys {

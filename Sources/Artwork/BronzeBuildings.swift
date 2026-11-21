@@ -35,7 +35,7 @@ enum BronzeBuildingsArt {
     /// building of the standard catalogue in the Bronze age's look, complete or
     /// under construction, at frame 0.
     static func subject(of key: SpriteKey) -> (kind: BuildingKind, complete: Bool)? {
-        guard case .building(let kind, .bronze) = key.subject, key.frame == 0,
+        guard case .building(let kind, .bronze) = key.subject, key.frame == 0, kind != .boatHouse,
               Catalogue.standard.buildings.contains(where: { $0.kind == kind }) else { return nil }
         if key.pose == .complete { return (kind, true) }
         if key.pose == .underConstruction { return (kind, false) }
