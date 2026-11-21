@@ -64,7 +64,7 @@ extension Simulation {
         }
         d.add(e.position); d.add(e.origin); d.add(e.size); d.add(e.facing.rawValue)
         d.add(e.health); d.add(e.maxHealth); d.add(e.alive); d.add(e.cooldown); d.add(e.lastHurt)
-        d.add(e.sight); d.add(e.stamp)
+        d.add(e.sight); d.add(e.stamp); d.add(e.killRadiusOff == true)
         switch e.task {
         case .idle: d.add(0)
         case .move(let p): d.add(1); d.add(p)

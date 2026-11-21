@@ -105,6 +105,12 @@ enum IndustrialPeopleKit {
         let shoulder = front ? d.joints.frontShoulder : d.joints.backShoulder
         let elbow = front ? d.joints.frontElbow : d.joints.backElbow
         let hand = front ? d.joints.frontHand : d.joints.backHand
+        arm(&d, shoulder: shoulder, elbow: elbow, hand: hand, fill: fill, width: width, rolled: rolled, cuff: cuff)
+    }
+
+    /// The same sleeve between joints given on the screen, as an arm in another view has them.
+    static func arm(_ d: inout Drawing, shoulder: P, elbow: P, hand: P, fill: Paint, width: Double = 4.4, rolled: Bool = false,
+                    cuff: String? = nil) {
         d.svg.line([shoulder, elbow, hand], stroke: .colour(Ink.line), width: 1.9)
         let forearm = hand - elbow
         let fl = max(BronzePeopleKit.length(forearm), 0.01)
@@ -545,5 +551,379 @@ enum IndustrialPeopleProps {
             links.move(q + P(-0.2, -0.2)); links.line(q + P(0.2, 0.2))
         }
         svg.path(links, stroke: .colour(IndustrialPeopleInk.paleBrass), width: 0.6)
+    }
+}
+
+// MARK: - The five views
+
+/// A point of the figure's own space (FigureViews.swift): x toward its front,
+/// y downward, and z toward its right side, the side that faces the viewer in
+/// profile.
+struct IndustrialPoint: Sendable {
+    var x: Double
+    var y: Double
+    var z: Double
+    init(_ x: Double, _ y: Double, _ z: Double) { self.x = x; self.y = y; self.z = z }
+
+    static func + (a: Self, b: Self) -> Self { Self(a.x + b.x, a.y + b.y, a.z + b.z) }
+    static func - (a: Self, b: Self) -> Self { Self(a.x - b.x, a.y - b.y, a.z - b.z) }
+    static func * (a: Self, k: Double) -> Self { Self(a.x * k, a.y * k, a.z * k) }
+    func dot(_ b: Self) -> Double { x * b.x + y * b.y + z * b.z }
+    var length: Double { dot(self).squareRoot() }
+}
+
+/// The Industrial looks seen from the four sides other than the profile
+/// (ruled 2026-11-21: eight facings, five views drawn): the joints where the
+/// figure kit puts them, arms that reach a point of the figure's space, props
+/// that shorten as they turn toward or away from the viewer, the trousers and
+/// boots on the turned legs, and the face's middle for what is drawn on it.
+/// Nothing here is used in the side view, which keeps its own drawing.
+enum IndustrialViews {
+    // MARK: The skeleton
+
+    /// A shoulder in the figure's space, as the figure kit has it: the right
+    /// (front) one at +z.
+    static func shoulder(_ d: Drawing, front: Bool) -> IndustrialPoint {
+        IndustrialPoint(0.5, -44 - d.rig.lift, front ? Drawing.shoulderSpread : -Drawing.shoulderSpread)
+    }
+
+    /// A point of the figure's space on the screen (inside `Drawing.figure`).
+    static func screen(_ d: Drawing, _ p: IndustrialPoint) -> P { d.project(p.x, p.y, p.z).point }
+
+    /// How far a point of the figure's space stands toward the viewer.
+    static func depth(_ d: Drawing, _ p: IndustrialPoint) -> Double { d.project(p.x, p.y, p.z).depth }
+
+    /// A limb's middle joint and its end from `root`, as the figure kit finds
+    /// them: the knee bending back, the elbow turning by the limb's bend.
+    static func limb(_ root: P, _ limb: Limb, knee: Bool) -> (P, P) {
+        let mid = root + P.direction(limb.upper) * (knee ? Joints.thigh : Joints.upperArm)
+        let end = mid + P.direction(knee ? limb.upper - limb.bend : limb.upper + limb.bend) * (knee ? Joints.shin : Joints.forearm)
+        return (mid, end)
+    }
+
+    /// An arm on the screen: its shoulder, elbow and hand, the hand's place in
+    /// the figure's space, and whether it hangs behind the body (and is drawn first).
+    struct Arm {
+        var shoulder: P
+        var elbow: P
+        var hand: P
+        var held: IndustrialPoint
+        var behind: Bool
+        var points: [P] { [shoulder, elbow, hand] }
+    }
+
+    /// An arm as the rig poses it, where the figure kit draws it.
+    static func arm(_ d: Drawing, front: Bool) -> Arm {
+        let s = shoulder(d, front: front)
+        let (e, h) = limb(P(s.x, s.y), front ? d.rig.frontArm : d.rig.backArm, knee: false)
+        let elbow = IndustrialPoint(e.x, e.y, s.z), hand = IndustrialPoint(h.x, h.y, s.z)
+        return Arm(shoulder: screen(d, s), elbow: screen(d, elbow), hand: screen(d, hand), held: hand, behind: d.armBehind(front: front))
+    }
+
+    /// An arm whose hand reaches `target`, or as near it as the arm's length
+    /// allows, the elbow bent out to the arm's own side and down.
+    static func reach(_ d: Drawing, front: Bool, to target: IndustrialPoint) -> Arm {
+        let s = shoulder(d, front: front)
+        let v = target - s
+        let span = Joints.upperArm + Joints.forearm
+        let distance = min(max(v.length, 0.5), span - 0.01)
+        let u = v * (1 / max(v.length, 1e-6))
+        let hand = s + u * distance
+        let pole = IndustrialPoint(-0.35, 0.6, front ? 0.7 : -0.7)
+        var n = pole - u * pole.dot(u)
+        n = n * (1 / max(n.length, 1e-6))
+        let rise = max(Joints.upperArm * Joints.upperArm - distance * distance / 4, 0).squareRoot()
+        let elbow = s + u * (distance / 2) + n * rise
+        let behind = (depth(d, elbow) + depth(d, hand)) / 2 < -2.5
+        return Arm(shoulder: screen(d, s), elbow: screen(d, elbow), hand: screen(d, hand), held: hand, behind: behind)
+    }
+
+    /// The point `t` along a line of the figure's space (from `origin`, along the
+    /// unit vector `direction`), or, where an arm from the shoulder cannot reach
+    /// it, the nearest point of the line toward the shoulder that it can.
+    static func hold(_ d: Drawing, front: Bool, origin: IndustrialPoint, direction: IndustrialPoint, along t: Double) -> IndustrialPoint {
+        let s = shoulder(d, front: front), span = Joints.upperArm + Joints.forearm - 0.4
+        func at(_ t: Double) -> IndustrialPoint { origin + direction * t }
+        guard (at(t) - s).length > span else { return at(t) }
+        let nearest = (s - origin).dot(direction)
+        guard (at(nearest) - s).length <= span else { return at(nearest) }
+        var (inside, outside) = (nearest, t)
+        for _ in 0..<24 {
+            let mid = (inside + outside) / 2
+            if (at(mid) - s).length <= span { inside = mid } else { outside = mid }
+        }
+        return at(inside)
+    }
+
+    /// A point of the picture (a side-view `world` point) in the figure's space
+    /// at `z`: the lean and the bob taken out, as `IndustrialPeopleKit.body` does.
+    static func body(_ world: P, _ rig: Rig, z: Double) -> IndustrialPoint {
+        let p = IndustrialPeopleKit.body(world, rig)
+        return IndustrialPoint(p.x, p.y, z)
+    }
+
+    /// A leg on the screen, before the counter-lean: hip, knee, foot and toe,
+    /// and how far its knee stands toward the viewer.
+    struct Leg {
+        var hip: P
+        var knee: P
+        var foot: P
+        var toe: P
+        var depth: Double
+    }
+
+    /// Both legs as the figure kit places them, the farther first.
+    static func legs(_ d: Drawing) -> [Leg] {
+        var legs: [Leg] = []
+        for front in [false, true] {
+            let z = front ? Drawing.hipSpread : -Drawing.hipSpread
+            let hip = P(0.5, -16)
+            let (knee, foot) = limb(hip, front ? d.rig.frontLeg : d.rig.backLeg, knee: true)
+            let toe = foot + P(4.5, 0.3)
+            func at(_ p: P) -> P { screen(d, IndustrialPoint(p.x, p.y, z)) }
+            legs.append(Leg(hip: at(hip), knee: at(knee), foot: at(foot), toe: at(toe), depth: depth(d, IndustrialPoint(knee.x, knee.y, z))))
+        }
+        return legs.sorted { $0.depth < $1.depth }
+    }
+
+    /// The lean as the figure kit turns it in this view, which the legs undo to stand upright.
+    static func lean(_ d: Drawing) -> Double { d.rig.lean * cos(d.yaw * .pi / 180) }
+
+    // MARK: Props
+
+    /// A direction of the figure's upright plane (degrees from straight down,
+    /// positive toward the front), turned `yaw` degrees about the upright toward
+    /// the figure's right, as a unit vector of the figure's space.
+    static func vector(_ degrees: Double, yaw: Double = 0) -> IndustrialPoint {
+        let r = degrees * .pi / 180, t = yaw * .pi / 180
+        return IndustrialPoint(sin(r) * cos(t), cos(r), sin(r) * sin(t))
+    }
+
+    /// The same direction as it shows on the screen: its degrees, and how much
+    /// of a length along it shows.
+    static func direction(_ d: Drawing, _ degrees: Double, yaw: Double = 0) -> (degrees: Double, scale: Double) {
+        let r = degrees * .pi / 180
+        let x = sin(r) * cos((yaw + d.yaw) * .pi / 180), y = cos(r)
+        let scale = (x * x + y * y).squareRoot()
+        return (scale > 1e-6 ? atan2(x, y) * 180 / .pi : degrees, scale)
+    }
+
+    /// What `content` draws, shortened along `degrees` (on the screen) to
+    /// `scale` of its length about `anchor`, its breadth kept.
+    static func foreshortened(_ svg: inout SVG, at anchor: P, degrees: Double, scale k: Double, _ content: (inout SVG) -> Void) {
+        let u = P.direction(degrees)
+        let a = 1 + (k - 1) * u.x * u.x, b = (k - 1) * u.x * u.y, d = 1 + (k - 1) * u.y * u.y
+        let e = anchor.x - (a * anchor.x + b * anchor.y), f = anchor.y - (b * anchor.x + d * anchor.y)
+        svg.raw("<g transform=\"matrix(\(num(a)) \(num(b)) \(num(b)) \(num(d)) \(num(e)) \(num(f)))\">")
+        content(&svg)
+        svg.raw("</g>")
+    }
+
+    /// A prop that lies along `degrees` of the figure's plane (turned by `yaw`),
+    /// drawn by `draw(svg, anchor, degrees)` as its side drawing has it, turned
+    /// and shortened as the view shows it, its anchor at `anchor` on the screen.
+    static func prop(_ d: inout Drawing, at anchor: P, degrees: Double, yaw: Double = 0, _ draw: (inout SVG, P, Double) -> Void) {
+        let (shown, k) = direction(d, degrees, yaw: yaw)
+        foreshortened(&d.svg, at: anchor, degrees: shown, scale: max(k, 0.12)) { svg in draw(&svg, anchor, shown) }
+    }
+
+    /// Something standing on the ground in profile at `x` from the figure,
+    /// placed in this view at `z` across: the shift on the screen that moves
+    /// its side drawing there, how much of its length shows, and whether it
+    /// stands nearer the viewer than the figure.
+    static func ground(_ d: Drawing, x: Double, z: Double) -> (shift: Double, scale: Double, nearer: Bool) {
+        let p = d.project(x, 0, z)
+        return (p.point.x - x, abs(cos(d.yaw * .pi / 180)), p.depth > 0)
+    }
+
+    /// A point of the body (inside `Drawing.figure`) where it falls in the
+    /// picture in this view, after the turned lean and the bob.
+    static func world(_ d: Drawing, _ p: P) -> P { p.rotated(lean(d), about: Drawing.hips) + P(0, d.bob) }
+
+    /// Where across the figure the things he works at on the ground stand in
+    /// this view, so that they stand beside him on the screen's right rather
+    /// than before him or behind him: z for the figure's space.
+    static func aside(_ d: Drawing) -> Double {
+        switch d.view {
+        case .front: -22
+        case .frontQuarter: -10
+        case .back: 22
+        case .backQuarter: 10
+        case .side: 0
+        }
+    }
+
+    /// The things on the ground drawn in profile by `content`, moved in this
+    /// view so that the profile's point `pivot` falls on `to` (a point of the
+    /// picture), and narrowed about it as far as they turn, but no further than
+    /// `least`: a heap or an engine shows a face as broad from any side.
+    static func placed(_ svg: inout SVG, _ d: Drawing, pivot: P, to: P, least: Double = 0.6, _ content: (inout SVG) -> Void) {
+        let k = max(abs(cos(d.yaw * .pi / 180)), least)
+        svg.raw("<g transform=\"translate(\(num(to.x)),\(num(to.y))) scale(\(num(k)),1) translate(\(num(-pivot.x)),\(num(-pivot.y)))\">")
+        content(&svg)
+        svg.raw("</g>")
+    }
+
+    // MARK: The body
+
+    /// A point on the body's front at height `y` and `z` across it, the body
+    /// taken as a round section centred at `centre` and `half` deep: on the
+    /// screen, or nil where the body hides it.
+    static func front(_ d: Drawing, _ y: Double, _ z: Double, centre: Double = -1, half: Double = 10.4) -> P? {
+        let width = half * 0.95, across = min(max(z / width, -1), 1)
+        let p = IndustrialPoint(centre + half * (1 - across * across).squareRoot(), y, z)
+        return depth(d, p) < 0.4 ? nil : screen(d, p)
+    }
+
+    /// A point on the body's back at height `y` and `z` across it, as `front` finds it.
+    static func back(_ d: Drawing, _ y: Double, _ z: Double, centre: Double = -1, half: Double = 10.4) -> P? {
+        let width = half * 0.95, across = min(max(z / width, -1), 1)
+        let p = IndustrialPoint(centre - half * (1 - across * across).squareRoot(), y, z)
+        return depth(d, p) < 0.4 ? nil : screen(d, p)
+    }
+
+    /// Whether the figure's front shows in this view.
+    static func seesFront(_ d: Drawing) -> Bool { d.view == .front || d.view == .frontQuarter }
+
+    // MARK: The face
+
+    /// The face's middle on the screen in this view (as `headInView` has it),
+    /// and how much its half toward the screen's right narrows as the face
+    /// turns that way.
+    static func face(_ d: Drawing) -> (x: Double, far: Double) {
+        switch d.view {
+        case .frontQuarter: (5, 0.62)
+        case .backQuarter: (-4.5, 0.62)
+        default: (0, 1)
+        }
+    }
+
+    /// A shape symmetric about the face's middle, given as its right half from
+    /// the middle outward (a point at x 0 lies on the middle): mirrored for the
+    /// left half; from a quarter the right half narrows.
+    static func symmetric(_ d: Drawing, _ half: [P]) -> [P] {
+        let (c, far) = face(d)
+        return half.map { P(c + $0.x * far, $0.y) } + half.reversed().map { P(c - $0.x, $0.y) }
+    }
+
+    // MARK: Caps
+
+    /// How far the head's front shows toward the screen's right in this view (0 from straight ahead or behind).
+    static func ahead(_ d: Drawing) -> Double { cos(d.yaw * .pi / 180) }
+
+    /// A cap's crown in this view: a dome from its rim at `rim` up to `top`,
+    /// `half` wide, set `forward` toward the face, as one closed path.
+    static func crown(_ d: Drawing, rim: Double, top: Double, half: Double, forward: Double = 0, flare: Double = 1.6, offset o: P = P(0, 0)) -> PathData {
+        let c = forward * ahead(d) + o.x, rim = rim + o.y, top = top + o.y, h = rim - top
+        var p = PathData()
+        p.move(P(c - half, rim))
+        p.cubic(P(c - half - flare, rim - h * 0.55), P(c - half * 0.6, top), P(c, top))
+        p.cubic(P(c + half * 0.6, top), P(c + half + flare, rim - h * 0.55), P(c + half, rim))
+        p.cubic(P(c + half * 0.5, rim + 1), P(c - half * 0.5, rim + 1), P(c - half, rim))
+        p.close()
+        return p
+    }
+
+    /// A band round a cap above its rim, `height` deep, as one closed path.
+    static func capBand(_ d: Drawing, rim: Double, height: Double, half: Double, forward: Double = 0, offset o: P = P(0, 0)) -> PathData {
+        let c = forward * ahead(d) + o.x, rim = rim + o.y
+        var p = PathData()
+        p.move(P(c - half, rim))
+        p.cubic(P(c - half * 0.5, rim + 1), P(c + half * 0.5, rim + 1), P(c + half, rim))
+        p.line(P(c + half + 0.3, rim - height))
+        p.cubic(P(c + half * 0.5, rim - height + 1), P(c - half * 0.5, rim - height + 1), P(c - half - 0.3, rim - height))
+        p.close()
+        return p
+    }
+
+    /// A cap's peak in this view: a half disc jutting `reach` from the brow at
+    /// the rim's height `rim`, `half` wide, its edge `drop` below the rim, as
+    /// one closed path; nil where the crown and the head hide it.
+    static func peak(_ d: Drawing, rim: Double, reach: Double, drop: Double, half: Double = 9.6, root: Double = 6) -> PathData? {
+        guard d.view != .back else { return nil }
+        var points: [P] = []
+        for i in 0...12 {
+            let t = (Double(i) / 12 - 0.5) * .pi
+            let x = root + reach * cos(t), z = half * sin(t)
+            let y = rim + drop * cos(t) * 0.9 + 0.3
+            points.append(screen(d, IndustrialPoint(x, y, z)))
+        }
+        var p = PathData()
+        p.move(points[0])
+        for q in points.dropFirst() { p.line(q) }
+        p.close()
+        return p
+    }
+
+    /// A point on the front of a cap's crown at height `y` (nil where it faces away).
+    static func capFront(_ d: Drawing, y: Double, z: Double = 0, half: Double = 11) -> P? {
+        guard seesFront(d) else { return nil }
+        let across = min(max(z / half, -1), 1)
+        return screen(d, IndustrialPoint(half * 0.9 * (1 - across * across).squareRoot(), y, z))
+    }
+
+    /// The hair over the back of the head below a hat's rim at `rim`, seen
+    /// from behind or a back quarter: the whole of the head's outline below
+    /// the rim, so that it reads as the back of a head; from a quarter it stops
+    /// short of the ear and the cheek at `right`.
+    static func backHair(_ d: Drawing, rim: Double, right: Double = 11) -> PathData {
+        let cy = -57.5, rx = 11.2, ry = 10.4, top = rim + 0.6
+        let start = asin(min(max((top - cy) / ry, -1), 1))
+        let rimX = rx * cos(start)
+        let end = right >= rimX ? start : acos(min(max(right / rx, -1), 1))
+        var p = PathData()
+        let from = Double.pi - start
+        for i in 0...16 {
+            let t = from + (end - from) * Double(i) / 16
+            let q = P(rx * cos(t), cy + ry * sin(t))
+            if i == 0 { p.move(q) } else { p.line(q) }
+        }
+        if right < rimX { p.line(P(right, top)) }
+        p.close()
+        return p
+    }
+
+    // MARK: Trousers and boots
+
+    /// Both legs in trousers of `colour` (the farther, from a quarter, in
+    /// `shade`) to boots at the ankle, as `IndustrialPeopleKit.trousers` draws
+    /// them in profile, with the seat between the hips.
+    static func trousers(_ d: inout Drawing, colour: String, shade: String, stripe: String? = nil) {
+        let legs = Self.legs(d)
+        let seat = d.turned([P(8.2, -22), P(-10.4, -22), P(-9.8, -17), P(-6, -12.6), P(8.4, -12.6)])
+        let quarter = d.view == .frontQuarter || d.view == .backQuarter
+        d.svg.group(turned: -lean(d), about: Drawing.hips) { svg in
+            svg.polygon(seat, fill: .colour(colour))
+            for (i, leg) in legs.enumerated() {
+                let cloth = i == 0 && quarter ? shade : colour
+                let ankle = leg.foot + (leg.knee - leg.foot) * (2.2 / Joints.shin)
+                svg.line([leg.hip, leg.knee, ankle], stroke: .colour(Ink.line), width: 5.2)
+                svg.line([leg.hip, leg.knee, ankle], stroke: .colour(cloth), width: 3.3)
+                if let stripe {
+                    for dx in [-0.6, 0.8] {
+                        svg.line([leg.hip + P(dx, 0), leg.knee + P(dx, 0), ankle + P(dx, 0)], stroke: .colour(stripe), width: 0.5)
+                    }
+                }
+                boot(&svg, ankle: ankle, foot: leg.foot, toe: leg.toe, colour: IndustrialPeopleInk.black, sheen: IndustrialPeopleInk.blackSheen)
+            }
+        }
+    }
+
+    /// A boot from the ankle to the toe as the view turns the foot: the side
+    /// drawing's boot, shortened, where the foot's length shows; else seen end
+    /// on, the toe cap (or the heel) round under the ankle.
+    static func boot(_ svg: inout SVG, ankle: P, foot: P, toe: P, colour: String, sheen: String) {
+        let run = (toe.x - foot.x) / 4.5
+        if abs(run) > 0.3 {
+            let s: Double = run > 0 ? 1 : -1, k = abs(run), heel = max(k, 0.75)
+            let corners = [ankle + P(-1.9 * s, -0.4), ankle + P(1.7 * s, -0.4), foot + P(3.6 * k * s, -1.4), foot + P(max(5.6 * k, 2.6) * s, -0.2),
+                           foot + P(max(5.4 * k, 2.4) * s, 0.9), foot + P(-2.2 * heel * s, 0.9)]
+            BronzePeopleProps.shape(&svg, corners, fill: .colour(colour), width: 1, shift: P(-0.4, 0.3))
+            svg.line([foot + P(0.4 * k * s, -1.6), foot + P(3.4 * k * s, -1.2)], stroke: .colour(sheen), width: 0.6)
+        } else {
+            let corners = [ankle + P(-1.9, -0.4), ankle + P(1.9, -0.4), foot + P(2.6, -0.8), foot + P(2.8, 0.9), foot + P(-2.8, 0.9), foot + P(-2.6, -0.8)]
+            BronzePeopleProps.shape(&svg, corners, fill: .colour(colour), width: 1, shift: P(-0.4, 0.3))
+            svg.ellipse(foot + P(-0.6, -0.4), 1.2, 0.6, fill: .colour(sheen))
+        }
     }
 }

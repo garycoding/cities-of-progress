@@ -66,6 +66,7 @@ struct AlchemyPeopleAlchemist: PersonLook {
     }
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let sway = d.rig.sway
         d.figure { d in
             if pose == .working {
@@ -225,5 +226,268 @@ struct AlchemyPeopleAlchemist: PersonLook {
         d.svg.circle(P(-0.2, -77.2), 2, fill: .colour(AlchemyPeopleInk.darkWine), stroke: .colour(Ink.line), width: 1)
         d.svg.path("M10.6,-65.4 C3,-67.6 -5,-66.2 -11.2,-62", stroke: .colour(Ink.line), width: 2.6)
         d.svg.path("M10.6,-65.4 C3,-67.6 -5,-66.2 -11.2,-62", stroke: .colour(AlchemyPeopleInk.darkWine), width: 1.2)
+    }
+}
+
+// MARK: - The alchemist in the other views
+
+extension AlchemyPeopleAlchemist {
+    /// The robe's outline in profile, its curves taken as straight steps.
+    static func robeShape(sway: Double) -> [P] {
+        let hemBack = P(-16.6 - sway * 1.4, -3.4), hemFront = P(15.4 - sway * 1.4, -3.4)
+        return [P(-8.4, -47), P(8.4, -47)] + AlchemyViews.cubic(P(8.4, -47), P(10.6, -38), P(12.6, -20), hemFront)
+            + [hemBack] + AlchemyViews.cubic(hemBack, P(-13.8, -20), P(-11, -38), P(-8.4, -47)).dropLast()
+    }
+
+    /// A frame of a pose seen from a view other than the side: the robe, its
+    /// hem and the stole go round him, the flask and the book are held where
+    /// the view puts his hands, and his cap, spectacles and beard turn with his head.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let sway = d.rig.sway
+        d.figure { d in
+            func held(_ d: inout Drawing, right: Bool) {
+                let hand = d.hand(front: right)
+                if right {
+                    let degrees: Double
+                    switch pose {
+                    case .working: degrees = d.onScreen(Self.swirlTurn(frame))
+                    case .walking: degrees = 4 * BronzePeopleKit.wave(frame, 0.1, times: 2)
+                    default: degrees = 1.4 * BronzePeopleKit.wave(frame)
+                    }
+                    let centre = pose == .working ? hand + P(0, -Self.flaskSize - 0.6).rotated(degrees, about: P(0, 0))
+                        : Self.flaskCentre(hand: hand, degrees: degrees)
+                    let slop = pose == .working ? Self.slop(frame) : (pose == .walking ? 0.5 * BronzePeopleKit.wave(frame, 0, times: 2) : 0)
+                    AlchemyPeopleProps.flask(&d.svg, at: centre, degrees: degrees, slop: slop, radius: Self.flaskSize)
+                    if pose == .working {
+                        let mouth = AlchemyPeopleProps.flaskMouth(at: centre, degrees: degrees, radius: Self.flaskSize)
+                        for k in 0..<2 {
+                            let p = (Double(frame) / 12 + Double(k) / 2).truncatingRemainder(dividingBy: 1)
+                            let at = mouth + P(0.6 + p * 4 + 1.6 * sin(p * 2 * .pi), -3 - p * 20)
+                            AlchemyPeopleProps.vapour(&d.svg, at: at, size: 3.4 + p * 6.4, opacity: 1 - p * 0.75)
+                        }
+                        d.svg.path("M\(num(mouth.x)),\(num(mouth.y - 0.6)) q-1.4,-1.6 0,-3.2", stroke: .colour(AlchemyPeopleInk.vapourShade), width: 1.2)
+                    }
+                } else {
+                    // The book: under his arm, or hanging shut in his hand while he works.
+                    let k = max(abs(AlchemyViews.turn(d.view).c), 0.45)
+                    let at = pose == .working ? hand + P(-0.6, 3.4) : hand + P(0, -2)
+                    AlchemyViews.squeezed(&d.svg, about: at, by: k) { svg in
+                        AlchemyPeopleProps.book(&svg, at: at, degrees: pose == .working ? 6 : 14, cover: AlchemyPeopleInk.wine)
+                    }
+                }
+            }
+            func arms(_ d: inout Drawing, behind: Bool) {
+                for limb in AlchemyViews.arms(d, behind: behind) {
+                    if !limb.right { held(&d, right: false) }
+                    Self.sleeveInView(&d, limb)
+                    if limb.right { held(&d, right: true) }
+                    d.hand(limb.end)
+                }
+            }
+            arms(&d, behind: true)
+            d.legs()
+            Self.robeInView(&d, sway: sway)
+            arms(&d, behind: false)
+            d.head(nose: .bulb, hair: { d in Self.tuftsInView(&d) }, features: { d in Self.beardInView(&d) }, brow: { d in
+                d.svg.path("M0.4,-65.6 q4,-2.6 8.6,-0.6", stroke: .colour(Ink.line), width: 3)
+                d.svg.path("M0.4,-65.6 q4,-2.6 8.6,-0.6", stroke: .colour(AlchemyPeopleInk.greyHair), width: 1.6)
+            }, over: { d in
+                Self.spectaclesInView(&d)
+                Self.capInView(&d)
+            })
+        }
+    }
+
+    /// The robe, its gilt hem worked with the signs, and the stole, turned with the view.
+    static func robeInView(_ d: inout Drawing, sway: Double) {
+        let view = d.view
+        let shape = robeShape(sway: sway)
+        let line = Paint.colour(Ink.line)
+        let seesFront = view == .front || view == .frontQuarter
+        d.garment(colour: shape.map { $0 + P(-0.8, 0.8) }, outline: shape, fill: .colour(AlchemyPeopleInk.teal)) { d in
+            // The folds falling from the yoke, on both sides of him.
+            var folds = PathData()
+            for side in [1.0, -1.0] {
+                for (top, bottom) in [(P(-5, -36), P(-8.6, -8)), (P(-0.4, -30), P(-1.4, -8)), (P(9.4, -30), P(10.6, -8))] {
+                    if let fold = AlchemyViews.worn(d, [top, (top + bottom) * 0.5 + P(-1.2 - sway, 0), bottom + P(-sway, 0)], on: shape, side: side) {
+                        folds.move(fold[0]); folds.quad(fold[1], fold[2])
+                    }
+                }
+            }
+            d.svg.path(folds, stroke: .colour(AlchemyPeopleInk.darkTeal), width: 1.1)
+            // The gilt band at the hem, and the signs worked in it where they face the viewer.
+            let hem = [P(-16, -8.6), P(14.6, -8.6), P(15.2 - sway * 1.4, -3.4), P(-16.2 - sway * 1.4, -3.4)]
+            d.band(hem, fill: .colour(AlchemyPeopleInk.gilt))
+            d.svg.line(Array(d.turned(hem).prefix(1)) + [d.turned(hem).last!], stroke: line, width: 0.8)
+            let sign = Paint.colour(AlchemyPeopleInk.darkTeal)
+            for (i, x) in [-12.0, -5.0, 2.0, 9.0, 12.6].enumerated() {
+                for side in [1.0, -1.0] {
+                    let (c, depth) = AlchemyViews.surface(view, P(x, -6), on: shape, side: side)
+                    guard depth > 1 else { continue }
+                    switch (i + (side < 0 ? 2 : 0)) % 5 {
+                    case 0:
+                        d.svg.circle(c, 1.3, fill: .none, stroke: sign, width: 0.6); d.svg.circle(c, 0.3, fill: sign)
+                    case 1:
+                        d.svg.path("M\(num(c.x + 0.6)),\(num(c.y - 1.4)) a1.4,1.4 0 1 0 0,2.8 a1,1 0 1 1 0,-2.8 Z", fill: sign)
+                    case 2:
+                        d.svg.polygon([c + P(-1.4, 1.1), c + P(1.4, 1.1), c + P(0, -1.4)], fill: .none, stroke: sign, width: 0.6)
+                    case 3:
+                        d.svg.polygon([c + P(-1.4, -1.1), c + P(1.4, -1.1), c + P(0, 1.4)], fill: .none, stroke: sign, width: 0.6)
+                    default:
+                        d.svg.circle(c + P(0, -0.2), 0.9, fill: .none, stroke: sign, width: 0.6)
+                        d.svg.path("M\(num(c.x - 1)),\(num(c.y - 1.9)) q1,1 2,0 M\(num(c.x)),\(num(c.y + 0.7)) l0,1.2", stroke: sign, width: 0.6)
+                    }
+                }
+            }
+        }
+        // The stole: round the back of his neck, and hanging down his front on either side.
+        if !seesFront {
+            let yoke = [P(-8.6, -48.2), P(8.6, -48.2), P(9.2, -44.2), P(-9.2, -44.2)]
+            d.svg.polygon(d.turned(yoke).map(d.up), fill: .colour(AlchemyPeopleInk.light))
+            d.band([P(-8.6, -47.6), P(8.6, -47.6), P(9, -45), P(-9, -45)])
+            d.svg.polygon(d.turned(yoke).map(d.up), fill: .none, stroke: line, width: 1)
+        }
+        for side in [1.0, -1.0] {
+            // Each strip falls straight down his chest, a little to one side of his middle.
+            func strip(_ angles: [(Double, Double)]) -> [P]? {
+                var points: [P] = []
+                for (y, angle) in angles {
+                    let (p, depth) = AlchemyViews.around(view, y, angle: angle, on: shape, side: side)
+                    guard depth > 0.5 else { return nil }
+                    points.append(d.up(p + P(-sway * 0.8 * (y > -30 ? 1 : 0), 0)))
+                }
+                return points
+            }
+            guard let outer = strip([(-47.4, 18), (-47.2, 50), (-15.2, 30), (-15.6, 13)]),
+                  let inner = strip([(-47.2, 25), (-47, 43), (-15.8, 26), (-16, 17)]) else { continue }
+            d.svg.polygon(outer, fill: .colour(AlchemyPeopleInk.light))
+            d.svg.polygon(inner, fill: .team)
+            d.svg.polygon(outer, fill: .none, stroke: line, width: 1)
+            var fringe = PathData()
+            for i in 0..<5 {
+                let top = outer[3] + (outer[2] - outer[3]) * (Double(i) / 4)
+                fringe.move(top); fringe.line(top + P(-sway * 0.6, 2.2))
+            }
+            d.svg.path(fringe, stroke: line, width: 0.7)
+        }
+        // The collar round the neck.
+        let collar = AlchemyViews.rim(view, radius: 8.4, front: -46.6 - d.rig.lift, back: -47.4 - d.rig.lift, steps: 8)
+        d.svg.line(collar, stroke: line, width: 1.2)
+    }
+
+    /// A wide sleeve of the robe along an arm in this view: the upper arm in
+    /// the robe's cloth, then the sleeve widening to the wrist, turned back in the light.
+    static func sleeveInView(_ d: inout Drawing, _ limb: AlchemyViews.Limb) {
+        let shoulder = limb.root, elbow = limb.joint, hand = limb.end
+        d.svg.line([shoulder, elbow], stroke: .colour(Ink.line), width: 5.4)
+        d.svg.line([shoulder, elbow], stroke: .colour(limb.right ? AlchemyPeopleInk.teal : AlchemyPeopleInk.darkTeal), width: 3.4)
+        let along = hand - elbow
+        let length = BronzePeopleKit.length(along)
+        guard length > 2.6 else { return }
+        let u = along * (1 / length), a = P(-u.y, u.x)
+        let wrist = elbow + u * (length - 2.2)
+        BronzePeopleProps.shape(&d.svg, [elbow + a * 2.4, elbow - a * 2.4, wrist - a * 4.2, wrist + a * 4.2],
+                                fill: .colour(limb.right ? AlchemyPeopleInk.teal : AlchemyPeopleInk.darkTeal), width: 1.2)
+        d.svg.polygon([wrist - u * 1.6 + a * 4, wrist - u * 1.6 - a * 4, wrist - a * 4.2, wrist + a * 4.2], fill: .colour(AlchemyPeopleInk.paleTeal),
+                      stroke: .colour(Ink.line), width: 0.9)
+    }
+
+    /// The grey tufts sticking out under the cap, as the view shows them.
+    static func tuftsInView(_ d: inout Drawing) {
+        let grey = Paint.colour(AlchemyPeopleInk.greyHair), line = Paint.colour(Ink.line)
+        func tuft(_ d: inout Drawing, at x: Double, out: Double) {
+            d.svg.path("M\(num(x)),-63.4 C\(num(x + out * 4)),-62 \(num(x + out * 4.4)),-58.6 \(num(x + out * 1.8)),-56.4 "
+                       + "C\(num(x + out * 3.6)),-55 \(num(x + out * 2.8)),-51.6 \(num(x)),-51.2 C\(num(x - out * 1.2)),-53.4 "
+                       + "\(num(x - out * 1.6)),-58 \(num(x)),-63.4 Z", fill: grey, stroke: line, width: 0.8)
+        }
+        switch d.view {
+        case .front:
+            tuft(&d, at: -10, out: -1); tuft(&d, at: 10, out: 1)
+        case .frontQuarter:
+            tuft(&d, at: -9.6, out: -1)
+        case .back:
+            d.svg.path("M-11,-62 C-12.6,-57 -11,-52 -7,-50.4 C-3,-51.6 3,-51.6 7,-50.4 C11,-52 12.6,-57 11,-62 C5,-60 -5,-60 -11,-62 Z",
+                       fill: grey, stroke: line, width: 0.8)
+        case .backQuarter:
+            d.svg.path("M-11,-61.6 C-12.6,-56.6 -11,-52 -7.4,-50.4 C-3,-51.4 2,-51.6 5.6,-50.8 C7.4,-53 7.6,-57 6.6,-61 C1,-59.4 -5,-59.6 -11,-61.6 Z",
+                       fill: grey, stroke: line, width: 0.8)
+        case .side:
+            break
+        }
+    }
+
+    /// The pointed grey beard and the drooping moustache, seen from the front or a quarter.
+    static func beardInView(_ d: inout Drawing) {
+        let grey = Paint.colour(AlchemyPeopleInk.greyHair), line = Paint.colour(Ink.line)
+        let (left, right, centre): (Double, Double, Double)
+        switch d.view {
+        case .front: (left, right, centre) = (-7.4, 7.4, 0)
+        case .frontQuarter: (left, right, centre) = (-3.6, 10.2, 5.4)
+        default: return
+        }
+        d.svg.path("M\(num(left)),-53 C\(num(left + 1)),-48.4 \(num(centre - 2.4)),-45 \(num(centre)),-39.6 "
+                   + "C\(num(centre + 2.4)),-45 \(num(right - 1)),-48.4 \(num(right)),-53 C\(num(right - 3)),-49.4 \(num(centre + 2.6)),-49.2 "
+                   + "\(num(centre)),-49.6 C\(num(centre - 2.6)),-49.2 \(num(left + 3)),-49.4 \(num(left)),-53 Z",
+                   fill: grey, stroke: line, width: 1)
+        d.svg.path("M\(num(centre - 1.6)),-47.6 q0.6,2.4 1.2,4.6 M\(num(centre + 1.6)),-47.6 q-0.6,2.4 -1.2,4.6", stroke: line, width: 0.6, opacity: 0.6)
+        // The moustache, drooping either side of the mouth.
+        d.svg.path("M\(num(centre)),-53.6 C\(num(centre - 3)),-54.4 \(num(centre - 5.4)),-52.6 \(num(centre - 5)),-49.8 "
+                   + "C\(num(centre - 3.6)),-51.2 \(num(centre - 1.6)),-51.8 \(num(centre)),-52 C\(num(centre + 1.6)),-51.8 "
+                   + "\(num(centre + 3.6)),-51.2 \(num(centre + 5)),-49.8 C\(num(centre + 5.4)),-52.6 \(num(centre + 3)),-54.4 \(num(centre)),-53.6 Z",
+                   fill: grey, stroke: line, width: 0.8)
+    }
+
+    /// The round spectacles, rims round both eyes where the face shows, and their side-pieces to the ears.
+    static func spectaclesInView(_ d: inout Drawing) {
+        let line = Paint.colour(Ink.line)
+        let rims: [(P, Double)]
+        switch d.view {
+        case .front: rims = [(P(-4.3, -59.8), 1), (P(4.3, -59.8), 1)]
+        case .frontQuarter: rims = [(P(-1.5, -59.8), 0.72), (P(5.9, -59.8), 1)]
+        case .back, .backQuarter:
+            // Only the side-pieces show, running back over the ears.
+            let x = d.view == .back ? 10.2 : 7.4
+            for side in d.view == .back ? [-1.0, 1.0] : [1.0] {
+                d.svg.line([P(side * x, -60.2), P(side * (x - 1.4), -59.4)], stroke: line, width: 0.8)
+            }
+            return
+        case .side: return
+        }
+        for (c, k) in rims {
+            d.svg.ellipse(c, 4.1 * k, 4.1, fill: .colour("#ffffff"), opacity: 0.18)
+            d.svg.ellipse(c, 4.1 * k, 4.1, fill: .none, stroke: line, width: 1.1)
+            d.svg.path("M\(num(c.x - 2.2 * k)),-62 q\(num(k)),-0.9 \(num(2.2 * k)),-1", stroke: .colour("#ffffff"), width: 0.8, opacity: 0.8)
+        }
+        let (a, b) = (rims[0], rims[1])
+        d.svg.path("M\(num(a.0.x + 4.1 * a.1)),-60.4 Q\(num((a.0.x + b.0.x) / 2)),-62 \(num(b.0.x - 4.1 * b.1)),-60.4", stroke: line, width: 1)
+        if d.view == .front {
+            d.svg.line([P(-8.4, -60.2), P(-10.4, -59.6)], stroke: line, width: 0.8)
+            d.svg.line([P(8.4, -60.2), P(10.4, -59.6)], stroke: line, width: 0.8)
+        } else {
+            d.svg.line([P(a.0.x - 2.9, -60.2), P(-7.6, -59.6)], stroke: line, width: 0.8)
+        }
+    }
+
+    /// The square cap of wine-coloured wool, its stiff sides, ridges and tuft, as the view shows it.
+    static func capInView(_ d: inout Drawing) {
+        let view = d.view
+        let cap = AlchemyViews.dome(view, radius: 11.8, front: -65.4, back: -62, top: -75.4, crest: -0.6)
+        BronzePeopleProps.shape(&d.svg, cap, fill: .colour(AlchemyPeopleInk.wine), width: 1.5)
+        // The ridges at its four corners, where they face the viewer.
+        var ridges = PathData()
+        for phi in [0.25, 0.75, 1.25, 1.75].map({ $0 * .pi }) {
+            let low = AlchemyViews.onRim(view, radius: 10.6, front: -66.6, back: -63.4, phi: phi)
+            let high = AlchemyViews.onRim(view, radius: 6, front: -74.6, back: -74, phi: phi)
+            guard low.depth > 1.5 else { continue }
+            ridges.move(low.point); ridges.line(high.point)
+        }
+        d.svg.path(ridges, stroke: .colour(AlchemyPeopleInk.darkWine), width: 1.4)
+        let top = AlchemyViews.rim(view, radius: 10.4, front: -73, back: -73, steps: 8)
+        d.svg.line(top, stroke: .colour(AlchemyPeopleInk.paleWine), width: 0.9)
+        d.svg.circle(P(-0.2 * AlchemyViews.turn(view).c, -77), 2, fill: .colour(AlchemyPeopleInk.darkWine), stroke: .colour(Ink.line), width: 1)
+        // The edge at the brow.
+        let rim = AlchemyViews.rim(view, radius: 11.4, front: -65.4, back: -62.2)
+        d.svg.line(rim, stroke: .colour(Ink.line), width: 2.6)
+        d.svg.line(rim, stroke: .colour(AlchemyPeopleInk.darkWine), width: 1.2)
     }
 }

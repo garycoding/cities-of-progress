@@ -199,24 +199,27 @@ public struct RailwayStats: Hashable, Codable, Sendable {
 }
 
 /// A person's car (ruled 2026-11-21): every enemy unit within `killRadius`
-/// tiles of it dies at once.
+/// tiles of it dies at once, unless its person has turned the radius off.
 public struct CarStats: Hashable, Codable, Sendable {
     public var killRadius: Double
+    /// How many cars a person may make (ruled 2026-11-21: up to five).
+    public var perPerson: Int
     /// How far the car's laser reaches, in tiles (ruled 2026-11-21).
     public var laserRange: Double
     /// Ticks in which the laser burns down any building, whatever its size.
     public var laserTime: Int
 
-    public init(killRadius: Double, laserRange: Double = 8, laserTime: Int = 4 * Tick.rate) {
-        self.killRadius = killRadius; self.laserRange = laserRange; self.laserTime = laserTime
+    public init(killRadius: Double, perPerson: Int = 5, laserRange: Double = 8, laserTime: Int = 4 * Tick.rate) {
+        self.killRadius = killRadius; self.perPerson = perPerson; self.laserRange = laserRange; self.laserTime = laserTime
     }
 
-    private enum CodingKeys: String, CodingKey { case killRadius, laserRange, laserTime }
+    private enum CodingKeys: String, CodingKey { case killRadius, perPerson, laserRange, laserTime }
 
-    /// A car saved before the laser opens with the standard laser.
+    /// A car saved before the laser, or before five cars, opens with the standard ones.
     public init(from decoder: any Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         killRadius = try c.decode(Double.self, forKey: .killRadius)
+        perPerson = try c.decodeIfPresent(Int.self, forKey: .perPerson) ?? 5
         laserRange = try c.decodeIfPresent(Double.self, forKey: .laserRange) ?? 8
         laserTime = try c.decodeIfPresent(Int.self, forKey: .laserTime) ?? 4 * Tick.rate
     }

@@ -69,6 +69,8 @@ enum OrderCheck {
                 command(units, "carry") { $0 == .merchant }
             case .summonCar:
                 problems.append("summonCar: a computer player has no car")
+            case .setKillRadius:
+                problems.append("setKillRadius: a computer player has no car")
             case .buildBridge:
                 problems.append("buildBridge: a computer player does not build bridges")
             case .reseed(let farm):

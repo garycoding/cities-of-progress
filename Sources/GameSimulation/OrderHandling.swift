@@ -47,6 +47,7 @@ extension Simulation {
         case .dismiss(let units): return dismiss(units, player: player)
         case .reseed(let farm): return reseed(farm, player: player)
         case .summonCar: return summonCar(player: player)
+        case .setKillRadius(let cars, let on): return setKillRadius(cars, on: on, player: player)
         case .buildBridge(let engineers, let from, let to): return buildBridge(engineers, from: from, to: to, player: player)
         case .setPaused: return .accepted
         }
@@ -187,6 +188,8 @@ extension Simulation {
         let engineers = people.filter { entities[$0].unitKind == .engineer }
         guard !engineers.isEmpty else { return .refused(.notYours) }
         let p = player.rawValue
+        // Bridges may be forbidden by the match's setup (ruled 2026-11-21).
+        guard noBridges != true else { return .refused(.invalidTarget) }
         let stats = tables.building(.bridge)
         guard players[p].age >= stats.age else { return .refused(.ageNotReached(stats.age)) }
         guard let rows = Placement.bridgeRows(from: from, to: to, width: width, height: height, terrain: terrain),
@@ -378,20 +381,31 @@ extension Simulation {
         return .accepted
     }
 
-    /// A person's car, once, beside the player's first standing town centre
-    /// (ruled 2026-11-21); computer players have none.
+    /// A person's car beside the player's first standing town centre, up to
+    /// `CarStats.perPerson` of them (ruled 2026-11-21); computer players have none.
     mutating func summonCar(player: PlayerID) -> OrderResult {
         let p = player.rawValue
-        guard catalogue.car != nil, players[p].isHuman else { return .refused(.notYours) }
-        guard players[p].hasCar != true else { return .refused(.notNow) }
+        guard let car = catalogue.car, players[p].isHuman else { return .refused(.notYours) }
+        let made = entities.lazy.filter { $0.alive && $0.owner == player && $0.unitKind == .car }.count
+        guard made < car.perPerson else { return .refused(.notNow) }
         guard let centre = entities.indices.first(where: {
             entities[$0].alive && entities[$0].owner == player && entities[$0].buildingKind == .townCentre && entities[$0].complete
         }) else { return .refused(.invalidTarget) }
         let spot = freeTile(besideBuilding: centre, index: entities[centre].spawned)
         entities[centre].spawned += 1
         let id = spawnPerson(.car, owner: player, at: spot.centre)
-        players[p].hasCar = true
         record(.trained(id, .car), for: p)
+        return .accepted
+    }
+
+    /// Turn the kill radius of the player's own cars among `ids` on or off
+    /// (ruled 2026-11-21): off, a car harms nobody by driving near, and still fires its laser.
+    mutating func setKillRadius(_ ids: [EntityID], on: Bool, player: PlayerID) -> OrderResult {
+        let cars = ids.compactMap(index(of:)).filter {
+            entities[$0].alive && entities[$0].owner == player && entities[$0].unitKind == .car
+        }
+        guard !cars.isEmpty else { return .refused(.notYours) }
+        for i in cars { entities[i].killRadiusOff = on ? nil : true }
         return .accepted
     }
 }

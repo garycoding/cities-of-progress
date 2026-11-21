@@ -19,7 +19,7 @@ public struct Unavailability: Hashable, Sendable {
 /// (`perform(in:)`), and its tooltip and refusal line say why.
 public struct ActionOffer: Identifiable, Hashable, Sendable {
     public enum Section: Int, Hashable, Sendable {
-        case train, research, build, upgrade, age, demolish, dismiss, trade, carry, reseed
+        case train, research, build, upgrade, age, demolish, dismiss, trade, carry, reseed, car
 
         public var heading: String {
             switch self {
@@ -33,6 +33,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
             case .trade: "Trade for"
             case .carry: "Send to"
             case .reseed: "Farm"
+            case .car: "Car"
             }
         }
     }
@@ -49,6 +50,8 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case exchange(merchants: [EntityID], give: Resource, take: Resource)
         case carry(merchants: [EntityID], resource: Resource, to: EntityID)
         case reseed(farm: EntityID)
+        /// Turn the kill radius of these cars on or off (ruled 2026-11-21).
+        case killRadius(cars: [EntityID], on: Bool)
     }
 
     public var id: String
@@ -81,6 +84,7 @@ public struct ActionOffer: Identifiable, Hashable, Sendable {
         case .exchange(let merchants, let give, let take): .exchange(merchants: merchants, give: give, take: take)
         case .carry(let merchants, let resource, let building): .carry(merchants: merchants, resource: resource, to: building)
         case .reseed(let farm): .reseed(farm: farm)
+        case .killRadius(let cars, let on): .setKillRadius(cars: cars, on: on)
         }
     }
 
@@ -161,12 +165,13 @@ public struct PanelModel: Sendable {
     public var trade: [ActionOffer] = []
     public var carry: [ActionOffer] = []
     public var reseed: [ActionOffer] = []
+    public var car: [ActionOffer] = []
     /// A building the player is placing, for the panel's hint.
     public var placing: BuildingKind?
 
-    public var actions: [ActionOffer] { train + research + reseed + build + upgrade + trade + carry + demolish + dismiss }
+    public var actions: [ActionOffer] { train + research + reseed + car + build + upgrade + trade + carry + demolish + dismiss }
     public var sections: [(section: ActionOffer.Section, offers: [ActionOffer])] {
-        [(.train, train), (.research, research), (.reseed, reseed), (.build, build), (.upgrade, upgrade), (.trade, trade), (.carry, carry), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
+        [(.train, train), (.research, research), (.reseed, reseed), (.car, car), (.build, build), (.upgrade, upgrade), (.trade, trade), (.carry, carry), (.demolish, demolish), (.dismiss, dismiss)].filter { !$0.1.isEmpty }
     }
 
     /// The offer that a key press does, if any.
@@ -259,6 +264,21 @@ public struct PanelModel: Sendable {
                 cost: cost, action: .reseed(farm: b.id), unavailable: why, shortcut: "e", icon: nil, iconSubject: nil)]
         }
 
+        // Turn the selected cars' kill radius off or on (ruled 2026-11-21): the
+        // button turns it off while any of them has it on, so that one press
+        // settles them all.
+        let cars = own.filter { $0.kind == .unit(.car) }
+        if !cars.isEmpty {
+            let anyOn = cars.contains { $0.killRadiusOff != true }
+            car = [ActionOffer(
+                id: "kill-radius", section: .car, title: anyOn ? "Kill radius off" : "Kill radius on",
+                detail: anyOn
+                    ? "The car stops killing enemy units near it; its laser still burns buildings."
+                    : "Every enemy unit near the car dies at once, as when it was made.",
+                cost: ResourceAmounts(), action: .killRadius(cars: cars.map(\.id), on: !anyOn), unavailable: nil,
+                shortcut: "z", icon: nil, iconSubject: nil)]
+        }
+
         // Demolish a single own building (requirement 28): the player's idle
         // engineers do it, or the nearest engineer where none is idle.
         if selected.count == 1, let b = own.first, case .building(let kind) = b.kind {
@@ -292,7 +312,8 @@ public struct PanelModel: Sendable {
 
         // Buildings for engineers, of the ages reached.
         if own.contains(where: { $0.kind == .unit(.engineer) }) {
-            build = catalogue.buildings.filter { $0.age <= view.age }.map { b in
+            // A bridge only where the match's setup allows bridges (ruled 2026-11-21).
+            build = catalogue.buildings.filter { $0.age <= view.age && ($0.kind != .bridge || view.bridges) }.map { b in
                 ActionOffer(
                     id: "build-\(b.kind)", section: .build, title: b.kind.name, detail: b.kind == .bridge
                         ? "Engineers build it across water: drag from one bank to the other. The cost is for each water tile."

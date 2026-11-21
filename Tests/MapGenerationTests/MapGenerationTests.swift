@@ -236,6 +236,24 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
     } }
 }
 
+/// The large map (ruled 2026-11-21): twice as wide and twice as tall, and still
+/// fair to every start. The scattered deposits, herds and woods grow with the
+/// area, four times; each start's own resources are those of the standard map,
+/// so the whole grows less than four times, the less the more players there are.
+@Test(arguments: [2, 6]) func aLargeMapHasFourTimesTheRoomAndTheResources(players: Int) {
+    let standard = MapGenerator().generate(MapRequest(size: .standard, playerCount: players, seed: 3))
+    let large = MapGenerator().generate(MapRequest(size: .large, playerCount: players, seed: 3))
+    #expect(large.width == 192 && large.height == 192 && large.starts.count == players)
+    let ratio = Double(large.sites.count) / Double(standard.sites.count)
+    #expect(ratio > (players == 2 ? 3.3 : 2.5) && ratio < 4.5, "ratio \(ratio)")
+    for start in large.starts {
+        #expect(count(.tree, in: large, within: 14, of: start) >= 6)
+        #expect(count(.iron, in: large, within: 30, of: start) >= 1)
+    }
+    let reached = reachableTiles(in: large, from: large.starts[0], ignoringSites: false)
+    for start in large.starts { #expect(reached.contains(start)) }
+}
+
 // MARK: - Speed
 
 @Test func aDefaultMapTakesUnderTwoHundredMilliseconds() {

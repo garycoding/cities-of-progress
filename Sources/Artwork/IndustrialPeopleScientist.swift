@@ -75,6 +75,7 @@ struct IndustrialPeopleScientist: PersonLook {
     // MARK: Drawing
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let sway = d.rig.sway
         if pose == .working {
             IndustrialPeopleProps.burner(&d.svg, x: Self.tripodX, height: Self.ringHeight, flicker: IndustrialPeopleKit.wave(frame, 0, times: 2))
@@ -213,5 +214,237 @@ struct IndustrialPeopleScientist: PersonLook {
         svg.path("M\(num(c.x - size * 0.3)),\(num(c.y + size * 0.32)) q\(num(size * 0.3)),\(num(size * 0.18)) \(num(size * 0.6)),0",
                  stroke: .colour(IndustrialPeopleInk.shadeLight), width: 0.8)
         svg.raw("</g>")
+    }
+}
+
+// MARK: - The scientist in the other views
+
+extension IndustrialPeopleScientist {
+    /// A frame in a view other than the side: the same dress and the same
+    /// work, the burner and the flask standing beside him.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let sway = d.rig.sway
+        var ground = SVG(layer: d.svg.layer)
+        let tripod = IndustrialPoint(22, 0, IndustrialViews.aside(d) * 0.9)
+        let nearer = IndustrialViews.depth(d, tripod) > 0
+        if pose == .working {
+            let foot = IndustrialViews.world(d, IndustrialViews.screen(d, tripod))
+            let bob = d.bob
+            IndustrialViews.placed(&ground, d, pivot: P(Self.tripodX, 0), to: P(foot.x, foot.y - bob), least: 1) { svg in
+                IndustrialPeopleProps.burner(&svg, x: Self.tripodX, height: Self.ringHeight, flicker: IndustrialPeopleKit.wave(frame, 0, times: 2))
+                IndustrialPeopleProps.conicalFlask(&svg, base: P(Self.tripodX, -Self.ringHeight - 0.8), height: Self.flaskHeight, boil: Double(frame) / 12)
+                let mouth = P(Self.tripodX, -Self.ringHeight - 0.8 - Self.flaskHeight)
+                for k in 0..<2 {
+                    let p = (Double(frame) / 12 + Double(k) / 2).truncatingRemainder(dividingBy: 1)
+                    Self.steam(&svg, at: mouth + P(-p * 5 + 1.4 * sin(p * 2 * .pi), -3 - p * 17), size: 2.6 + p * 4.6, opacity: 1 - p * 0.8)
+                }
+            }
+            if !nearer { d.svg.raw(ground.body) }
+        }
+        d.figure { d in
+            let farArm: IndustrialViews.Arm, nearArm: IndustrialViews.Arm
+            var notebook: IndustrialPoint?
+            var pencil: (hand: IndustrialPoint, point: IndustrialPoint)?
+            if pose == .working {
+                // The notebook open before his chest in the far hand, the pencil writing on it.
+                let at = IndustrialPeopleKit.body(Self.notebookAt, d.rig)
+                let book = IndustrialPoint(at.x - 1, at.y, -1.6)
+                let local = Self.pencilPoint(frame) - Self.notebookAt
+                let point = book + IndustrialPoint(0.6, local.y, -local.x * 0.8 + 1)
+                let hand = point - IndustrialViews.vector(Self.pencilDegrees) * Self.pencilLength
+                farArm = IndustrialViews.reach(d, front: false, to: book + IndustrialPoint(-0.6, 1.6, -3))
+                nearArm = IndustrialViews.reach(d, front: true, to: hand)
+                notebook = book
+                pencil = (nearArm.held, point)
+            } else {
+                farArm = IndustrialViews.arm(d, front: false)
+                nearArm = IndustrialViews.arm(d, front: true)
+            }
+            func drawArm(_ d: inout Drawing, _ a: IndustrialViews.Arm, front: Bool) {
+                if front {
+                    IndustrialPeopleKit.arm(&d, shoulder: a.shoulder, elbow: a.elbow, hand: a.hand, fill: .colour(IndustrialPeopleInk.light), width: 4.4,
+                                            cuff: IndustrialPeopleInk.shadeLight)
+                } else {
+                    IndustrialPeopleKit.arm(&d, shoulder: a.shoulder, elbow: a.elbow, hand: a.hand, fill: .colour(IndustrialPeopleInk.shadeLight), width: 4.4)
+                }
+            }
+            func drawBook(_ d: inout Drawing) {
+                guard let book = notebook else { return }
+                let c = IndustrialViews.screen(d, book)
+                if IndustrialViews.seesFront(d) {
+                    // The covers' backs toward us, open in a shallow V.
+                    let k = d.view == .front ? 1 : 0.8
+                    d.svg.polygon([c + P(-7 * k, -4), c + P(0, -3), c + P(7 * k, -4), c + P(7.4 * k, 1.4), c + P(0, 2.4), c + P(-7.4 * k, 1.4)],
+                                  fill: .colour(IndustrialPeopleInk.black), stroke: .colour(Ink.line), width: 0.9)
+                    d.svg.line([c + P(0, -3), c + P(0, 2.4)], stroke: .colour(IndustrialPeopleInk.blackSheen), width: 0.7)
+                } else {
+                    IndustrialPeopleProps.notebook(&d.svg, at: c, degrees: 0, written: 0.72)
+                }
+            }
+            func drawPencil(_ d: inout Drawing) {
+                guard let pencil else { return }
+                IndustrialViews.prop(&d, at: IndustrialViews.screen(d, pencil.hand), degrees: Self.pencilDegrees) { svg, at, degrees in
+                    IndustrialPeopleProps.pencil(&svg, at: at, degrees: degrees, length: Self.pencilLength)
+                }
+            }
+            let front = IndustrialViews.seesFront(d)
+            if !front { drawBook(&d); drawPencil(&d) }
+            for (isFront, a) in [(false, farArm), (true, nearArm)] where a.behind {
+                drawArm(&d, a, front: isFront)
+                if pose == .working && !isFront { d.hand(a.hand) }
+            }
+            IndustrialViews.trousers(&d, colour: IndustrialPeopleInk.green, shade: IndustrialPeopleInk.darkGreen)
+            Self.coatInView(&d, sway: sway)
+            if pose != .working {
+                // The notebook under his far arm, and the flask held by its neck in the near hand.
+                let under = IndustrialPoint(-1.4, -33.8 - d.rig.lift * 0.6, -10.6)
+                let bookBehind = IndustrialViews.depth(d, under) < -3
+                if !bookBehind {
+                    IndustrialPeopleProps.shutNotebook(&d.svg, at: IndustrialViews.screen(d, under), degrees: d.view == .front || d.view == .back ? 0 : 8,
+                                                       width: d.view == .front || d.view == .back ? 3.4 : 7.6)
+                }
+            }
+            if front { drawBook(&d) }
+            for (isFront, a) in [(false, farArm), (true, nearArm)] where !a.behind {
+                drawArm(&d, a, front: isFront)
+                if pose == .working && !isFront { d.hand(a.hand + P(-0.4, -0.4)) }
+            }
+            if pose != .working {
+                let hand = nearArm.hand
+                let swing = pose == .walking ? 4 * IndustrialPeopleKit.wave(frame, 0.15, times: 2) : 1.2 * IndustrialPeopleKit.wave(frame)
+                d.svg.group(turned: swing * IndustrialViews.ahead(d), about: hand) { svg in
+                    IndustrialPeopleProps.conicalFlask(&svg, base: hand + P(0, Self.flaskHeight - 1.6), height: Self.flaskHeight, boil: nil)
+                }
+                d.hand(hand)
+            }
+            if front { drawPencil(&d); if let pencil { d.hand(IndustrialViews.screen(d, pencil.hand)) } }
+            Self.headInView(&d)
+        }
+        if nearer { d.svg.raw(ground.body) }
+    }
+
+    /// The laboratory coat to the knee in a view other than the side: open at
+    /// the chest on the waistcoat, the shirt, the winged collar and the bow tie
+    /// from the front; from behind, the coat's back and the bow tie's band
+    /// round the neck above the collar.
+    static func coatInView(_ d: inout Drawing, sway: Double) {
+        let ink = Paint.colour(Ink.line), lift = d.rig.lift
+        let hemBack = P(-15.4 - sway * 1.4, -8.6), hemFront = P(14.6 - sway * 1.4, -8.6)
+        let coat = d.turned([d.up(P(-9.2, -47.6)), d.up(P(9.2, -47.6)), d.up(P(11, -38)), P(12.4, -24), hemFront, hemBack, P(-13.6, -24), d.up(P(-11.4, -38))])
+        d.svg.polygon(coat.map { $0 + P(-0.8, 0.8) }, fill: .colour(IndustrialPeopleInk.light))
+        func at(_ x: Double, _ y: Double, _ z: Double) -> P { IndustrialViews.screen(d, IndustrialPoint(x, y, z)) }
+        if IndustrialViews.seesFront(d) {
+            // The shirt's front, the waistcoat of the team's colour in the opening, and its buttons.
+            d.svg.polygon([at(9, -47.2 - lift, -4.4), at(9, -47.2 - lift, 4.4), at(10, -40, 4.6), at(10, -40, -4.6)], fill: .colour(Ink.eyeWhite))
+            let vest = [at(9.6, -43.4 - lift, -4.8), at(9.6, -43.4 - lift, 4.8), at(10.8, -24.2, 3.4), at(10.8, -24.2, -3.4)]
+            d.svg.polygon(vest, fill: .team)
+            d.svg.line([vest[0], vest[1]], stroke: ink, width: 0.8)
+            var buttons = PathData()
+            for i in 0..<4 {
+                let p = at(10.2, -40.6 + Double(i) * 3.8, 0)
+                buttons.move(p); buttons.line(p + P(0.2, 0.2))
+            }
+            d.svg.path(buttons, stroke: ink, width: 1.5)
+            // The lapels over the opening's edges.
+            for z in [-1.0, 1.0] {
+                d.svg.polygon([at(9, -47.4 - lift, 4.6 * z), at(9, -47.4 - lift, 6.6 * z), at(10.4, -40, 5.6 * z), at(10.8, -24, 3.4 * z), at(10.8, -24, 2 * z)],
+                              fill: .colour(IndustrialPeopleInk.light), stroke: ink, width: 0.9)
+            }
+            // The breast pocket with two pencils in it, and the coat's buttons below the opening.
+            for (z, colour) in [(-6.2, IndustrialPeopleInk.green), (-4.4, IndustrialPeopleInk.brick)] {
+                let foot = at(8.6, -40.8, z)
+                d.svg.line([foot, foot + P(0.3, -3.6)], stroke: ink, width: 1.7)
+                d.svg.line([foot, foot + P(0.3, -3.6)], stroke: .colour(colour), width: 0.8)
+            }
+            d.svg.polygon([at(8.4, -41.6, -7.8), at(8.8, -41.6, -2.8), at(8.8, -37.4, -2.8), at(8.4, -37.4, -7.8)], fill: .colour(IndustrialPeopleInk.light),
+                          stroke: ink, width: 0.8)
+            d.svg.line([at(11, -24, 0), at(13 - sway * 1.4, -8.8, 0)], stroke: ink, width: 0.8)
+            for y in [-20.6, -15.4] { d.svg.circle(at(11.4, y, 0.8), 0.7, fill: .colour(IndustrialPeopleInk.paleSoot), stroke: ink, width: 0.5) }
+        } else {
+            // The seam down the back and the vent below the waist.
+            if let top = IndustrialViews.back(d, -46 - lift, 0), let waist = IndustrialViews.back(d, -24, 0) {
+                d.svg.line([top, waist], stroke: .colour(IndustrialPeopleInk.shadeLight), width: 1.1)
+                d.svg.line([waist, waist + P(-sway, 15)], stroke: ink, width: 0.8)
+                d.svg.line([waist + P(-5, 0), waist + P(5, 0)], stroke: .colour(IndustrialPeopleInk.shadeLight), width: 1.4)
+            }
+        }
+        d.svg.polygon(coat, fill: .none, stroke: ink, width: 1.8)
+        // The winged collar round the neck, and the bow tie at the throat or its band at the nape.
+        d.svg.polygon([P(-5.6, -49 - lift), P(5.6, -49 - lift), P(5.4, -46.2 - lift), P(-5.4, -46.2 - lift)], fill: .colour(Ink.eyeWhite), stroke: ink, width: 0.8)
+        if IndustrialViews.seesFront(d), let knot = IndustrialViews.front(d, -45.6 - lift, 0, half: 6.4) {
+            d.svg.polygon([knot + P(-3, -1.6), knot + P(-0.6, -0.3), knot + P(-0.6, 0.5), knot + P(-3, 1.8)], fill: .team, stroke: ink, width: 0.7)
+            d.svg.polygon([knot + P(3, -1.6), knot + P(0.6, -0.3), knot + P(0.6, 0.5), knot + P(3, 1.8)], fill: .team, stroke: ink, width: 0.7)
+            d.svg.circle(knot, 0.9, fill: .team, stroke: ink, width: 0.6)
+        }
+    }
+
+    /// The head in a view other than the side: the bald crown and its shine,
+    /// the ginger fringe round the back with tufts over the ears, the
+    /// mutton-chop whiskers and the spectacles where the face shows.
+    static func headInView(_ d: inout Drawing) {
+        let ginger = Paint.colour(IndustrialPeopleInk.gingerHair), ink = Paint.colour(Ink.line)
+        d.head(nose: .button, behind: { d in
+            // The tufts standing out over the ears.
+            let tuft = "C-13.6,-61.4 -14.2,-58.6 -12.4,-57.4 C-13.8,-56 -13.2,-53.4 -10.8,-53.4"
+            switch d.view {
+            case .front, .back:
+                d.svg.path("M-10.2,-61.6 \(tuft) Z", fill: ginger, stroke: ink, width: 0.9)
+                d.svg.raw("<g transform=\"scale(-1,1)\">")
+                d.svg.path("M-10.2,-61.6 \(tuft) Z", fill: ginger, stroke: ink, width: 0.9)
+                d.svg.raw("</g>")
+            case .frontQuarter:
+                d.svg.path("M-9.6,-61.6 C-13.4,-61.4 -14,-58.6 -12.2,-57.4 C-13.6,-56 -13,-53.4 -10.6,-53.4 Z", fill: ginger, stroke: ink, width: 0.9)
+            case .backQuarter:
+                d.svg.path("M9.6,-61.6 C13.4,-61.4 14,-58.6 12.2,-57.4 C13.6,-56 13,-53.4 10.6,-53.4 Z", fill: ginger, stroke: ink, width: 0.9)
+            case .side:
+                break
+            }
+        }, hair: { d in
+            switch d.view {
+            case .front:
+                for s in [-1.0, 1.0] { d.svg.polygon([P(10.2 * s, -62.6), P(8.4 * s, -62.6), P(8.6 * s, -56), P(10.4 * s, -55.4)], fill: ginger) }
+            case .frontQuarter:
+                d.svg.path("M-10.8,-62.6 C-11.8,-58.6 -11.2,-54.6 -9.2,-51.6 L-7.6,-52.6 C-8.8,-55.6 -9,-59 -8.4,-62 Z", fill: ginger)
+            case .back:
+                d.svg.path("M-10.8,-63 C-11.6,-57.6 -10.4,-53 -8,-50.6 C-3,-49.4 3,-49.4 8,-50.6 C10.4,-53 11.6,-57.6 10.8,-63 C5,-60.6 -5,-60.6 -10.8,-63 Z",
+                           fill: ginger)
+            case .backQuarter:
+                d.svg.path("M-11,-63 C-11.8,-57.6 -10.6,-53 -8.4,-50.8 C-3.6,-49.4 1.6,-49.6 5.8,-51 C7,-55 7.4,-59 7,-62.6 C1,-60.4 -5,-60.6 -11,-63 Z",
+                           fill: ginger)
+            case .side:
+                break
+            }
+            // The shine on the crown.
+            d.svg.path("M-3.6,-66.4 q2.6,-1.6 5.6,-1.2", stroke: .colour("#ffffff"), width: 1, opacity: 0.6)
+        }, features: { d in
+            guard IndustrialViews.seesFront(d) else { return }
+            let (c, far) = IndustrialViews.face(d)
+            // Mutton-chop whiskers down each cheek, widening along the jaw; the chin shaven.
+            for s in [-1.0, 1.0] {
+                let k = s > 0 ? far : 1
+                let x0 = c + s * 8.6 * k, x1 = c + s * 3.2 * k
+                d.svg.path("M\(num(x0)),-59.6 C\(num(x0 + s * 0.6 * k)),-55 \(num(x0 - s * 0.4 * k)),-51.6 \(num(x1)),-49.4 "
+                           + "C\(num(x1 + s * 1.6 * k)),-50.6 \(num(x0 - s * 2.4 * k)),-52.6 \(num(x0 - s * 2.2 * k)),-59.4 Z",
+                           fill: ginger, stroke: ink, width: 0.9)
+            }
+        }, brow: { d in
+            d.svg.path("M1.4,-64.8 q3.6,-2.4 7.6,-0.6", stroke: ginger, width: 1.8)
+        }, over: { d in
+            guard IndustrialViews.seesFront(d) else {
+                // The bow tie's band round the nape, above the coat's collar.
+                let w = d.view == .back ? 5.6 : 4.8, c = d.view == .back ? 0 : -1.6
+                d.svg.polygon([P(c - w, -49.8), P(c + w, -49.8), P(c + w - 0.3, -47.8), P(c - w + 0.3, -47.8)], fill: .team,
+                              stroke: ink, width: 0.7)
+                return
+            }
+            // Oval spectacles of steel wire over both eyes, the bridge between them.
+            let eyes: [(P, Double)] = d.view == .front ? [(P(-4.3, -60), 1), (P(4.3, -60), 1)] : [(P(-0.7, -60), 0.72), (P(6.7, -60), 1)]
+            for (e, k) in eyes {
+                d.svg.ellipse(e, 3.6 * k, 3.1, fill: .colour("#ffffff"), opacity: 0.2)
+                d.svg.ellipse(e, 3.6 * k, 3.1, fill: .none, stroke: ink, width: 1)
+            }
+            d.svg.line([eyes[0].0 + P(3.6 * eyes[0].1, -0.4), eyes[1].0 + P(-3.6, -0.4)], stroke: ink, width: 0.9)
+            if d.view == .frontQuarter { d.svg.line([P(-4.4, -60.2), P(-8.6, -59.6)], stroke: ink, width: 0.8) }
+        })
     }
 }

@@ -71,6 +71,8 @@ public struct EntityView: Hashable, Codable, Sendable {
     public var bridgePlace: BridgePlace?
     /// For a car firing its laser, the centre of the building it burns.
     public var laserTarget: MapPosition?
+    /// For a car whose person has turned its kill radius off, true; nil otherwise.
+    public var killRadiusOff: Bool?
 
     public init(id: EntityID, owner: PlayerID, kind: EntityKind, position: MapPosition, tile: GridPoint,
                 facing: Facing, health: Int, maxHealth: Int, activity: Activity, remaining: Int? = nil) {
@@ -153,6 +155,11 @@ public struct PlayerView: Hashable, Codable, Sendable {
     public var events: [GameEvent]
     public var outcome: MatchOutcome?
     public var isPaused: Bool
+    /// Whether bridges may be built in this match (ruled 2026-11-21); nil is allowed.
+    public var noBridges: Bool?
+
+    /// Whether bridges may be built in this match.
+    public var bridges: Bool { noBridges != true }
 
     public init(tick: Int, player: PlayerID, age: Age, resources: ResourceAmounts, population: Int,
                 populationLimit: Int, ageProgress: Double, improvements: [Improvement], players: [PlayerSummary],

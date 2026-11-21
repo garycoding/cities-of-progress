@@ -76,3 +76,24 @@ func computerPlayersPlayAMatchOfThreeOrFive(players: Int) {
         #expect(own.count > 4, "player \(player.id.rawValue) has \(own.count) entities after \(Int(minutes)) minutes")
     }
 }
+
+/// Six computer players on the large map, begun in the Iron age (ruled
+/// 2026-11-21): every player starts on its own start in that age, and a minute
+/// of the match runs at well over the game's own speed.
+@Test func sixPlayersOnTheLargeMapBegunInTheIronAge() throws {
+    let civilizations: [Civilization] = [.sumer, .egypt, .harappa, .shang, .rome, .olmec]
+    let seats = (0..<6).map { i in
+        Seat(player: PlayerID(i), team: TeamID(i), kind: .computer(.standard), civilization: civilizations[i])
+    }
+    let ready = Lobby(name: "Large", seats: seats, startingAge: .iron, mapSize: .large)
+    let seed: UInt64 = 61
+    let map = MapGenerator().generate(MapRequest(size: ready.size, playerCount: 6, seed: seed))
+    #expect(map.width == 192 && map.height == 192)
+    let setup = try #require(ready.setup(map: map, seed: seed))
+    var host = Host(setup: setup)
+    expectEveryPlayerHasAStart(host, setup)
+    for player in setup.players { #expect(host.peek(for: player.id).age == .iron) }
+    let clock = ContinuousClock()
+    let elapsed = clock.measure { for _ in 0..<Tick.seconds(60) { host.advance() } }
+    #expect(elapsed < .seconds(30), "a minute of play took \(elapsed)")
+}
