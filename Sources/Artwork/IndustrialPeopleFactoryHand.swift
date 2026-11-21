@@ -441,9 +441,9 @@ extension IndustrialPeopleFactoryHand {
                 d.svg.polygon([P(-5.4, -63), P(-3.6, -62.6), P(-3.2, -55), P(-4.6, -53), P(-5.8, -57)], fill: hair)
                 d.svg.polygon([P(9.4, -62.6), P(10.6, -60), P(10.2, -55), P(9.2, -56)], fill: hair)
             case .back:
-                d.svg.path("M-10.8,-62 C-11.6,-57 -10.4,-53 -8.4,-50.6 C-3,-49 3,-49 8.4,-50.6 C10.4,-53 11.6,-57 10.8,-62 Z", fill: hair)
+                d.svg.path(IndustrialViews.backHair(d, rim: -62.4), fill: hair)
             case .backQuarter:
-                d.svg.path("M-11,-62 C-11.8,-57 -10.8,-53 -9,-50.8 C-4,-49 1,-49.4 5,-51 C6,-55 6.4,-59 6,-62 Z", fill: hair)
+                d.svg.path(IndustrialViews.backHair(d, rim: -62.4, right: 5.4), fill: hair)
                 d.svg.polygon([P(8.6, -62.4), P(10.4, -62), P(9.8, -55.6), P(8.4, -56.8)], fill: hair)
             case .side:
                 break

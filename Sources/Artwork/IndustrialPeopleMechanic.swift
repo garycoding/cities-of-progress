@@ -386,10 +386,10 @@ extension IndustrialPeopleMechanic {
             case .frontQuarter:
                 d.svg.path("M-11.4,-62 C-13.2,-58 -12.4,-53.2 -9.6,-51.4 L-9.6,-61 Z", fill: hair)
             case .back:
-                d.svg.path("M-11,-62 C-11.8,-57 -10.4,-53 -8,-51 C-3,-49.6 3,-49.6 8,-51 C10.4,-53 11.8,-57 11,-62 Z", fill: hair)
+                d.svg.path(IndustrialViews.backHair(d, rim: -62.4), fill: hair)
                 d.svg.path("M-6,-50.4 q-1,1.6 0.4,3 M2,-49.8 q-1,1.6 0.4,3", stroke: hair, width: 1.2)
             case .backQuarter:
-                d.svg.path("M-11.2,-62 C-12,-57 -10.8,-53 -8.6,-51 C-3.6,-49.6 1,-49.8 4.6,-51 C5.6,-55 6,-59 5.6,-62 Z", fill: hair)
+                d.svg.path(IndustrialViews.backHair(d, rim: -62.4, right: 5.4), fill: hair)
                 d.svg.path("M-4,-50 q-1,1.6 0.4,3", stroke: hair, width: 1.2)
             default:
                 break

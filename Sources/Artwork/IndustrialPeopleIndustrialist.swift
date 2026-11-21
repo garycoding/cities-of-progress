@@ -382,9 +382,9 @@ extension IndustrialPeopleIndustrialist {
                 d.svg.path("M-11.4,-63 C-12.8,-58 -12.2,-53.4 -10,-51 L-9.4,-62.6 Z", fill: grey, stroke: ink, width: 0.9)
                 d.svg.polygon([P(-5.6, -63), P(-3.8, -62.6), P(-3.4, -55), P(-4.8, -54)], fill: grey)
             case .back:
-                d.svg.path("M-11,-63 C-11.8,-57.6 -10.6,-53 -8.4,-50.6 C-3,-49.4 3,-49.4 8.4,-50.6 C10.6,-53 11.8,-57.6 11,-63 Z", fill: grey, stroke: ink, width: 0.9)
+                d.svg.path(IndustrialViews.backHair(d, rim: -65), fill: grey)
             case .backQuarter:
-                d.svg.path("M-11.2,-63 C-12,-57.6 -10.8,-53 -8.6,-50.8 C-3.6,-49.4 1.6,-49.6 5.6,-51 C6.8,-55 7.2,-59 6.8,-63 Z", fill: grey, stroke: ink, width: 0.9)
+                d.svg.path(IndustrialViews.backHair(d, rim: -65, right: 5.4), fill: grey)
             case .side:
                 break
             }

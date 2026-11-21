@@ -67,20 +67,22 @@ struct FacingsIndustrialRenders {
     func sheetAndRound(_ name: String) throws {
         let (kind, source, _) = try #require(FacingsIndustrialTests.kinds.first { $0.name == name })
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        try sheet(.unit(kind, .industrial), source: source, name: "industrial-\(name)", room: Self.room(kind).column)
-        try round(.unit(kind, .industrial), source: source, name: "industrial-\(name)", size: Self.room(kind).round)
+        // Named by the unit kind, as `FacingRenders` names the hunter's sheet, so that every age's sheets line up.
+        try sheet(.unit(kind, .industrial), source: source, name: "industrial-\(kind)", title: "The \(name.replacingOccurrences(of: "-", with: " ")) (\(kind))",
+                  room: Self.room(kind).column)
+        try round(.unit(kind, .industrial), source: source, name: "industrial-\(kind)", size: Self.room(kind).round)
     }
 
     /// The eight facings in the order of a turn, each its view and mirroring.
     private let facings: [Facing] = [.right, .downRight, .down, .downLeft, .left, .upLeft, .up, .upRight]
 
-    private func sheet(_ subject: SpriteSubject, source: any SpriteSource, name: String, room column: Double) throws {
+    private func sheet(_ subject: SpriteSubject, source: any SpriteSource, name: String, title: String, room column: Double) throws {
         let poses: [SpritePose] = [.standing, .walking, .working, .fighting].filter { source.sprite(SpriteKey(subject, $0)) != nil }
         let row = 170.0, left = 140.0, top = 110.0
         let width = Int(left + column * Double(facings.count) + 40), height = Int(top + row * Double(poses.count + 3) + 40)
         let context = Raster.bitmap(width: width, height: height)!
         context.draw(Preview.ground(width: width, height: height, tile: 128), in: CGRect(x: 0, y: 0, width: width, height: height))
-        Preview.label("\(name) facing eight ways: five views drawn, three mirrored; each pose at frame 0, then the walk at frames 3, 6 and 9",
+        Preview.label("\(title) facing eight ways: five views drawn, three mirrored; each pose at frame 0, then the walk at frames 3, 6 and 9",
                       in: context, at: CGPoint(x: 20, y: Double(height) - 40), size: 15)
         for (i, facing) in facings.enumerated() {
             Preview.label("\(facing)", in: context, at: CGPoint(x: left + Double(i) * column + 30, y: Double(height) - 80), size: 14)

@@ -862,6 +862,27 @@ enum IndustrialViews {
         return screen(d, IndustrialPoint(half * 0.9 * (1 - across * across).squareRoot(), y, z))
     }
 
+    /// The hair over the back of the head below a hat's rim at `rim`, seen
+    /// from behind or a back quarter: the whole of the head's outline below
+    /// the rim, so that it reads as the back of a head; from a quarter it stops
+    /// short of the ear and the cheek at `right`.
+    static func backHair(_ d: Drawing, rim: Double, right: Double = 11) -> PathData {
+        let cy = -57.5, rx = 11.2, ry = 10.4, top = rim + 0.6
+        let start = asin(min(max((top - cy) / ry, -1), 1))
+        let rimX = rx * cos(start)
+        let end = right >= rimX ? start : acos(min(max(right / rx, -1), 1))
+        var p = PathData()
+        let from = Double.pi - start
+        for i in 0...16 {
+            let t = from + (end - from) * Double(i) / 16
+            let q = P(rx * cos(t), cy + ry * sin(t))
+            if i == 0 { p.move(q) } else { p.line(q) }
+        }
+        if right < rimX { p.line(P(right, top)) }
+        p.close()
+        return p
+    }
+
     // MARK: Trousers and boots
 
     /// Both legs in trousers of `colour` (the farther, from a quarter, in

@@ -471,9 +471,9 @@ extension IndustrialWarriorsViews {
             d.svg.path("M-11,-62 C-11.6,-58 -11.2,-55 -9.8,-52.6 L-9.4,-62.4 Z", fill: colour)
             d.svg.polygon([P(-5.4, -63), P(-3.6, -63.2), P(-3.2, -57.4), P(-4.4, -56)], fill: colour)
         case .back:
-            d.svg.path("M-10.4,-66 C-11.6,-60 -10.6,-55.6 -9,-53.2 C-3,-52 3,-52 9,-53.2 C10.6,-55.6 11.6,-60 10.4,-66 Z", fill: colour)
+            d.svg.path(IndustrialViews.backHair(d, rim: -66.4), fill: colour)
         case .backQuarter:
-            d.svg.path("M-10.6,-66 C-11.8,-60 -10.8,-55.6 -9.2,-53.4 C-4,-52 1,-52.2 5.2,-53.2 C6.2,-57 6.6,-62 6.2,-66 Z", fill: colour)
+            d.svg.path(IndustrialViews.backHair(d, rim: -66.4, right: 5.4), fill: colour)
         case .side:
             break
         }
