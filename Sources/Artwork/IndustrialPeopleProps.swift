@@ -788,10 +788,11 @@ enum IndustrialViews {
     // MARK: The face
 
     /// The face's middle on the screen in this view (as `headInView` has it),
-    /// and how much its far half narrows.
+    /// and how much its half toward the screen's right narrows as the face
+    /// turns that way.
     static func face(_ d: Drawing) -> (x: Double, far: Double) {
         switch d.view {
-        case .frontQuarter: (5.3, 0.62)
+        case .frontQuarter: (5, 0.62)
         case .backQuarter: (-4.5, 0.62)
         default: (0, 1)
         }
@@ -799,10 +800,10 @@ enum IndustrialViews {
 
     /// A shape symmetric about the face's middle, given as its right half from
     /// the middle outward (a point at x 0 lies on the middle): mirrored for the
-    /// left half, which narrows from a quarter.
+    /// left half; from a quarter the right half narrows.
     static func symmetric(_ d: Drawing, _ half: [P]) -> [P] {
         let (c, far) = face(d)
-        return half.map { P(c + $0.x, $0.y) } + half.reversed().map { P(c - $0.x * far, $0.y) }
+        return half.map { P(c + $0.x * far, $0.y) } + half.reversed().map { P(c - $0.x, $0.y) }
     }
 
     // MARK: Caps

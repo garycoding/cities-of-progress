@@ -15,6 +15,7 @@ import Testing
     static let kinds: [(kind: UnitKind, source: any ViewedSpriteSource, name: String)] = [
         (.worker, IndustrialPeopleSprites(), "factory-hand"),
         (.engineer, IndustrialPeopleSprites(), "mechanic"),
+        (.scholar, IndustrialPeopleSprites(), "scientist"),
     ]
 
     @Test func everyKindIsDrawnInEveryView() {
