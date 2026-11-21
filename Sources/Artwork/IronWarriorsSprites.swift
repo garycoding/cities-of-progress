@@ -294,3 +294,22 @@ enum IronViews {
         return ([ring[ring.count - 1], ring[0]], [ring[half], ring[half - 1]])
     }
 }
+
+extension IronViews {
+    /// The left and right edges, at the height `y`, of a shape drawn in profile
+    /// round the body, as `around` turns it.
+    static func span(_ d: Drawing, _ shape: [P], at y: Double) -> (left: Double, right: Double) {
+        let ring = around(d, shape)
+        let half = ring.count / 2
+        func x(_ side: [P]) -> Double {
+            guard let first = side.first, let last = side.last else { return 0 }
+            if y <= first.y { return first.x }
+            if y >= last.y { return last.x }
+            for (a, b) in zip(side, side.dropFirst()) where y >= a.y && y <= b.y {
+                return b.y == a.y ? a.x : a.x + (b.x - a.x) * (y - a.y) / (b.y - a.y)
+            }
+            return last.x
+        }
+        return (x(Array(ring[half...].reversed())), x(Array(ring[..<half])))
+    }
+}
