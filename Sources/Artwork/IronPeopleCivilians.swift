@@ -103,6 +103,7 @@ struct IronPeopleFarmer: PersonLook {
     static let basketDown = P(-27, -9)
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let sway = d.rig.sway
         if pose == .working || pose == .fighting {
             d.svg.ellipse(Self.basketDown + P(0.6, 9), 8, 2, fill: .colour("#000000"), opacity: 0.13)
@@ -200,6 +201,203 @@ struct IronPeopleFarmer: PersonLook {
         }
     }
 
+    // MARK: The other views
+
+    /// Where the basket stands on the ground whilst he works or fights: behind him and to his left.
+    static let basketAside = -16.0
+
+    /// The hoe in a view other than the side, from the hand that holds it: its
+    /// blade end, its haft's direction and length as they show, and its blade's side.
+    static func hoeInView(_ d: Drawing, _ pose: SpritePose, _ frame: Int) -> (end: P, toward: P, length: Double, side: P) {
+        let view = d.view, hand = d.hand(front: true)
+        func held(_ degrees: Double, reach: Double, length: Double, back: Bool) -> (P, P, Double, P) {
+            let along = IronViews.tool(view, degrees), u0 = P.direction(degrees)
+            let u = P.direction(along.degrees)
+            let side = IronViews.flat(view, back ? P(u0.y, -u0.x) : P(-u0.y, u0.x))
+            return back ? (hand - u * (3.4 * along.share), u, length * along.share, side)
+                : (hand + u * (reach * along.share), u * -1, length * along.share, side)
+        }
+        switch pose {
+        case .working: return held(hoeAngle(frame) + 4, reach: workingHaft, length: workingHaft + 4, back: false)
+        case .fighting: return held(d.rig.frontArm.upper - 2, reach: 22, length: 26, back: false)
+        default: return held(carried, reach: 0, length: 40, back: true)
+        }
+    }
+
+    /// The farmer seen from the front, from behind, or from a quarter turn.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let view = d.view, behind = IronViews.fromBehind(view)
+        let sway = d.rig.sway
+        let basket = IronViews.project(view, P(Self.basketDown.x, 0), z: Self.basketAside)
+        // Where the hoe bites, as this view draws it on the strike.
+        let strike = Drawing(layer: .mask, rig: hoeing(Self.strike), phase: 0, view: view)
+        let bitten = Self.hoeInView(strike, .working, Self.strike)
+        let bite = IronViews.world(strike, IronPeopleProps.hoeEdge(end: bitten.end, toward: bitten.toward, side: bitten.side))
+        // The ground's things, the far ones before the figure and the near ones after it.
+        func ground(_ svg: inout SVG, near: Bool) {
+            if (pose == .working || pose == .fighting) && (basket.depth > 0) == near {
+                let rim = basket.point + P(0, Self.basketDown.y)
+                svg.ellipse(rim + P(0.6, 9), 8, 2, fill: .colour("#000000"), opacity: 0.13)
+                IronPeopleProps.basket(&svg, rim: rim, width: 13, height: 9)
+            }
+            if pose == .working && near != behind {
+                IronPeopleProps.soil(&svg, from: bite.x - 8, to: bite.x + 8, peak: bite.x, height: max(2.4, -bite.y + 1))
+            }
+        }
+        ground(&d.svg, near: false)
+        d.figure { d in
+            let hand = d.hand(front: true)
+            let carrying = pose == .standing || pose == .walking
+            let hoe = Self.hoeInView(d, pose, frame)
+            func hanging(_ d: inout Drawing) {
+                // The basket hanging from the haft behind him, swinging with his stride.
+                let hook = hand + hoe.toward * (Self.hangs * IronViews.tool(view, Self.carried).share)
+                let swing = pose == .walking ? 9 * BronzePeopleKit.wave(frame, 0.15) : 1.6 * BronzePeopleKit.wave(frame, 0.2)
+                let shown = swing * IronViews.turn(view).c
+                d.svg.group(turned: shown, about: hook) { svg in
+                    svg.line([hook, hook + P(0, 4)], stroke: .colour(Ink.line), width: 0.9)
+                    IronPeopleProps.basket(&svg, rim: hook + P(0, 11.6), width: 13, height: 9, stir: swing / 9)
+                }
+            }
+            func sickle(_ d: inout Drawing) {
+                let at = IronViews.at(view, d.up(P(-11, -33.4)), z: -3)
+                let turned = IronViews.tool(view, 10)
+                IronPeopleProps.sickle(&d.svg, at: at, degrees: turned.degrees, point: view == .back ? 1 : -1, size: 0.72)
+            }
+            func tool(_ d: inout Drawing) {
+                IronPeopleProps.hoe(&d.svg, end: hoe.end, toward: hoe.toward, length: hoe.length, side: hoe.side)
+                if pose == .working && (frame == Self.strike || frame == Self.strike + 1) {
+                    IronPeopleProps.clods(&d.svg, at: IronPeopleProps.hoeEdge(end: hoe.end, toward: hoe.toward, side: hoe.side) + P(-1, -1),
+                                          spread: frame == Self.strike ? 0 : 1)
+                }
+                if pose == .fighting && frame == 8 {
+                    d.impact(at: IronPeopleProps.hoeEdge(end: hoe.end, toward: hoe.toward, side: hoe.side), size: 1)
+                }
+            }
+            if carrying && !behind { hanging(&d) }
+            if !behind { sickle(&d) }
+            // A tool in a hand behind the body is hidden by it.
+            let toolBehind = !carrying && d.armBehind(front: true)
+            if toolBehind { tool(&d) }
+            d.arm(front: false)
+            d.legs()
+            if !behind {
+                // The ends of the sash, hanging at the front hip.
+                for (dx, length) in [(0.0, 9.5), (2.2, 7.5)] {
+                    let top = IronViews.at(view, P(9.4 + dx * 0.4, -27), z: 3 - dx)
+                    let end = top + IronViews.flat(view, P(1.6 - sway * 2 + dx * 0.5, length))
+                    d.svg.polygon([top + P(-1.1, 0), top + P(1.1, 0), end + P(0.9, 0), end + P(-0.9, 0)], fill: .team,
+                                  stroke: .colour(Ink.line), width: 0.9)
+                }
+            }
+            d.garment(colour: [P(-12.5, -46), P(9, -48), P(14.6, -12.6), P(-16.6, -12.2)],
+                      outline: [P(-8.5, -47), P(8.5, -47), P(13.5, -14.5), P(-15, -14.5)], fill: .colour(IronPeopleInk.grey)) { d in
+                let hem = IronViews.around(d, [P(-14.4, -19.6), P(13, -19.6), P(14.1, -13), P(-16.1, -12.8)])
+                d.svg.polygon(hem, fill: .colour(IronPeopleInk.red))
+                // The light zigzag woven in the hem, across its width.
+                let left = hem[hem.count - 7].x + 0.8, right = hem[6].x - 0.8
+                var zig = PathData()
+                var x = left, up = true
+                zig.move(P(x, -17.2))
+                while x + 2 <= right {
+                    x += 2; up.toggle()
+                    zig.line(P(x, up ? -18.4 : -15.4))
+                }
+                d.svg.path(zig, stroke: .colour(IronPeopleInk.light), width: 0.9)
+                var flecks = PathData()
+                for (x, y) in [(-6.0, -42.0), (2.0, -40.0), (-9.0, -36.0), (5.5, -36.5), (-2.0, -23.0), (6.0, -22.4), (-10.0, -22.8)] {
+                    let p = d.onBody(d.up(P(x, y)))
+                    flecks.move(p); flecks.line(p + P(1.2, 0.4))
+                }
+                d.svg.path(flecks, stroke: .colour(IronPeopleInk.darkGrey), width: 0.9)
+                let sash = [P(-13.2, -31.8), P(12.4, -32.8), P(13, -26.6), P(-13.8, -25.6)]
+                d.band(sash)
+                let edges = IronViews.edges(d, sash)
+                d.svg.line(edges.top, stroke: .colour(Ink.line), width: 0.9)
+                d.svg.line(edges.bottom, stroke: .colour(Ink.line), width: 0.9)
+            }
+            if !behind {
+                d.svg.ellipse(IronViews.at(view, P(10.4, -29.2), z: 3), 2, 2.6, fill: .team, stroke: .colour(Ink.line), width: 0.9)
+            } else {
+                sickle(&d)
+            }
+            if !toolBehind { tool(&d) }
+            d.arm(front: true)
+            if carrying && behind { hanging(&d) }
+            d.head(nose: .button, hair: { d in
+                Self.curls(&d, colour: IronPeopleInk.hair, curl: IronPeopleInk.paleLeather)
+            }, features: { d in
+                // A stalk of grain between his teeth, standing out toward the screen's right.
+                guard IronViews.seesFace(d.view) else { return }
+                let mouth = P(IronViews.face(d.view) + (d.view == .front ? 1.6 : 1.4), -50.8)
+                let tip = d.view == .front ? mouth + P(6.4, -3.2) : mouth + P(6.8, -3.4)
+                d.svg.line([mouth, tip], stroke: .colour(IronPeopleInk.darkStraw), width: 0.8)
+                d.svg.group(at: tip, turned: -116) { svg in
+                    svg.ellipse(P(-0.3, 0.3), 1, 2.4, fill: .colour(IronPeopleInk.grain))
+                    svg.ellipse(P(0, 0), 1, 2.4, fill: .none, stroke: .colour(Ink.line), width: 0.6)
+                }
+            }, brow: { d in
+                d.svg.path("M1.8,-63.2 q3.2,-1.2 6.2,0", stroke: .colour(Ink.line), width: 1.6)
+            }, over: { d in
+                if d.view == .front || d.view == .back { Self.hatAhead(&d) } else { Self.hat(&d) }
+            })
+        }
+        ground(&d.svg, near: true)
+    }
+
+    /// Curls under a hat or a cap, seen from each side other than the side: from
+    /// the front, a tuft at each temple; from behind, the back of the head,
+    /// curled in a lighter shade; from a front quarter, at the nape.
+    static func curls(_ d: inout Drawing, colour: String, curl: String) {
+        switch d.view {
+        case .front:
+            for flip in [1.0, -1.0] {
+                d.svg.raw("<g transform=\"scale(\(num(flip)),1)\">")
+                d.svg.path("M-11,-62.6 C-12.4,-59.4 -11.8,-56.4 -9.8,-55.2 C-10,-57.4 -9.6,-59.6 -8.2,-61.6 Z", fill: .colour(colour))
+                d.svg.raw("</g>")
+            }
+        case .back, .backQuarter:
+            let back = d.view == .back
+            d.svg.path(back ? "M-10.8,-61 C-12.2,-55.6 -9.4,-49.4 -4.6,-48.2 C-1.6,-48 1.6,-48 4.6,-48.2 C9.4,-49.4 12.2,-55.6 10.8,-61 Z"
+                            : "M-11,-60.6 C-12.4,-55 -9.6,-49.2 -4.6,-48.2 C-0.6,-48 3.4,-49.4 7.4,-51.6 C9.6,-55.4 10,-58.4 9.4,-61 Z",
+                       fill: .colour(colour))
+            let shift = back ? 0 : -1.6
+            d.svg.raw("<g transform=\"translate(\(num(shift)),0)\">")
+            // Locks falling to the nape.
+            d.svg.path("M-8.4,-60.4 q-1.4,3.4 -0.2,6.6 M-5,-61.6 q-1.2,4 0.2,8.4 M-1.4,-62 q-1,4.4 0.4,9.6 M2.2,-62 q-0.8,4.4 0.6,9.4 "
+                       + "M5.8,-61.6 q-0.6,4 0.8,8.2 M8.8,-60.4 q-0.4,3.4 0.8,6.4", stroke: .colour(curl), width: 0.8)
+            d.svg.raw("</g>")
+        default:
+            d.svg.path("M-11.2,-61 C-12.8,-56.4 -11.4,-51.8 -7.6,-50.2 C-8.4,-52.2 -8,-54 -7,-55.4 C-8.6,-56.4 -8.6,-58.6 -7.4,-60.4 Z",
+                       fill: .colour(colour))
+        }
+    }
+
+    /// The straw hat seen from straight ahead or behind: the crown and its red
+    /// band over the middle of the head, the brim's full width across.
+    static func hatAhead(_ d: inout Drawing) {
+        BronzePeopleProps.shape(&d.svg, fill: .colour(IronPeopleInk.straw), width: 1.4) { o in
+            var p = PathData()
+            p.move(P(-9.2, -65) + o)
+            p.cubic(P(-9.8, -73.6) + o, P(9.8, -73.6) + o, P(9.2, -65) + o)
+            p.close()
+            return p
+        }
+        d.svg.path("M-9.3,-66.8 C-3,-68.2 3,-68.2 9.3,-66.8 L9.2,-64.8 C3,-66 -3,-66 -9.2,-64.8 Z", fill: .colour(IronPeopleInk.red),
+                   stroke: .colour(Ink.line), width: 0.8)
+        BronzePeopleProps.shape(&d.svg, fill: .colour(IronPeopleInk.straw), width: 1.4) { o in
+            var p = PathData()
+            p.move(P(-19, -62.4) + o)
+            p.cubic(P(-12, -66.8) + o, P(12, -66.8) + o, P(19, -62.4) + o)
+            p.cubic(P(14, -61.2) + o, P(8, -62.6) + o, P(0, -62.8) + o)
+            p.cubic(P(-8, -62.6) + o, P(-14, -61.2) + o, P(-19, -62.4) + o)
+            p.close()
+            return p
+        }
+        d.svg.path("M-14.6,-63.6 l1.6,1 M-9.6,-64.4 l1.6,1 M-4.6,-64.8 l1.6,1 M0.4,-64.9 l1.6,1 M5.4,-64.8 l1.6,1 M10.4,-64.3 l1.6,1 "
+                   + "M-6,-70 l1.2,1.2 M-1,-71.2 l1.2,1.2 M4,-70.6 l1.2,1.2", stroke: .colour(IronPeopleInk.darkStraw), width: 0.8)
+    }
+
     /// A broad straw hat: a low crown with a red band, and a wide brim that dips at the front and back.
     static func hat(_ d: inout Drawing) {
         BronzePeopleProps.shape(&d.svg, fill: .colour(IronPeopleInk.straw), width: 1.4) { o in
@@ -280,6 +478,7 @@ struct IronPeoplePhilosopher: PersonLook {
     }
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         let sway = d.rig.sway
         d.figure { d in
             if pose != .working { d.arm(front: false) }
@@ -373,6 +572,160 @@ struct IronPeoplePhilosopher: PersonLook {
     }
 }
 
+extension IronPeoplePhilosopher {
+    /// The philosopher seen from the front, from behind, or from a quarter turn.
+    /// The mantle falls from his left shoulder across his body to his right hip:
+    /// from the front that runs from the screen's right down to its left, from
+    /// behind the other way.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let view = d.view, behind = IronViews.fromBehind(view)
+        let sway = d.rig.sway * IronViews.turn(view).c
+        d.figure { d in
+            let chiton = [P(-8, -47), P(8, -47), P(14.6, -3.6), P(-15.6, -3.6)]
+            let scrollHand = d.hand(front: pose != .working)
+            let scrollBehind = d.armBehind(front: pose != .working)
+            func scroll(_ d: inout Drawing) {
+                if pose == .working {
+                    IronPeopleProps.scroll(&d.svg, at: scrollHand + P(0, -0.6), degrees: -28 * IronViews.turn(view).c)
+                } else {
+                    IronPeopleProps.scroll(&d.svg, at: scrollHand + IronViews.flat(view, P(0.8, -3)), degrees: -74)
+                }
+            }
+            if scrollBehind { scroll(&d) }
+            d.arm(front: false)
+            d.legs()
+            d.garment(colour: [P(-11.5, -46), P(8, -48), P(16.1, -2.1), P(-17.6, -1.6)],
+                      outline: chiton, fill: .colour(IronPeopleInk.light)) { d in
+                let hem = IronViews.span(d, chiton, at: -4.4)
+                var pleats = PathData()
+                for f in [0.25, 0.5, 0.75] {
+                    let x = hem.left + (hem.right - hem.left) * f
+                    pleats.move(P(x, -4.4)); pleats.line(P(x + 0.4, -12))
+                }
+                d.svg.path(pleats, stroke: .colour(IronPeopleInk.darkGrey), width: 0.7, opacity: 0.7)
+            }
+            // The mantle: from the shoulder down across the body to the hip, and everything below to its hem.
+            let hemY = -11.6
+            let top = IronViews.span(d, chiton, at: -46.4), waist = IronViews.span(d, chiton, at: -27.4)
+            let low = IronViews.span(d, chiton, at: hemY)
+            let fromLeft = behind
+            let shoulder = d.up(P(fromLeft ? top.left - 0.8 : top.right + 0.8, -47.4))
+            let shoulderIn = d.up(P(fromLeft ? top.left + 5 : top.right - 5, -48))
+            let hip = d.up(P(fromLeft ? waist.right + 1.4 : waist.left - 1.4, -27.4))
+            let hemOut = P(fromLeft ? low.right + 1.8 : low.left - 1.8, hemY - sway)
+            let hemIn = P(fromLeft ? low.left - 1.8 : low.right + 1.8, hemY + sway)
+            let mantle = [shoulderIn, hip, hemOut, hemIn, shoulder]
+            d.svg.polygon(mantle.map { $0 + P(-0.8, 0.8) }, fill: .colour(IronPeopleInk.darkSea))
+            var folds = PathData()
+            for f in [0.2, 0.45, 0.7] {
+                let start = shoulderIn + (hip - shoulderIn) * f + P(0, 2)
+                let end = hemIn + (hemOut - hemIn) * (fromLeft ? f : 1 - f) + P(0, -0.6)
+                let bend = (start + end) * 0.5 + P(fromLeft ? -1.6 : 1.6, 0)
+                folds.move(start); folds.quad(bend, end)
+            }
+            d.svg.path(folds, stroke: .colour(IronPeopleInk.deepSea), width: 1.1)
+            // The border of the team's colour along its hem, with a key pattern in the light.
+            let left = fromLeft ? hemIn : hemOut, right = fromLeft ? hemOut : hemIn
+            d.svg.polygon([left + P(0.6, 0), right + P(-0.6, 0), right + P(-0.6, -4), left + P(0.8, -4)], fill: .team)
+            d.svg.line([left + P(0.8, -4), right + P(-0.6, -4)], stroke: .colour(Ink.line), width: 0.8)
+            var key = PathData()
+            var x = left.x + 2
+            while x + 3.2 <= right.x - 1.4 {
+                let y = left.y + (right.y - left.y) * ((x - left.x) / (right.x - left.x)) - 1.6
+                key.move(P(x, y)); key.line(P(x, y - 2.2)); key.line(P(x + 2.2, y - 2.2)); key.line(P(x + 2.2, y - 1.1))
+                key.line(P(x + 1.1, y - 1.1))
+                x += 3.2
+            }
+            d.svg.path(key, stroke: .colour(IronPeopleInk.light), width: 0.8)
+            // The rolled edge along the mantle's top, in the team's colour edged in the light.
+            let u = hip - shoulderIn, length = BronzePeopleKit.length(u)
+            let across = P(-u.y, u.x) * (2.4 / max(length, 0.1)) * (fromLeft ? -1 : 1)
+            let edge = [shoulder + P(0, -1), shoulderIn - across, hip - across + u * (1.4 / max(length, 0.1)), hip + across]
+            d.svg.polygon(edge, fill: .team)
+            d.svg.line([edge[1], edge[2]], stroke: .colour(IronPeopleInk.light), width: 1.1)
+            d.svg.line([shoulderIn, hip], stroke: .colour(IronPeopleInk.light), width: 1.1)
+            d.svg.polygon(mantle, fill: .none, stroke: .colour(Ink.line), width: 1.6)
+            d.svg.polygon(edge, fill: .none, stroke: .colour(Ink.line), width: 0.8)
+            if !scrollBehind { scroll(&d) }
+            if pose == .working && !d.armBehind(front: true) {
+                let hand = d.hand(front: true)
+                if Self.fingerUp.contains(frame) {
+                    d.svg.line([hand + P(0.4, -1), hand + P(0.9, -5.2)], stroke: .colour(Ink.line), width: 2.4)
+                    d.svg.line([hand + P(0.4, -1), hand + P(0.9, -5)], stroke: .colour(Ink.skin), width: 1)
+                    if frame == 3 || frame == 4 {
+                        d.svg.path("M\(num(hand.x - 3.6)),\(num(hand.y - 7.6)) l-1.6,-1.6 M\(num(hand.x + 1)),\(num(hand.y - 9)) l0,-2.4 "
+                                   + "M\(num(hand.x + 5)),\(num(hand.y - 7.4)) l1.6,-1.6", stroke: .colour(Ink.line), width: 1.1)
+                    }
+                }
+                if Self.palmOpen.contains(frame) {
+                    d.svg.path("M\(num(hand.x + 1)),\(num(hand.y - 0.6)) l3,-1.6 M\(num(hand.x + 1.4)),\(num(hand.y + 0.4)) l3.4,-0.2 "
+                               + "M\(num(hand.x + 1)),\(num(hand.y + 1.2)) l2.8,1.2", stroke: .colour(Ink.line), width: 1)
+                }
+                if frame == 6 { d.burst(at: hand + P(1, 2.4), from: 20, to: 140, size: 0.8) }
+            }
+            d.arm(front: true)
+            d.head(nose: .hook, hair: { d in
+                Self.fringe(&d)
+            }, features: { d in
+                Self.beard(&d)
+            }, brow: { d in
+                d.svg.path("M0.6,-64 q3.8,-2.6 8,-0.8", stroke: .colour(Ink.line), width: 3.2)
+                d.svg.path("M0.6,-64 q3.8,-2.6 8,-0.8", stroke: .colour(IronPeopleInk.paleGrey), width: 1.8)
+                d.svg.path("M-1.2,-66.4 q3,-1.1 6,-0.2", stroke: .colour(Ink.line), width: 0.8, opacity: 0.7)
+            })
+        }
+    }
+
+    /// The fringe of white hair round the back of a bald crown, seen from each side other than the side.
+    static func fringe(_ d: inout Drawing) {
+        let hair = Paint.colour(IronPeopleInk.paleGrey), line = Paint.colour(Ink.line)
+        switch d.view {
+        case .front:
+            for flip in [1.0, -1.0] {
+                d.svg.raw("<g transform=\"scale(\(num(flip)),1)\">")
+                d.svg.path("M-10.6,-63 C-13,-60 -12.6,-55.4 -10.6,-53.4 C-10.2,-56 -9.6,-58.6 -8.2,-60.6 C-9.2,-61 -10,-61.8 -10.6,-63 Z",
+                           fill: hair, stroke: line, width: 0.8)
+                d.svg.raw("</g>")
+            }
+        case .back, .backQuarter:
+            let shift = d.view == .back ? 0 : -1.8
+            d.svg.raw("<g transform=\"translate(\(num(shift)),0)\">")
+            d.svg.path("M-11,-62.6 C-12.6,-56.4 -9.6,-49.6 -4.6,-48.2 C-1.6,-48 1.6,-48 4.6,-48.2 C9.6,-49.6 12.6,-56.4 11,-62.6 "
+                       + "C9.4,-60.4 7.4,-59 5.2,-59.6 C3.6,-58.2 1.6,-58.6 0,-59.4 C-1.6,-58.6 -3.6,-58.2 -5.2,-59.6 C-7.4,-59 -9.4,-60.4 -11,-62.6 Z",
+                       fill: hair, stroke: line, width: 0.8)
+            d.svg.path("M-6,-56.6 q-0.6,2.4 0.4,4.6 M0,-57 q-0.4,2.6 0.4,5 M6,-56.6 q-0.2,2.4 0.6,4.6", stroke: .colour(IronPeopleInk.darkGrey),
+                       width: 0.7)
+            d.svg.raw("</g>")
+        default:
+            d.svg.path("M-10.6,-63.4 C-13.2,-58 -12,-52.4 -7.6,-50 C-7.6,-53 -7.8,-56 -6.6,-58.8 C-8,-59.6 -9.6,-61.4 -10.6,-63.4 Z",
+                       fill: hair, stroke: line, width: 0.8)
+        }
+    }
+
+    /// The long white beard falling in waves, and the moustache, from the front or a front quarter.
+    static func beard(_ d: inout Drawing) {
+        let hair = Paint.colour(IronPeopleInk.paleGrey), line = Paint.colour(Ink.line)
+        switch d.view {
+        case .front:
+            d.svg.path("M-8.6,-55 C-9.4,-48 -6.2,-41 0,-37.2 C6.2,-41 9.4,-48 8.6,-55 C5.6,-51.2 2.6,-50.6 0,-51 C-2.6,-50.6 -5.6,-51.2 -8.6,-55 Z",
+                       fill: hair, stroke: line, width: 1)
+            d.svg.path("M-4.6,-48.4 q0.6,2.6 0,5 M-1.4,-47.4 q1,2.6 0.4,5.6 M1.8,-47.4 q1,2.6 0.4,5.4 M4.8,-48.4 q0.8,2.4 0,4.6",
+                       stroke: .colour(IronPeopleInk.darkGrey), width: 0.7)
+            d.svg.path("M-5,-51.6 q2.6,-2.6 5,-1.2 q2.4,-1.4 5,1.2 q-1.6,1.4 -3.4,0.6 q-1,0.6 -1.6,0.2 q-0.6,0.4 -1.6,-0.2 q-1.8,0.8 -3.4,-0.6 Z",
+                       fill: hair, stroke: line, width: 0.8)
+        case .frontQuarter:
+            d.svg.path("M-5.2,-54.6 C-6.4,-49 -4.4,-43.4 -0.6,-40.4 C1.6,-38.8 4,-38 6,-37.6 C6.6,-40.4 9.6,-43.2 11,-47 "
+                       + "C11.6,-48.8 11.4,-50.2 10.8,-51 C8.4,-49.6 5.6,-49.6 3.4,-50.4 C0.6,-51.4 -2.4,-53 -5.2,-54.6 Z", fill: hair, stroke: line, width: 1)
+            d.svg.path("M-2.6,-48.4 q1.2,2 0.6,4.6 M1,-47.4 q1.4,2.4 0.8,5.4 M4.6,-47.8 q1.2,2.4 0.4,5.4 M7.8,-48.6 q0.8,2 -0.2,4",
+                       stroke: .colour(IronPeopleInk.darkGrey), width: 0.7)
+            d.svg.path("M1.4,-52.6 q2.6,-2.4 4.4,-1.2 q2.2,-1.4 4.6,0.6 q-1.4,1.6 -3.6,0.8 q-0.8,0.4 -1.2,0 q-2,0.8 -4.2,-0.2 Z", fill: hair,
+                       stroke: line, width: 0.8)
+        default:
+            break
+        }
+    }
+}
+
 // MARK: - The siege engineer (engineer)
 
 /// A broad siege engineer in a sea-green tunic with an iron-grey hem, a leather
@@ -438,6 +791,7 @@ struct IronPeopleEngineer: PersonLook {
     }()
 
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        if d.view != .side { drawInView(&d, pose, frame); return }
         if pose == .working {
             let head = Self.spikeHead
             let top = head.y + 3.4
@@ -523,6 +877,166 @@ struct IronPeopleEngineer: PersonLook {
                 Self.cap(&d)
             })
         }
+    }
+
+    // MARK: The other views
+
+    /// The hammer in a view other than the side: its direction on the screen and the length of its haft.
+    static func hammerInView(_ d: Drawing, _ pose: SpritePose) -> (degrees: Double, haft: Double) {
+        let along = IronViews.tool(d.view, hammerDegrees(pose, d.rig))
+        return (along.degrees, 14 * along.share)
+    }
+
+    /// Where the hammer's face meets the spike's head in a view, in the picture.
+    static func spikeHead(_ view: SpriteView) -> P {
+        let rig = IronPeopleEngineer().rig(.working, strike)!
+        let d = Drawing(layer: .mask, rig: rig, phase: 0, view: view)
+        let hammer = hammerInView(d, .working)
+        return IronViews.world(d, IronPeopleProps.hammerFace(at: d.hand(front: true), degrees: hammer.degrees, haft: hammer.haft)) + P(0, 1.2)
+    }
+
+    /// The siege engineer seen from the front, from behind, or from a quarter turn.
+    func drawInView(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
+        let view = d.view, behind = IronViews.fromBehind(view)
+        let (c, s) = IronViews.turn(view)
+        let head = Self.spikeHead(view)
+        func work(_ svg: inout SVG) {
+            // The timber runs away from him: from the front its end shows, from a quarter its length
+            // foreshortened, the spike near its nearer end. It lies as low as in the side view; seen from
+            // another side his lean does not bring the hammer as low, and the spike stands taller from the wood.
+            let width = 30 * abs(c) + 9 * abs(s)
+            let top = Self.spikeHead.y + 3.4
+            let left = view == .frontQuarter ? head.x - 5 : (view == .backQuarter ? head.x - width + 5 : head.x - width / 2)
+            IronPeopleProps.timber(&svg, left: left, width: width, height: -top)
+            IronPeopleProps.spike(&svg, head: head, length: max(3.6, top - head.y))
+        }
+        if pose == .working && behind { work(&d.svg) }
+        d.figure { d in
+            func gear(_ d: inout Drawing) {
+                // The coil of rope at his back hip, and the rod through his belt behind.
+                IronPeopleProps.rod(&d.svg, from: IronViews.at(view, d.up(P(-9.6, -16)), z: -4), to: IronViews.at(view, d.up(P(-16.4, -58)), z: -5))
+                IronPeopleProps.coil(&d.svg, at: IronViews.at(view, d.up(P(-14.4, -27)), z: 5), rx: 4.6 * max(abs(c), 0.75), ry: 7, degrees: 8 * c)
+            }
+            let rope = [(P(5.4, -47.4), 7.0), (P(1.6, -42.4), 9.0), (P(-4, -36.6), 9.4), (P(-12.4, -31.4), 6.0)].map {
+                IronViews.at(view, d.up($0.0), z: $0.1)
+            }
+            if !behind { gear(&d) }
+            let hammer = Self.hammerInView(d, pose)
+            let hand = d.hand(front: true)
+            let hammerBehind = d.armBehind(front: true)
+            if hammerBehind { IronPeopleProps.hammer(&d.svg, at: hand, degrees: hammer.degrees, haft: hammer.haft) }
+            d.arm(front: false)
+            d.legs()
+            d.garment(colour: [P(-13, -46), P(9, -48), P(15, -13), P(-17, -12.5)],
+                      outline: [P(-9, -47), P(9, -47), P(14, -15), P(-15.5, -15)], fill: .colour(IronPeopleInk.darkSea)) { d in
+                d.svg.polygon(IronViews.around(d, [P(-15.1, -18), P(13.7, -18), P(14.6, -13.2), P(-16.6, -12.8)]), fill: .colour(IronPeopleInk.grey))
+                var stitches = PathData()
+                for (row, y) in [-42.5, -37.5].enumerated() {
+                    var x = -8.6 + (row % 2 == 0 ? 0 : 1.5)
+                    while x + 1.2 <= 8 {
+                        let p = d.onBody(d.up(P(x, y)))
+                        stitches.move(p); stitches.line(p + P(1.2, 0))
+                        x += 3
+                    }
+                }
+                d.svg.path(stitches, stroke: .colour(IronPeopleInk.paleSea), width: 0.9)
+            }
+            if behind {
+                gear(&d)
+                // The apron's ties, knotted at the small of his back.
+                let knot = IronViews.at(view, d.up(P(-11, -32.6)), z: 0)
+                d.svg.path("M\(num(knot.x)),\(num(knot.y)) l-2.4,5.4 M\(num(knot.x)),\(num(knot.y)) l2,5.6", stroke: .colour(Ink.line), width: 2.2)
+                d.svg.path("M\(num(knot.x)),\(num(knot.y)) l-2.4,5.4 M\(num(knot.x)),\(num(knot.y)) l2,5.6", stroke: .colour(IronPeopleInk.leather), width: 1)
+            } else {
+                // The leather apron on his front, from the chest to the knee, stitched down its sides.
+                let apron = [IronViews.at(view, d.up(P(6, -42)), z: 6.4), IronViews.at(view, d.up(P(6, -42)), z: -6.4),
+                             IronViews.at(view, P(9, -10.6), z: -8.6), IronViews.at(view, P(9, -10.6), z: 8.6)]
+                d.svg.polygon(apron.map { $0 + P(-0.7, 0.6) }, fill: .colour(IronPeopleInk.leather))
+                var stitching = PathData()
+                for i in 0..<9 {
+                    let t = Double(i) / 9
+                    for (top, bottom, inward) in [(apron[0], apron[3], 1.2), (apron[1], apron[2], -1.2)] {
+                        let p = top + (bottom - top) * t + P(inward * (top.x < apron[1].x ? 1 : -1), 0)
+                        stitching.move(p); stitching.line(p + P(0, 1.2))
+                    }
+                }
+                d.svg.path(stitching, stroke: .colour(IronPeopleInk.paleLeather), width: 0.8)
+                // A pocket with a spike in it.
+                let middle = (apron[0] + apron[1]) * 0.5 + ((apron[2] + apron[3]) * 0.5 - (apron[0] + apron[1]) * 0.5) * 0.62
+                d.svg.line([middle + P(1.4, -7), middle + P(1.8, -2.4)], stroke: .colour(IronPeopleInk.iron), width: 1.4)
+                d.svg.polygon([middle + P(-3.6, -3.4), middle + P(3.6, -3.6), middle + P(3.8, 3), middle + P(-3.4, 3.2)],
+                              fill: .colour(IronPeopleInk.darkLeather), stroke: .colour(Ink.line), width: 0.9)
+                d.svg.polygon(apron, fill: .none, stroke: .colour(Ink.line), width: 1.3)
+            }
+            // The band of the team's colour that binds the apron at the waist, edged in the light.
+            let binding = [P(-12, -35.4), P(14.6, -36.4), P(15.2, -29.8), P(-12.6, -28.8)]
+            d.svg.polygon(IronViews.around(d, binding), fill: .colour(IronPeopleInk.light))
+            d.band([P(-11.8, -34.6), P(14.4, -35.6), P(14.8, -30.6), P(-12.2, -29.6)])
+            d.svg.polygon(IronViews.around(d, binding), fill: .none, stroke: .colour(Ink.line), width: 1)
+            // The rope over his shoulder, from the coil behind: over the shoulder from the front, down the back from behind.
+            IronPeopleProps.rope(&d.svg, behind ? rope : Array(rope.prefix(2)), width: 2.2)
+            if !hammerBehind { IronPeopleProps.hammer(&d.svg, at: hand, degrees: hammer.degrees, haft: hammer.haft) }
+            switch pose {
+            case .working:
+                if frame == Self.strike || frame == Self.strike + 1 {
+                    let local = (head - P(0, d.bob)).rotated(-d.rig.lean * c, about: Drawing.hips)
+                    IronPeopleProps.sparks(&d.svg, at: local, spread: frame == Self.strike ? 0 : 1)
+                }
+            case .fighting:
+                if frame == 8 { d.impact(at: IronPeopleProps.hammerFace(at: hand, degrees: hammer.degrees, haft: hammer.haft), size: 0.9) }
+            default:
+                break
+            }
+            d.arm(front: true, width: 2.2)
+            d.head(nose: .bulb, hair: { d in
+                IronPeopleFarmer.curls(&d, colour: Ink.line, curl: IronPeopleInk.darkGrey)
+            }, features: { d in
+                Self.face(&d)
+            }, brow: { d in
+                d.svg.path("M1.2,-63.8 q3.8,-1.6 7.4,0.2", stroke: .colour(Ink.line), width: 2)
+            }, over: { d in
+                if d.view == .front || d.view == .back { Self.capAhead(&d) } else { Self.cap(&d) }
+            })
+        }
+        if pose == .working && !behind { work(&d.svg) }
+    }
+
+    /// The stubble, the scar and the heavy moustache, from the front or a front quarter.
+    static func face(_ d: inout Drawing) {
+        let scar = Paint.colour("#9a4a32")
+        switch d.view {
+        case .front:
+            d.svg.path("M-7.4,-54.4 C-6.4,-48.6 -3,-46.4 0,-46.4 C3,-46.4 6.4,-48.6 7.4,-54.4 C4,-50.4 -4,-50.4 -7.4,-54.4 Z",
+                       fill: .colour(Ink.line), opacity: 0.2)
+            d.svg.path("M-7.6,-58.6 L-3.6,-54.2", stroke: scar, width: 1.1)
+            d.svg.path("M-6.8,-56.4 l1.4,-1.4 M-5.4,-55 l1.4,-1.4", stroke: scar, width: 0.7)
+            d.svg.path("M-5.4,-52.6 q2.6,-2.6 5.4,-1.2 q2.8,-1.4 5.4,1.2 q0.4,1.6 -0.8,2.6 q-1.8,-1.4 -4.6,-1 q-2.8,-0.4 -4.6,1 "
+                       + "q-1.2,-1 -0.8,-2.6 Z", fill: .colour(Ink.line))
+        case .frontQuarter:
+            d.svg.path("M-3.6,-54.6 C-2.6,-49 1.8,-46.6 5.6,-46.6 C8.8,-46.6 11,-48.4 11.4,-51 C8,-50 3,-50.4 -3.6,-54.6 Z",
+                       fill: .colour(Ink.line), opacity: 0.2)
+            d.svg.path("M5.8,-58.4 L9.6,-54.4", stroke: scar, width: 1.1)
+            d.svg.path("M6.6,-56.4 l1.4,-1.4 M8,-55 l1.4,-1.4", stroke: scar, width: 0.7)
+            d.svg.path("M1.4,-52.6 q2.8,-2.4 5.2,-1.2 q2.8,-1.6 5.4,0.6 q0.4,1.4 -0.8,2.6 q-1.6,-1.4 -4.4,-0.8 q-2.6,-0.4 -4.4,1 "
+                       + "q-1.2,-0.8 -1,-2.2 Z", fill: .colour(Ink.line))
+        default:
+            break
+        }
+    }
+
+    /// The felt cap seen from straight ahead or behind: the crown over the middle, the rolled brim level across.
+    static func capAhead(_ d: inout Drawing) {
+        BronzePeopleProps.shape(&d.svg, fill: .team, width: 1.5) { o in
+            var p = PathData()
+            p.move(P(-11.2, -62.2) + o)
+            p.cubic(P(-12.4, -71) + o, P(-6.6, -76) + o, P(0, -76) + o)
+            p.cubic(P(6.6, -76) + o, P(12.4, -71) + o, P(11.2, -62.2) + o)
+            p.cubic(P(4, -64.4) + o, P(-4, -64.4) + o, P(-11.2, -62.2) + o)
+            p.close()
+            return p
+        }
+        d.svg.path("M11,-62.8 C4,-65.2 -4,-65.2 -11,-62.8", stroke: .colour(Ink.line), width: 3.4)
+        d.svg.path("M11,-62.8 C4,-65.2 -4,-65.2 -11,-62.8", stroke: .colour(IronPeopleInk.light), width: 1.8)
     }
 
     /// A felt cap of the team's colour with a high rounded crown and a
