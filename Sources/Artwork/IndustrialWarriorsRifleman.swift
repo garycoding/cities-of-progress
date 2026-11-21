@@ -350,6 +350,14 @@ extension IndustrialWarriorsRifleman {
         let sway = pose == .walking ? d.rig.sway : 0
         let held = Self.held(d, pose, frame)
         var shot: (muzzle: P, degrees: Double, scale: Double, receiver: P)?
+        if pose == .fighting {
+            let (shown, k) = IndustrialViews.direction(d, held.degrees, yaw: held.yaw)
+            shot = (IndustrialViews.world(d, IndustrialViews.screen(d, held.at(Self.rifle))), shown, k,
+                    IndustrialViews.world(d, IndustrialViews.screen(d, held.at(16))))
+        }
+        // From behind, the muzzle and its smoke are beyond him.
+        let shotFirst = !IndustrialViews.seesFront(d)
+        if shotFirst, let shot { Self.shotInView(&d.svg, frame: frame, muzzle: shot.muzzle, degrees: shot.degrees, scale: shot.scale, receiver: shot.receiver) }
         d.figure { d in
             let far = held.far.map { IndustrialViews.reach(d, front: false, to: $0) } ?? IndustrialViews.arm(d, front: false)
             let near = held.near.map { IndustrialViews.reach(d, front: true, to: $0) } ?? IndustrialViews.arm(d, front: true)
@@ -374,13 +382,8 @@ extension IndustrialWarriorsRifleman {
                                              cuff: front ? IndustrialWarriorsInk.brick : IndustrialWarriorsInk.darkBrick)
             }
             Self.headInView(&d)
-            if pose == .fighting {
-                let (shown, k) = IndustrialViews.direction(d, held.degrees, yaw: held.yaw)
-                shot = (IndustrialViews.world(d, IndustrialViews.screen(d, held.at(Self.rifle))), shown, k,
-                        IndustrialViews.world(d, IndustrialViews.screen(d, held.at(16))))
-            }
         }
-        if let shot { Self.shotInView(&d.svg, frame: frame, muzzle: shot.muzzle, degrees: shot.degrees, scale: shot.scale, receiver: shot.receiver) }
+        if !shotFirst, let shot { Self.shotInView(&d.svg, frame: frame, muzzle: shot.muzzle, degrees: shot.degrees, scale: shot.scale, receiver: shot.receiver) }
     }
 
     /// The flash and the wisp of smoke at the muzzle, along the rifle as it

@@ -126,7 +126,7 @@ struct FacingsIndustrialRenders {
                 context.draw(Preview.ground(width: size, height: size, tile: 128), in: CGRect(x: 0, y: 0, width: size, height: size))
                 let sprite = try #require(source.sprite(SpriteKey(subject, .walking, frame: frame, view: facing.view)))
                 let image = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: .of(.sumer))
-                let at = CGPoint(x: Double(size) / 2 + (x - y) * 32 * k, y: Double(size) / 2 - 70 - (x + y) * 16 * k)
+                let at = CGPoint(x: Double(size) / 2 + (x - y) * 32 * k, y: Double(size) / 2 - 20 - (x + y) * 16 * k)
                 context.saveGState()
                 context.translateBy(x: at.x, y: at.y)
                 context.scaleBy(x: facing.mirrored ? -k : k, y: k)

@@ -742,9 +742,13 @@ extension IndustrialWarriorsFieldGun {
             let body = crew.svg.body
             svg.group(at: place) { $0.raw(body) }
         }))
+        // From behind, the muzzle and its smoke are beyond the gun and the crew.
+        if !ahead { shotInView(&d.svg) }
         for item in items.sorted(by: { $0.depth < $1.depth }) { item.draw(&d.svg) }
+        if ahead { shotInView(&d.svg) }
 
-        if pose == .fighting {
+        func shotInView(_ svg: inout SVG) {
+            guard pose == .fighting else { return }
             // The flash and the smoke along the barrel as it shows, and the spent case from the breech.
             let (u, k) = { () -> (P, Double) in
                 let a = at(Self.breech.x, Self.breech.y, 0), b = at(Self.muzzle(pose, 0).x, Self.muzzle(pose, 0).y, 0)
@@ -755,7 +759,7 @@ extension IndustrialWarriorsFieldGun {
             let shown = ahead || !endOn
             if frame == 1 && shown {
                 let m = at(Self.muzzle(pose, 1).x, Self.muzzle(pose, 1).y, 0)
-                IndustrialWarriorsKit.flash(&d.svg, at: m + u * 2.4, degrees: degrees, length: 26 * max(k, 0.3), girth: 7, points: 14)
+                IndustrialWarriorsKit.flash(&svg, at: m + u * 2.4, degrees: degrees, length: 26 * max(k, 0.3), girth: 7, points: 14)
             }
             let ages: [Int: (spread: Double, rise: Double, size: Double, opacity: Double)] = [
                 1: (0.3, 0, 0.7, 0.95), 2: (0.62, 2, 1.1, 0.92), 3: (0.8, 5, 1.25, 0.82), 4: (0.9, 8.5, 1.32, 0.66),
@@ -770,12 +774,12 @@ extension IndustrialWarriorsFieldGun {
                     (u * (p.x * age.spread * max(k, 0.35)) + across * (p.y * 1.4) + P(0, p.y * (0.7 + age.spread * 0.3) * (endOn ? 0.5 : 1) - age.rise * (0.5 + p.x / 50)),
                      r * age.size)
                 }
-                IndustrialWarriorsKit.smoke(&d.svg, at: origin, puffs: puffs, opacity: age.opacity)
+                IndustrialWarriorsKit.smoke(&svg, at: origin, puffs: puffs, opacity: age.opacity)
             }
-            if frame == 1 { BronzePeopleProps.dust(&d.svg, at: at(-70, -1.4, 0), size: 1, opacity: 0.45) }
+            if frame == 1 { BronzePeopleProps.dust(&svg, at: at(-70, -1.4, 0), size: 1, opacity: 0.45) }
             let breech = at(Self.breech.x, Self.breech.y, 0)
-            if frame == 4 { IndustrialWarriorsKit.spentCase(&d.svg, at: breech + P(-7 * c, 1.4), degrees: 4, length: 11 * max(abs(c), 0.35), width: 3.2) }
-            if frame == 5 { IndustrialWarriorsKit.spentCase(&d.svg, at: breech + P(-11 * c + 3 * s, 15), degrees: 64, length: 11 * max(abs(c), 0.35), width: 3.2) }
+            if frame == 4 { IndustrialWarriorsKit.spentCase(&svg, at: breech + P(-7 * c, 1.4), degrees: 4, length: 11 * max(abs(c), 0.35), width: 3.2) }
+            if frame == 5 { IndustrialWarriorsKit.spentCase(&svg, at: breech + P(-11 * c + 3 * s, 15), degrees: 64, length: 11 * max(abs(c), 0.35), width: 3.2) }
         }
     }
 
