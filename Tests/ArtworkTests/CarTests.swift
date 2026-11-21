@@ -200,6 +200,38 @@ struct CarRenders {
         try Preview.writeGIF(frames, to: directory.appendingPathComponent("car.gif"))
     }
 
+    /// The car at game size, and enlarged twice without smoothing, on each
+    /// ground it can drive over, to see that its black shape reads on the darkest.
+    @Test func onEveryGround() throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        let terrain = TerrainSprites(), car = CarSprites()
+        let grounds = Terrain.allCases.filter(\.isPassable)
+        let cellW = 760, cellH = 220
+        let width = cellW, height = cellH * grounds.count
+        let context = Raster.bitmap(width: width, height: height)!
+        context.interpolationQuality = .none
+        let colour = TeamColour.of(.sumer)
+        for (row, ground) in grounds.enumerated() {
+            let tile = try #require(terrain.sprite(SpriteKey(.terrain(ground, variant: 0), .complete)))
+            let bottom = Double(height - (row + 1) * cellH)
+            // The tile's diamond is laid edge to edge, enlarged to cover the cell.
+            context.saveGState()
+            context.clip(to: CGRect(x: 0, y: bottom, width: Double(cellW), height: Double(cellH)))
+            context.draw(tile.base, in: CGRect(x: -Double(cellW) * 0.25, y: bottom - Double(cellH) * 0.5, width: Double(cellW) * 1.5, height: Double(cellH) * 2))
+            context.restoreGState()
+            Preview.label("\(ground)", in: context, at: CGPoint(x: 12, y: bottom + Double(cellH) - 28), size: 18)
+            for (n, pose) in [SpritePose.standing, .walking].enumerated() {
+                let sprite = try #require(car.sprite(SpriteKey(.unit(.car, .stone), pose, frame: 3)))
+                let image = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
+                Preview.place(image, anchor: sprite.anchor, at: CGPoint(x: 110 + Double(n) * 170, y: bottom + 40), in: context)
+            }
+            let sprite = try #require(car.sprite(SpriteKey(.unit(.car, .stone), .standing)))
+            let image = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
+            Preview.place(image, anchor: sprite.anchor, at: CGPoint(x: 560, y: bottom + 30), in: context, scale: 2)
+        }
+        try Preview.writePNG(context.makeImage()!, to: directory.appendingPathComponent("on-every-ground.png"))
+    }
+
     /// The car beside the Industrial armoured car and the Industrial worker
     /// (the factory hand), all at one scale, in the colours of Rome, Angkor and
     /// Shang (Rome's red and Angkor's orange must stay distinct), and Tonga's,

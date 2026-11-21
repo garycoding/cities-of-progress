@@ -102,6 +102,7 @@ enum CarSaloon {
         svg.ellipse(P(1, 0.2), 57, 3.8, fill: .colour("#000000"), opacity: 0.16)
         // The body, riding its springs.
         svg.group(at: P(0, -ride)) { svg in
+            wells(&svg)
             body(&svg)
             glasshouse(&svg)
             doors(&svg)
@@ -148,6 +149,18 @@ enum CarSaloon {
         p.cubic(P(-56, -9) + o, P(-54.6, sill) + o, P(-51, sill) + o)
         p.close()
         return p
+    }
+
+    /// The dark wells inside the wheel arches, seen round the tyres.
+    static func wells(_ svg: inout SVG) {
+        let lift = sill - rearAxle.y
+        let low = atan2(lift, sqrt(archRadius * archRadius - lift * lift))
+        for axle in [rearAxle, frontAxle] {
+            var well = PathData()
+            arc(&well, centre: axle, radius: archRadius - 0.3, from: .pi - low, to: 2 * .pi + low, start: true)
+            well.close()
+            svg.path(well, fill: .colour(CarInk.seam))
+        }
     }
 
     /// The black body: its colour out of register with the line, the sky's
