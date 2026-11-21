@@ -178,6 +178,7 @@ extension LANTests {
         mira.setSpeed(2)
         try await until("everyone is told") {
             hyun.notices.contains(.speedChanged(to: 2, by: "Mira")) && lan.server.notices.contains(.speedChanged(to: 2, by: "Mira"))
+                && mira.speed == 2
         }
         #expect(lan.match!.speed == 2 && lan.server.speed == 2 && hyun.speed == 2 && mira.speed == 2)
         // A speed beyond the range is brought within it.
