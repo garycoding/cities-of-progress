@@ -720,7 +720,7 @@ extension AlchemyWarriorsCannon {
         if let r = Self.gunnerRig(pose, frame) {
             var g = Drawing(layer: layer, rig: r, phase: phase, view: view)
             let origin = pose == .walking ? Self.walkingGunner : Self.gunner
-            let z = pose == .walking ? 8.0 : Self.gunnerSide
+            let z = pose == .walking ? 18.0 : Self.gunnerSide
             let at = Self.place(view, origin, z: z)
             Self.gunnerInView(&g, pose, frame, origin: origin, at: at, dx: dx)
             gunnerHand = at + AlchemyViews.world(g, g.hand(front: true))
@@ -730,7 +730,7 @@ extension AlchemyWarriorsCannon {
             let own = mirrored ? AlchemyViews.opposite(view) : view
             var m = Drawing(layer: layer, rig: r, phase: phase, view: own)
             let serving = pose == .fighting && Self.service[frame].depth != nil
-            let z = -(serving ? Self.rammerAtMuzzle : (pose == .walking ? 10 : Self.rammerSide))
+            let z = -(serving ? Self.rammerAtMuzzle : (pose == .walking ? 20 : Self.rammerSide))
             let at = Self.place(view, origin, z: z)
             Self.rammerInView(&m, pose, frame)
             let flip = mirrored ? -1.0 : 1.0
