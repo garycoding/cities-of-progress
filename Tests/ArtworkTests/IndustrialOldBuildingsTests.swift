@@ -13,7 +13,7 @@ import Testing
     private static let source = IndustrialOldBuildingSprites()
 
     /// The buildings of the Stone, Bronze, Iron and Alchemy ages: the batch's kinds.
-    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .alchemy && $0.kind != .bridge }.map(\.kind)
+    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .alchemy && $0.kind != .bridge && $0.kind != .boatHouse }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Industrial age's
     /// look, complete and under construction, at frame 0.

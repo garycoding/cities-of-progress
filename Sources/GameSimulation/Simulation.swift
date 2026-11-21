@@ -120,6 +120,11 @@ public struct Simulation: GameSimulating {
         var saved = try c.decode(Catalogue.self, forKey: .catalogue)
         // A match saved before bridges (2026-11-21) gains the standard bridge.
         if !saved.buildings.contains(where: { $0.kind == .bridge }) { saved.buildings.append(Catalogue.standard.stats(.bridge)) }
+        // A match saved before boats (2026-11-21) gains the standard boat and boat house.
+        if !saved.buildings.contains(where: { $0.kind == .boatHouse }) {
+            saved.buildings.append(Catalogue.standard.stats(.boatHouse))
+        }
+        if !saved.units.contains(where: { $0.kind == .boat }) { saved.units.append(Catalogue.standard.stats(.boat)) }
         catalogue = saved
         width = try c.decode(Int.self, forKey: .width)
         height = try c.decode(Int.self, forKey: .height)
@@ -219,6 +224,19 @@ public struct Simulation: GameSimulating {
     /// Whether a person may stand on or cross the tile.
     @inline(__always) func open(_ x: Int, _ y: Int) -> Bool { inMap(x, y) && !blocked[y * width + x] }
     @inline(__always) func open(_ t: GridPoint) -> Bool { open(t.x, t.y) }
+
+    /// Whether a boat may enter a tile (ruled 2026-11-21): water, and no rock
+    /// standing in it; a bridge above it does not stop a boat.
+    @inline(__always) func openAfloat(_ x: Int, _ y: Int) -> Bool {
+        guard inMap(x, y) else { return false }
+        let k = y * width + x
+        guard terrain[k].isWater else { return false }
+        let s = siteAt[k]
+        return s < 0 || !sites[Int(s)].kind.blocksTile
+    }
+
+    /// `open` for people on foot, `openAfloat` for boats.
+    @inline(__always) func open(_ x: Int, _ y: Int, afloat: Bool) -> Bool { afloat ? openAfloat(x, y) : open(x, y) }
 
     /// The index of a living entity.
     func index(of id: EntityID) -> Int? {
@@ -347,16 +365,17 @@ public struct Simulation: GameSimulating {
     /// An open tile beside a building's footprint: the open tiles of the nearest
     /// ring around it that has any, the front of the building (toward the viewer)
     /// first, taken in turn by `index`.
-    func freeTile(besideBuilding building: Int, index: Int) -> GridPoint {
-        freeTile(beside: entities[building].origin, size: entities[building].size, index: index)
+    func freeTile(besideBuilding building: Int, index: Int, afloat: Bool = false) -> GridPoint {
+        freeTile(beside: entities[building].origin, size: entities[building].size, index: index, afloat: afloat)
     }
 
-    func freeTile(beside origin: GridPoint, size: GridPoint, index: Int) -> GridPoint {
+    /// The same, on the water for a boat.
+    func freeTile(beside origin: GridPoint, size: GridPoint, index: Int, afloat: Bool = false) -> GridPoint {
         for r in 1...max(width, height) {
             var ring: [GridPoint] = []
             let x0 = origin.x - r, x1 = origin.x + size.x - 1 + r, y0 = origin.y - r, y1 = origin.y + size.y - 1 + r
             for y in y0...y1 {
-                for x in x0...x1 where (x == x0 || x == x1 || y == y0 || y == y1) && open(x, y) {
+                for x in x0...x1 where (x == x0 || x == x1 || y == y0 || y == y1) && open(x, y, afloat: afloat) {
                     ring.append(GridPoint(x, y))
                 }
             }

@@ -222,6 +222,7 @@ private func colour(_ k: SiteKind) -> (UInt8, UInt8, UInt8) {
     case .gold: (250, 215, 30)
     case .iron: (90, 50, 50)
     case .oilField: (20, 20, 20)
+    case .fish: (230, 250, 255)
     }
 }
 
