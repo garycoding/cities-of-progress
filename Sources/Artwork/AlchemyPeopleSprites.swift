@@ -40,7 +40,7 @@ public struct AlchemyPeopleSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views.
-    static let viewed: Set<UnitKind> = [.worker, .scholar, .merchant]
+    static let viewed: Set<UnitKind> = [.worker, .scholar, .engineer, .merchant]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .alchemy) = subject { return Self.viewed.contains(kind) }
@@ -107,6 +107,9 @@ enum AlchemyViews {
     /// A point of the body where it falls in the picture in this view, after
     /// the lean and the bob (the view's form of `Drawing.world`).
     static func world(_ d: Drawing, _ p: P) -> P { p.rotated(lean(d), about: Drawing.hips) + P(0, d.bob) }
+
+    /// A point of the picture in the body's own units in this view (the inverse of `world`).
+    static func body(_ d: Drawing, _ p: P) -> P { (p - P(0, d.bob)).rotated(-lean(d), about: Drawing.hips) }
 
     /// A limb in this view: its root, its joint and its end on the screen
     /// (before the bob and the lean), its depth, and whether it is the
