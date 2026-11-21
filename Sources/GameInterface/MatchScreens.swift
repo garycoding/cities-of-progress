@@ -182,6 +182,7 @@ public struct NewMatchView: View {
                     PillButton(title: "Add a seat for a person", size: 12) { model.addOpenSeat() }
                 }
             }
+            SightPicker(sight: $model.sight)
             if onHost != nil, model.hasOpenSeats {
                 HStack(spacing: 10) {
                     Caption(text: "MATCH NAME")
@@ -302,6 +303,8 @@ public struct LobbyView: View {
             VStack(spacing: 6) {
                 ForEach(model.rows) { row in LobbyRow(row: row) }
             }
+            Text("What you see: \((model.lobby.sight ?? .explore).name). \((model.lobby.sight ?? .explore).explanation)")
+                .font(Typeface.text(11.5)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
             if model.showsPicker {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(model.myCivilization == nil ? "Choose your civilization" : "Your civilization: \(model.myCivilization!.name)")
@@ -571,4 +574,26 @@ public struct MatchNoticeLayer: View {
 extension Palette {
     /// Teal laid thinly over paper, opaque: the fill of a notice, apart from a refusal's ochre.
     static let tealPale = Color(red: 0.70, green: 0.78, blue: 0.72)
+}
+
+/// The setting "What you see" (ruled 2026-11-20): three values, one chosen,
+/// with what the chosen one means beneath. It applies to the people in the
+/// match; computer players always explore.
+struct SightPicker: View {
+    @Binding var sight: MapSight
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Caption(text: "WHAT YOU SEE")
+                ForEach(MapSight.allCases, id: \.self) { value in
+                    PillButton(title: value.name, fill: value == sight ? Palette.ochre : Palette.paper, size: 12) {
+                        sight = value
+                    }
+                }
+            }
+            Text(sight.explanation + " Computer players always explore.")
+                .font(Typeface.text(11)).foregroundStyle(Palette.inkSoft).fixedSize(horizontal: false, vertical: true)
+        }
+    }
 }
