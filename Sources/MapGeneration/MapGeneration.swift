@@ -14,8 +14,11 @@ import GameCore
 /// are laid over it, never near a start; each start is cleared and given the same
 /// kit of sites (trees, prey, stone, copper, tin, gold within reach, iron and oil
 /// farther out); the rest of the map is scattered with further deposits, herds
-/// and trees; and last, any start that cannot walk to the others is joined to
-/// them by a path cut through water or trees.
+/// and trees; any start that cannot walk to the others is joined to them by a
+/// path cut through water or trees; and last, the water is given its own
+/// resources, for boats (ruled 2026-11-21): shoals of fish, two tiles by two,
+/// and rocks of stone, copper, tin, gold and iron rising from it, one near each
+/// start that has water within reach and the rest scattered.
 public struct MapGenerator: MapGenerating {
     public init() {}
 
@@ -153,6 +156,7 @@ struct MapBuilder {
         scatter()
         growTrees()
         joinStarts()
+        seedWater()
         let ordered = sites.compactMap { $0 }.sorted { $0.tile < $1.tile }
         let numbered = ordered.enumerated().map {
             ResourceSite(id: SiteID($0.offset), kind: $0.element.kind, tile: $0.element.tile, remaining: $0.element.remaining)
@@ -449,6 +453,89 @@ struct MapBuilder {
             let i = y * w + x
             if terrain[i] == .forest && !clear[i] && siteAt[i] < 0 && rng.chance(0.6) { put(.tree, x, y) }
         } }
+    }
+
+    // MARK: The water's resources
+
+    /// The farthest a start's own shoal and rocks may lie from its centre.
+    static let waterReach = 30.0
+
+    /// Whether a shoal may cover the two tiles by two from `(x, y)`: all water, with no site.
+    private func shoalFits(_ x: Int, _ y: Int) -> Bool {
+        guard inBounds(x, y), inBounds(x + 1, y + 1) else { return false }
+        for (tx, ty) in [(x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1)] {
+            let i = ty * w + tx
+            if terrain[i].isPassable || siteAt[i] >= 0 { return false }
+        }
+        return true
+    }
+
+    /// Whether a rock may rise from `(x, y)`: water all round it, and no site
+    /// on it or beside it, so that a rock never closes a channel.
+    private func rockFits(_ x: Int, _ y: Int) -> Bool {
+        guard x > 0, y > 0, x < w - 1, y < h - 1 else { return false }
+        for ty in (y - 1)...(y + 1) { for tx in (x - 1)...(x + 1) {
+            let i = ty * w + tx
+            if terrain[i].isPassable || siteAt[i] >= 0 { return false }
+        } }
+        return true
+    }
+
+    private mutating func putShoal(_ x: Int, _ y: Int) {
+        for (tx, ty) in [(x, y), (x + 1, y), (x, y + 1), (x + 1, y + 1)] { put(.fish, tx, ty) }
+    }
+
+    /// The water tiles within `waterReach` of a centre, nearest first.
+    private func waterNear(_ cx: Double, _ cy: Double) -> [GridPoint] {
+        let reach = Int(Self.waterReach)
+        var found: [(d2: Double, tile: GridPoint)] = []
+        for ty in max(0, Int(cy) - reach)...min(h - 1, Int(cy) + reach) {
+            for tx in max(0, Int(cx) - reach)...min(w - 1, Int(cx) + reach) where !terrain[ty * w + tx].isPassable {
+                let dx = Double(tx) + 0.5 - cx, dy = Double(ty) + 0.5 - cy
+                let d2 = dx * dx + dy * dy
+                if d2 <= Self.waterReach * Self.waterReach { found.append((d2, GridPoint(tx, ty))) }
+            }
+        }
+        found.sort { $0.d2 < $1.d2 || ($0.d2 == $1.d2 && $0.tile < $1.tile) }
+        return found.map(\.tile)
+    }
+
+    private mutating func seedWater() {
+        // Each start with water in reach: a shoal and a stone rock in the nearest water that holds them.
+        for (cx, cy) in centres {
+            let near = waterNear(cx, cy)
+            if let t = near.first(where: { shoalFits($0.x, $0.y) }) { putShoal(t.x, t.y) }
+            if let t = near.first(where: { rockFits($0.x, $0.y) }) { put(.stone, t.x, t.y) }
+        }
+        // The rest of the water, in proportion to the field.
+        let area = Double(w * h) / 9216
+        let shoals = Int((4 * area).rounded()), rounds = Int((2 * area).rounded())
+        func randomWater(_ fits: (Int, Int) -> Bool) -> GridPoint? {
+            for _ in 0..<200 {
+                let x = rng.below(w), y = rng.below(h)
+                if fits(x, y) { return GridPoint(x, y) }
+            }
+            return nil
+        }
+        for _ in 0..<shoals {
+            if let t = randomWater({ shoalFits($0, $1) }) { putShoal(t.x, t.y) }
+        }
+        // Rounds of rocks, each kind in its own place; copper and tin only
+        // together, so that the field holds as many tin deposits as copper.
+        for _ in 0..<rounds {
+            var chosen: [(SiteKind, GridPoint)] = []
+            for kind in [SiteKind.stone, .copper, .tin, .gold, .iron] {
+                for _ in 0..<200 {
+                    let x = rng.below(w), y = rng.below(h)
+                    if rockFits(x, y), !chosen.contains(where: { abs($0.1.x - x) <= 1 && abs($0.1.y - y) <= 1 }) {
+                        chosen.append((kind, GridPoint(x, y)))
+                        break
+                    }
+                }
+            }
+            let pair = chosen.filter { $0.0 == .copper || $0.0 == .tin }.count == 2
+            for (kind, t) in chosen where pair || (kind != .copper && kind != .tin) { put(kind, t.x, t.y) }
+        }
     }
 
     // MARK: Reaching every start
