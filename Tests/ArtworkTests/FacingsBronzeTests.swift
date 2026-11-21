@@ -14,6 +14,7 @@ struct FacingsBronzeTests {
     private let source = BronzePeopleSprites()
 
     @Test func everyKindIsDrawnInEveryView() {
+        #expect(BronzePeopleSprites.viewed == Set(BronzeFacingRenders.kinds.map(\.kind)))
         for kind in BronzePeopleSprites.viewed {
             #expect(source.drawsViews(of: .unit(kind, .bronze)), "\(kind)")
         }

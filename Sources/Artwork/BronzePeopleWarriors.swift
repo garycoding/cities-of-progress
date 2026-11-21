@@ -302,7 +302,7 @@ extension BronzePeopleSpearman {
     /// of the team's colour round its back.
     static func shieldInView(_ d: inout Drawing, push: Double, sway: Double) {
         let yaw = d.yaw * .pi / 180
-        let x = 12 + push, z = -4.0
+        let x = 15 + push, z = -4.0
         let c = d.up(P(x * cos(yaw) - z * sin(yaw), -33.4)) + P(0, 0.6 * sway)
         let facing = sin(yaw)
         let squash = max(abs(facing), 0.3)
@@ -312,11 +312,11 @@ extension BronzePeopleSpearman {
         } else {
             // The back: leather over wood, a rim of the team's colour, and the grip across.
             d.svg.circle(c + P(-0.8, 0.7), 12.4, fill: .team)
-            d.svg.circle(c, 10, fill: .colour(BronzePeopleInk.leather))
+            d.svg.circle(c, 8.2, fill: .colour(BronzePeopleInk.leather))
             d.svg.circle(c, 12.4, fill: .none, stroke: .colour(Ink.line), width: 1.6)
-            d.svg.circle(c, 10, fill: .none, stroke: .colour(Ink.line), width: 0.8)
-            d.svg.line([c + P(-6, 0), c + P(6, 0)], stroke: .colour(Ink.line), width: 2.6)
-            d.svg.line([c + P(-6, 0), c + P(6, 0)], stroke: .colour(BronzePeopleInk.wood), width: 1.3)
+            d.svg.circle(c, 8.2, fill: .none, stroke: .colour(Ink.line), width: 0.8)
+            d.svg.line([c + P(-5.4, 0), c + P(5.4, 0)], stroke: .colour(Ink.line), width: 2.6)
+            d.svg.line([c + P(-5.4, 0), c + P(5.4, 0)], stroke: .colour(BronzePeopleInk.wood), width: 1.3)
         }
         d.svg.raw("</g>")
     }
@@ -519,11 +519,14 @@ extension BronzePeopleArcher {
             d.zigzag(from: P(-15, -14.2), to: P(13.8, -14.2), teeth: 5, depth: 2.6)
             d.garment(colour: [P(-11.6, -46), P(8.6, -48), P(11.8, -28.6), P(-13, -28)],
                       outline: tunic, fill: .colour(BronzePeopleInk.light)) { d in
+                // The neckband round the front of the neck, narrowed as the front turns away.
                 guard !BronzePeopleViews.seesBack(d.view) else { return }
-                let at = BronzePeopleViews.round(d, on: tunic, at: -45.6, degrees: 0).point.x
-                let y = d.up(P(0, -45.6)).y
-                d.svg.path("M\(num(at - 6.6)),\(num(y)) l2.2,1.6 l2.2,-1.6 l2.2,1.6 l2.2,-1.6 l2.2,1.6 l2.2,-1.6",
-                           stroke: .colour(BronzePeopleInk.terracotta), width: 1.2)
+                let front = BronzePeopleViews.round(d, on: tunic, at: -45.6, degrees: 0)
+                let k = max(front.facing, 0.3), y = d.up(P(0, -45.6)).y
+                var band = PathData()
+                band.move(P(front.point.x - 6.6 * k, y))
+                for i in 1...6 { band.line(P(front.point.x + (-6.6 + 2.2 * Double(i)) * k, y + (i % 2 == 1 ? 1.6 : 0))) }
+                d.svg.path(band, stroke: .colour(BronzePeopleInk.terracotta), width: 1.2)
             }
             if let belt = BronzePeopleViews.span(d.turned(tunic), at: -29.6) {
                 d.svg.line([d.up(P(belt.low, -29.6)), d.up(P(belt.high, -29.8))], stroke: .colour(BronzePeopleInk.leather), width: 2.2)
