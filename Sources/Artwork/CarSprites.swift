@@ -3,8 +3,9 @@
 
 import GameCore
 
-/// A person's car (ruled 2026-11-21): a modern black electric four-door saloon,
-/// drawn in the Cartoon Modern style of docs/art-style.md (`CarSaloon`).
+/// A person's car (ruled 2026-11-21): a modern electric four-door saloon painted
+/// all over in its team's colour, drawn in the Cartoon
+/// Modern style of docs/art-style.md (`CarSaloon`).
 ///
 /// The car belongs to no age, and its key is `SpriteSubject.unit(.car, .stone)`
 /// (`SpriteSubject.of(_:ownerAge:)`). This source supplies it in the poses that

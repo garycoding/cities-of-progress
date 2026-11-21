@@ -238,17 +238,17 @@ struct CarRenders {
 
     /// The car beside the Industrial armoured car and the Industrial worker
     /// (the factory hand), all at one scale, in the colours of Rome, Angkor and
-    /// Shang (Rome's red and Angkor's orange must stay distinct), and Tonga's,
-    /// the near-black: drawn large, and as the sprites at game size.
+    /// Shang (Rome's red and Angkor's orange must stay distinct), Tonga's near-black,
+    /// and the light colours of Samoa and Greece: drawn large, and as the sprites at game size.
     @Test func contactSheet() throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let civilizations: [Civilization] = [.rome, .angkor, .shang, .tonga]
+        let civilizations: [Civilization] = [.rome, .angkor, .shang, .tonga, .samoa, .greece]
         let scale = 3.0
         let rowHeight = 330, width = 1900
         let height = 90 + rowHeight * civilizations.count
         let context = Raster.bitmap(width: width, height: height)!
         context.draw(Preview.ground(width: width, height: height, tile: 256, grained: false), in: CGRect(x: 0, y: 0, width: width, height: height))
-        Preview.label("A person's car beside the Industrial armoured car and worker, at one scale, in the colours of Rome, Angkor, Shang and Tonga",
+        Preview.label("A person's car beside the Industrial armoured car and worker, at one scale, in the colours of Rome, Angkor, Shang, Tonga, Samoa and Greece",
                       in: context, at: CGPoint(x: 24, y: Double(height) - 48), size: 24)
         let armoured = try #require(IndustrialWarriorsLooks.look(.armouredCar))
         let worker = try #require(IndustrialPeopleLooks.look(.worker))
