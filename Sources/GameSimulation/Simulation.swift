@@ -302,7 +302,7 @@ public struct Simulation: GameSimulating {
         let tiles = footprintTiles(origin: origin, size: stats.footprint).filter(inMap)
         for t in tiles {
             buildingAt[tileIndex(t)] = Int32(id.rawValue)
-            blocked[tileIndex(t)] = true
+            blocked[tileIndex(t)] = !(kind == .bridge && complete)
         }
         if complete { housing[owner.rawValue] += stats.housing }
         stampSight(of: index, by: 1)

@@ -69,6 +69,8 @@ enum OrderCheck {
                 command(units, "carry") { $0 == .merchant }
             case .summonCar:
                 problems.append("summonCar: a computer player has no car")
+            case .buildBridge:
+                problems.append("buildBridge: a computer player does not build bridges")
             case .reseed(let farm):
                 if building(farm)?.entity.remaining != 0 { problems.append("reseed: \(farm) is not a farm of its own that has run dry") }
             case .gather(let units, let site):
