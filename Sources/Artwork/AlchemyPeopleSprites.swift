@@ -40,7 +40,7 @@ public struct AlchemyPeopleSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views.
-    static let viewed: Set<UnitKind> = [.worker]
+    static let viewed: Set<UnitKind> = [.worker, .scholar]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .alchemy) = subject { return Self.viewed.contains(kind) }
@@ -189,6 +189,22 @@ enum AlchemyViews {
         let cosine = min(max((p.x - centre) / half, -1), 1)
         let sine = (1 - cosine * cosine).squareRoot()
         return project(view, centre + half * cosine, p.y, side * half * 0.95 * sine)
+    }
+
+    /// The point of a garment's level `y` (see `surface`) at `angle` degrees
+    /// round from its front toward the figure's right (`side` 1) or its left
+    /// (`side` -1), on the screen, and its depth.
+    static func around(_ view: SpriteView, _ y: Double, angle: Double, on shape: [P], side: Double = 1) -> (point: P, depth: Double) {
+        var xs: [Double] = []
+        let top = shape.map(\.y).min()!, bottom = shape.map(\.y).max()!
+        let l = min(max(y, top + (bottom - top) * 0.002), bottom - (bottom - top) * 0.002)
+        for k in shape.indices {
+            let a = shape[k], b = shape[(k + 1) % shape.count]
+            if (a.y - l) * (b.y - l) <= 0, a.y != b.y { xs.append(a.x + (b.x - a.x) * (l - a.y) / (b.y - a.y)) }
+        }
+        let low = xs.min() ?? 0, high = xs.max() ?? 0
+        let centre = (low + high) / 2, half = (high - low) / 2, r = angle * .pi / 180
+        return project(view, centre + half * cos(r), y, side * half * 0.95 * sin(r))
     }
 
     /// A panel worn over the front of a garment (an apron, a stole, the
