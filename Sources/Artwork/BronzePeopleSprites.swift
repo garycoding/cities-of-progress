@@ -16,10 +16,14 @@ import GameCore
 /// pose for every kind; the warfighters never work, so theirs is their standing
 /// cycle. Every other key returns nil.
 ///
+/// The kinds in `viewed` are drawn in all five views (ruled 2026-11-21: eight
+/// facings, five views drawn, the other three mirrored), each key's view passed
+/// to its look.
+///
 /// Each call draws its picture afresh, in about a millisecond, and the same key
 /// always gives the same pixels. Nothing is kept here: the drawing keeps what it
-/// is given (`SpriteCache` in MapDrawing).
-public struct BronzePeopleSprites: SpriteSource {
+/// is given (`SpriteCache` in MapDrawing), by the whole key, its view included.
+public struct BronzePeopleSprites: ViewedSpriteSource {
     /// The poses this source supplies, each at frame 0.
     public let poses: [SpriteKey]
     private let supplied: Set<SpriteKey>
@@ -40,10 +44,19 @@ public struct BronzePeopleSprites: SpriteSource {
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
         guard (0..<SpriteKey.framesPerPose).contains(key.frame),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)),
+              key.view == .side || drawsViews(of: key.subject),
               case .unit(let kind, _) = key.subject,
               let look = BronzePeopleLooks.look(kind) else { return nil }
         let canvas = BronzePeopleLooks.canvas(kind)
-        return look.render(key.pose, frame: key.frame, canvas: canvas)?.sprite(anchor: canvas.anchor)
+        return look.render(key.pose, frame: key.frame, canvas: canvas, view: key.view)?.sprite(anchor: canvas.anchor)
+    }
+
+    /// The kinds drawn in all five views so far.
+    static let viewed: Set<UnitKind> = [.worker]
+
+    public func drawsViews(of subject: SpriteSubject) -> Bool {
+        guard case .unit(let kind, .bronze) = subject else { return false }
+        return Self.viewed.contains(kind)
     }
 }
 
