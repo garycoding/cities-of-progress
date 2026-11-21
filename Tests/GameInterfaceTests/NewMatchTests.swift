@@ -57,8 +57,7 @@ import Testing
     #expect(m.canAddComputerPlayer)
     let added = m.addComputerPlayer()
     #expect(added)
-    #expect(!m.canStart)   // three players
-    #expect(m.problem == "A match has two, four or six players.")
+    #expect(m.canStart && m.seats.count == 3)   // any number from two to six (ruled 2026-11-21)
     let addedAgain = m.addComputerPlayer()
     #expect(addedAgain)
     #expect(m.canStart && m.seats.count == 4)
@@ -99,4 +98,44 @@ import Testing
     #expect(lobby.setup(map: Samples.map(), seed: 7)?.sight == .everything)
     m.sight = .explore
     #expect(m.choice.setup(map: Samples.map(), seed: 7).sight == nil)
+}
+
+@Test(arguments: 2...6) func anyNumberOfPlayersFromTwoToSixCanStart(players: Int) {
+    var m = NewMatchModel(maxPlayers: 6)
+    while m.seats.count < players { m.addComputerPlayer() }
+    #expect(m.seats.count == players)
+    #expect(m.problem == nil && m.canStart)
+    #expect(m.choice.players.count == players)
+    #expect(m.choice.players.map(\.id) == (0..<players).map { PlayerID($0) })
+}
+
+@Test func aMatchOfFiveMayGroupItsComputerPlayersFreely() {
+    // The host and one computer player against three computer players on one team.
+    var m = NewMatchModel(maxPlayers: 6)
+    for _ in 0..<3 { m.addComputerPlayer() }
+    m.setTeam(m.seats[0].team, forSeat: m.seats[1].id)
+    m.setTeam(m.seats[2].team, forSeat: m.seats[3].id)
+    m.setTeam(m.seats[2].team, forSeat: m.seats[4].id)
+    #expect(m.seats.count == 5 && m.canStart)
+    #expect(m.choice.players.map(\.team) == [TeamID(0), TeamID(0), TeamID(1), TeamID(1), TeamID(1)])
+    #expect(Set(m.choice.players.map(\.civilization)).count == 5)
+}
+
+@Test func aMatchHasNoFewerThanTwoAndNoMoreThanSixPlayers() {
+    var m = NewMatchModel(maxPlayers: 6)
+    m.removeSeat(m.seats[1].id)
+    #expect(m.seats.count == 1 && m.problem == "A match has two to six players." && !m.canStart)
+    for _ in 0..<6 { m.addComputerPlayer() }
+    #expect(m.seats.count == 6 && !m.canAddComputerPlayer && m.canStart)
+}
+
+@Test func threePeopleNeedAMatchOfAtLeastFour() {
+    // Two people and a computer player make a match of three; a third person needs a fourth seat.
+    var m = NewMatchModel(maxPlayers: 6, hostName: "Gary")
+    m.addOpenSeat()
+    #expect(m.seats.count == 3 && m.canHost)
+    m.setOpen(true, forSeat: m.seats[1].id)
+    #expect(m.problem == "A match needs at least two teams.")
+    m.addComputerPlayer()
+    #expect(m.seats.count == 4 && m.canHost)
 }

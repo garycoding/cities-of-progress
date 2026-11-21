@@ -172,7 +172,7 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
 }
 
 @Test func smallerFieldsAreFairToo() {
-    for players in [2, 4, 6] { for seed in seeds.prefix(8) {
+    for players in 2...6 { for seed in seeds.prefix(8) {
         let map = MapGenerator().generate(MapRequest(width: 64, height: 72, playerCount: players, seed: seed))
         #expect(map.width == 64 && map.height == 72)
         for start in map.starts {

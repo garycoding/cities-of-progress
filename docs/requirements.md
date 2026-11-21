@@ -24,7 +24,7 @@ These come from the person for whom the game is made and are settled.
 1. The game is called Cities of Progress.
 2. The game plays like the original Age of Empires: the player directs people to gather resources, constructs buildings, advances through ages, trains an army, and defeats opponents on a map seen from above.
 3. The game is for macOS only, and may use Apple's frameworks freely.
-4. A match has two, four or six players. One, two or three of them are human, each at a Mac on the same LAN; the others are computer players.
+4. A match has any number of players from two to six (ruled 2026-11-21). One, two or three of them are human, each at a Mac on the same LAN; the others are computer players.
 5. Before a match can start, the players are grouped into teams. All the human players are on one team. The computer players may be grouped in any manner, and a computer player may be placed on the human team.
 6. Allies cannot attack one another.
 7. A team wins by defeating every player who is not an ally. The match ends then, in whatever age it has reached; a match need not reach the AI age.
@@ -59,7 +59,7 @@ These come from the person for whom the game is made and are settled.
 These follow from the requirements above; they are stated so that they can be confirmed or corrected.
 
 - A match needs at least two teams, or no one could be defeated. At least one computer player is therefore not on the human team.
-- A match of two players has one human player and one computer player. Three human players need a match of four or six.
+- Since at least one computer player is not on the human team, one human player needs a match of two players or more, two human players a match of three or more, and three human players a match of four or more.
 - The game is playable by one person alone.
 - Up to three Macs take part in one match.
 
