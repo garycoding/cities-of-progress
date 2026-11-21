@@ -52,7 +52,7 @@ public struct BronzePeopleSprites: ViewedSpriteSource {
     }
 
     /// The kinds drawn in all five views so far.
-    static let viewed: Set<UnitKind> = [.worker]
+    static let viewed: Set<UnitKind> = [.worker, .scholar, .engineer, .merchant]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         guard case .unit(let kind, .bronze) = subject else { return false }

@@ -206,12 +206,13 @@ enum BronzePeopleProps {
 
     /// A hand balance hanging from `hand`, its beam turned by `tilt` degrees
     /// (positive lowers the front pan): gold rings in the back pan, a bronze
-    /// ingot in the front one.
-    static func balance(_ svg: inout SVG, from hand: P, tilt: Double) {
-        let pivot = hand + P(0, 3.4)
-        svg.line([hand, pivot], stroke: ink, width: 0.8)
+    /// ingot in the front one. The beam is drawn in profile, then carried by
+    /// `map` to where a view shows it; the pans hang plumb from its ends.
+    static func balance(_ svg: inout SVG, from hand: P, tilt: Double, map: (P) -> P = { $0 }) {
         let r = tilt * .pi / 180, along = P(cos(r), sin(r))
-        let back = pivot - along * 7.6, front = pivot + along * 7.6
+        let back = map(hand + P(0, 3.4) - along * 7.6), front = map(hand + P(0, 3.4) + along * 7.6)
+        let pivot = map(hand + P(0, 3.4)), hand = map(hand)
+        svg.line([hand, pivot], stroke: ink, width: 0.8)
         for end in [back, front] {
             let pan = end + P(0, 7.2)
             svg.line([end, pan + P(-3, 0)], stroke: ink, width: 0.7)

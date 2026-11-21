@@ -84,6 +84,34 @@ enum BronzePeopleViews {
         return (P(x * cos(yaw) - z * sin(yaw), y), sin(a + yaw))
     }
 
+    /// A band worn across the body from `top` (a height and a place round the
+    /// body, as `round` takes them) to `bottom`, running round by the shorter
+    /// way given by `via` (the place it crosses between them), `width` high:
+    /// the runs of it that face the viewer, each its upper edge then its lower.
+    static func across(_ d: Drawing, on outline: [P], top: (y: Double, degrees: Double), bottom: (y: Double, degrees: Double),
+                       via: Double, width: Double) -> [[P]] {
+        // The turn from the top to the place it crosses, and on to the bottom.
+        func unwrap(_ a: Double, near b: Double) -> Double {
+            var a = a
+            while a - b > 180 { a -= 360 }
+            while b - a > 180 { a += 360 }
+            return a
+        }
+        let middle = unwrap(via, near: top.degrees), end = unwrap(bottom.degrees, near: middle)
+        var runs: [[(P, P)]] = [], run: [(P, P)] = []
+        for i in 0...20 {
+            let t = Double(i) / 20
+            let degrees = t < 0.5 ? mix(top.degrees, middle, t * 2) : mix(middle, end, t * 2 - 1)
+            let y = mix(top.y, bottom.y, t)
+            let place = round(d, on: outline, at: y, degrees: degrees, out: 0.3)
+            if place.facing > -0.05 {
+                run.append((place.point + P(0, -width / 2), place.point + P(0, width / 2)))
+            } else if !run.isEmpty { runs.append(run); run = [] }
+        }
+        if !run.isEmpty { runs.append(run) }
+        return runs.filter { $0.count > 1 }.map { run in run.map(\.0) + run.reversed().map(\.1) }
+    }
+
     /// Whether the figure's back is toward the viewer in this view.
     static func seesBack(_ view: SpriteView) -> Bool { view == .back || view == .backQuarter }
 
