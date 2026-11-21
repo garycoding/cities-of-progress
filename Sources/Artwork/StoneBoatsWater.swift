@@ -86,13 +86,13 @@ enum StoneBoatsWater {
             let t = (p + Double(i) / 4) * 2 * .pi
             let at = base + P(2.4 * sin(t), 1.1 * cos(t))
             let heading = (i % 2 == 0 ? 0.0 : 180) + 16 * cos(t)
-            underwaterFish(&svg, at: at, degrees: heading, length: 9 + Double(i % 2) * 2)
+            underwaterFish(&svg, at: at, degrees: heading, length: 12 + Double(i % 2) * 2)
         }
         // The rings where the fish left the water and where it went back in.
         for (centre, start) in [(leapFrom, 0.0), (leapTo, leapShare)] {
             for lag in [0.0, 0.14] {
                 let age = (p - start - lag + 2).truncatingRemainder(dividingBy: 1)
-                ring(&svg, at: centre, rx: 3 + 15 * age, opacity: 0.9 * pow(1 - age, 1.3), width: 1.2 - 0.5 * age)
+                ring(&svg, at: centre, rx: 3 + 15 * age, opacity: pow(1 - age, 0.9), width: 1.6 - 0.7 * age)
             }
         }
         // The leap: out of the water, over, and back in.
@@ -108,7 +108,7 @@ enum StoneBoatsWater {
             svg.raw("<defs><clipPath id=\"above-water\"><polygon points=\""
                     + [surface[0], surface[1], P(60, -80), P(-60, -80)].map { "\(num($0.x)),\(num($0.y))" }.joined(separator: " ")
                     + "\"/></clipPath></defs><g clip-path=\"url(#above-water)\">")
-            leapingFish(&svg, at: at, degrees: degrees, length: 14)
+            leapingFish(&svg, at: at, degrees: degrees, length: 18)
             svg.raw("</g>")
         }
         splash(&svg, at: leapFrom, t: p * 6, size: 0.9)
@@ -128,7 +128,7 @@ enum StoneBoatsWater {
             d.line(P(-h * 0.6, h * 0.12))
             d.quad(P(h * 0.3, h * 0.42), P(h, 0))
             d.close()
-            svg.path(d, fill: .colour(BoatInk.underwater), opacity: 0.5)
+            svg.path(d, fill: .colour(BoatInk.underwater), opacity: 0.6)
         }
     }
 

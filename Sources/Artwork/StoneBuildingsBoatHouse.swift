@@ -59,11 +59,6 @@ extension StoneBuildingsSketch {
         let gable = [spot(x1, y1, deck), spot(x1, y0, deck), spot(Shed.roofX1, Shed.ridgeY - Shed.eaveReach, Shed.eave),
                      spot(Shed.roofX1, Shed.ridgeY, Shed.ridge), spot(Shed.roofX1, Shed.ridgeY + Shed.eaveReach, Shed.eave)]
         colour(gable, .colour(StoneBuildingsInk.hollow), shift: P(0, 0))
-        // The rafters under the far slope, seen through the open end.
-        for x in [Shed.roofX1 - 0.22, Shed.roofX1 - 0.5] {
-            stroke([spot(x, Shed.ridgeY, Shed.ridge - 2), spot(x, Shed.ridgeY - Shed.eaveReach + 0.04, Shed.eave + 1)], width: 1.6,
-                   colour: Ink.handle)
-        }
         // The far posts, and the canoe resting on the deck, its bow out under the gable.
         for x in [x0 + 0.04, -0.2] { pole(spot(x, y0 + 0.04, deck), spot(x, y0 + 0.04, Shed.eave + 3), width: 2.4, colour: Ink.handle) }
         restingCanoe(from: -0.62, to: 0.62, y: -0.08, h: deck + 0.5)
