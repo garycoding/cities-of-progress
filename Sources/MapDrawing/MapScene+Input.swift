@@ -78,6 +78,12 @@ extension MapScene {
             session.lastRefusal = .placementBlocked
             return
         }
+        // A founder founds a town centre rather than constructing it (requirement 26).
+        if kind == .townCentre, let founder = session.ownSelection.first(where: { $0.kind == .unit(.founder) }) {
+            session.issue(.found(founder: founder.id, at: origin))
+            session.placing = nil
+            return
+        }
         let engineers = session.ownSelection.filter { $0.kind == .unit(.engineer) }.map(\.id)
         guard !engineers.isEmpty else {
             session.lastRefusal = .notYours

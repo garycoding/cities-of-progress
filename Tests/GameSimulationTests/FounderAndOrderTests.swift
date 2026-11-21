@@ -50,7 +50,7 @@ extension Simulation {
         #expect(sim.health(founder) == Catalogue.standard.stats(.founder).health)
     }
 
-    @Test func foundingBuildsAFreeTownCentreWithWorkersAndTheFounderDisappears() {
+    @Test func foundingBuildsAFreeTownCentreWithTwoWorkersAndTheFounderBecomesAnEngineer() {
         var sim = trio()
         sim.destroyAll(me)
         let founder = sim.people(me, .founder)[0]
@@ -61,12 +61,15 @@ extension Simulation {
         #expect(sim.apply(.found(founder: allyWorker, at: GridPoint(8, 36)), from: PlayerID(1)) == .refused(.notYours))
         #expect(sim.apply(.found(founder: founder, at: GridPoint(8, 36)), from: me) == .accepted)
         #expect(sim.resources(me) == held)
-        #expect(sim.entity(founder) == nil)
+        #expect(sim.living(founder).unitKind == .engineer)
+        #expect(sim.living(founder).task == .idle)
         let centre = sim.buildings(me, .townCentre)
         #expect(centre.count == 1)
         #expect(sim.living(centre[0]).origin == GridPoint(8, 36) && sim.living(centre[0]).complete)
-        #expect(sim.people(me, .worker).count == Catalogue.standard.founderPeople - 1)
-        #expect(sim.people(me, .engineer).count == 1)
+        #expect(sim.people(me, .worker).count == 2 && Catalogue.standard.founderPeople == 2)
+        #expect(sim.people(me, .engineer) == [founder])
+        // Only one town centre: there is no founder left to found another.
+        #expect(sim.apply(.found(founder: founder, at: GridPoint(14, 36)), from: me) == .refused(.notYours))
         let view = sim.view(for: me)
         #expect(view.events.contains(.constructed(centre[0], .townCentre)))
         #expect(!view.players[0].isFounding)

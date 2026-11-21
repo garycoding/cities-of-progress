@@ -402,3 +402,14 @@ private func offer(_ m: PanelModel, _ id: String) -> ActionOffer {
     #expect(d.costLine == "Frees \(workers.count) places")
     #expect(model(view, [view.id(of: .building(.townCentre))]).dismiss.isEmpty)
 }
+
+@Test func aFounderIsOfferedOneFreeTownCentre() {
+    var view = Samples.bronzeAgeSkirmish()
+    let founder = EntityID(9100)
+    view.entities.append(EntityView(id: founder, owner: view.player, kind: .unit(.founder), position: MapPosition(x: 5.5, y: 5.5),
+                                    tile: GridPoint(5, 5), facing: .right, health: 100, maxHealth: 100, activity: .idle))
+    let m = model(view, [founder])
+    #expect(m.build.map(\.id) == ["build-townCentre"])
+    #expect(m.build[0].cost == ResourceAmounts() && m.build[0].isAvailable)
+    #expect(m.build[0].action == .place(.townCentre))
+}
