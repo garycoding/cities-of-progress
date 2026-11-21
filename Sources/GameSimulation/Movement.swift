@@ -332,11 +332,9 @@ extension Simulation {
         return .moving
     }
 
-    /// Face the way a movement or a blow goes on the screen: +x runs to the lower
-    /// right and +y to the lower left, so screen x grows with x − y.
+    /// Face the way a movement or a blow goes on the screen, in eight directions (`Facing.of`).
     mutating func face(_ i: Int, dx: Double, dy: Double) {
-        let across = dx - dy
-        if across > 1e-9 { entities[i].facing = .right } else if across < -1e-9 { entities[i].facing = .left }
+        if let facing = Facing.of(dx: dx, dy: dy) { entities[i].facing = facing }
     }
 
     /// Whether a straight way between two points crosses only open tiles (and the

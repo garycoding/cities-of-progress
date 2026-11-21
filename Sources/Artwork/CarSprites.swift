@@ -16,7 +16,7 @@ import GameCore
 ///
 /// Each call draws its picture afresh, and the same key always gives the same
 /// pixels. Nothing is kept here: the drawing keeps what it is given.
-public struct CarSprites: SpriteSource {
+public struct CarSprites: ViewedSpriteSource {
     /// The poses this source supplies, each at frame 0.
     public let poses: [SpriteKey]
     private let supplied: Set<SpriteKey>
@@ -38,6 +38,9 @@ public struct CarSprites: SpriteSource {
         guard (0..<SpriteKey.framesPerPose).contains(key.frame),
               supplied.contains(SpriteKey(key.subject, key.pose, frame: 0)),
               let pose = CarSaloon.drawn(key.pose) else { return nil }
-        return CarSaloon.render(pose, frame: key.frame)?.sprite(anchor: CarSaloon.canvas.anchor)
+        return CarSaloon.render(pose, frame: key.frame, view: key.view)?.sprite(anchor: CarSaloon.canvas.anchor)
     }
+
+    /// The car is drawn in all five views (ruled 2026-11-21).
+    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .unit(.car, .stone) }
 }

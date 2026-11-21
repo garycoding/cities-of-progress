@@ -90,8 +90,14 @@ final class SpriteCache {
         return sprite
     }
 
-    private func suppliedWithFallback(_ subject: SpriteSubject, pose: SpritePose, frame: Int, fallback: SpritePose) -> ResolvedSprite? {
-        supplied(SpriteKey(subject, pose, frame: frame))
+    private func suppliedWithFallback(_ subject: SpriteSubject, pose: SpritePose, frame: Int, fallback: SpritePose,
+                                      view: SpriteView = .side) -> ResolvedSprite? {
+        // A view the artwork does not yet draw falls back to the side (ruled 2026-11-21: five views, drawn batch by batch).
+        if view != .side {
+            if let found = supplied(SpriteKey(subject, pose, frame: frame, view: view))
+                ?? supplied(SpriteKey(subject, pose, frame: 0, view: view)) { return found }
+        }
+        return supplied(SpriteKey(subject, pose, frame: frame))
             ?? supplied(SpriteKey(subject, pose, frame: 0))
             ?? supplied(SpriteKey(subject, fallback, frame: frame))
             ?? supplied(SpriteKey(subject, fallback, frame: 0))
@@ -101,10 +107,12 @@ final class SpriteCache {
 
     /// The sprite of a person or building: the source's, else a placeholder.
     func sprite(for kind: EntityKind, subject: SpriteSubject, civilization: Civilization,
-                pose: SpritePose, frame: Int) -> ResolvedSprite {
+                pose: SpritePose, frame: Int, view: SpriteView = .side) -> ResolvedSprite {
         switch kind {
         case .unit(let unit):
-            if let found = suppliedWithFallback(subject, pose: pose, frame: frame, fallback: .standing) { return found }
+            if let found = suppliedWithFallback(subject, pose: pose, frame: frame, fallback: .standing, view: view) {
+                return found
+            }
             let key = PersonKey(kind: unit, civilization: civilization, pose: pose.rawValue, frame: frame % 2)
             if let known = people[key] { return known }
             let drawn = Placeholders.person(unit, civilization: civilization, pose: Placeholders.figurePose(pose), frame: frame)

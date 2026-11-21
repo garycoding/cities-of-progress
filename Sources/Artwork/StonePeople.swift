@@ -90,8 +90,20 @@ struct Hunter: PersonLook {
         return r
     }
 
+    /// The swept black hair, seen from each side.
+    static func hair(_ view: SpriteView) -> String {
+        switch view {
+        case .side: "M-9,-60 C-10,-72 5,-73 9,-65 C3,-68 -2,-64 -4,-58 C-6,-56 -8,-57 -9,-60 Z"
+        case .front: "M-10.4,-59 C-12,-72 11,-73 10.4,-60 C7,-66 2,-66.5 -1,-64 C-4,-66 -8,-64 -10.4,-59 Z"
+        case .frontQuarter: "M-10.5,-56 C-12,-72 8,-74 10.2,-63 C5,-67.5 0,-66 -3,-63 C-6,-63 -8.5,-61 -10.5,-56 Z"
+        case .back: "M-10.8,-54 C-13,-74 13,-74 10.8,-54 C8,-57.5 4,-58.5 0,-58 C-4,-58.5 -8,-57.5 -10.8,-54 Z"
+        case .backQuarter: "M-10.8,-53 C-13,-74 11,-75 10.6,-59 C8,-60 4.5,-59.5 2,-57.5 C-2,-58.5 -7,-56 -10.8,-53 Z"
+        }
+    }
+
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
         d.figure { d in
+            // The far arm in profile; in another view, whichever arm is behind the body.
             d.arm(front: false)
             d.legs()
             d.garment(colour: [P(-12, -46), P(8, -48), P(14, -14), P(-16, -13)],
@@ -101,21 +113,26 @@ struct Hunter: PersonLook {
                 }
                 d.band([P(-11, -33), P(12, -34), P(12, -29), P(-12, -28)])
             }
-            d.svg.path("M-14,-16 l3,4 l3,-4 l3,4 l3,-4 l3,4 l3,-4 l3,4 l3,-4", stroke: .colour(Ink.line), width: 1.3)
+            if d.view == .side {
+                d.svg.path("M-14,-16 l3,4 l3,-4 l3,4 l3,-4 l3,4 l3,-4 l3,4 l3,-4", stroke: .colour(Ink.line), width: 1.3)
+            } else {
+                d.zigzag(from: P(-14.5, -16), to: P(14.5, -16), teeth: 5, depth: 4)
+            }
+            // The axe: seen from another side, it swings in the figure's own plane.
             switch pose {
             case .working:
-                d.axe(at: d.joints.frontHand, degrees: chopAngle(frame) + 4)
-                if frame == 9 || frame == 10 { d.chips(at: P(33, -34)) }
+                d.axe(at: d.hand(front: true), degrees: d.onScreen(chopAngle(frame) + 4))
+                if (frame == 9 || frame == 10) && d.view == .side { d.chips(at: P(33, -34)) }
             case .fighting:
                 // The axe in line with the forearm, its blade leading.
-                d.axe(at: d.joints.frontHand, degrees: d.rig.frontArm.upper + d.rig.frontArm.bend + 8)
-                if frame == 7 { d.swish(around: d.joints.frontShoulder, radius: 27, from: 150, to: 70) }
+                d.axe(at: d.hand(front: true), degrees: d.onScreen(d.rig.frontArm.upper + d.rig.frontArm.bend + 8))
+                if frame == 7 && d.view == .side { d.swish(around: d.joints.frontShoulder, radius: 27, from: 150, to: 70) }
             default:
                 break
             }
             d.arm(front: true)
             d.head(nose: Hunter.nose, hair: { d in
-                d.svg.path("M-9,-60 C-10,-72 5,-73 9,-65 C3,-68 -2,-64 -4,-58 C-6,-56 -8,-57 -9,-60 Z", fill: .colour(Ink.line))
+                d.svg.path(Hunter.hair(d.view), fill: .colour(Ink.line))
             }, brow: { d in
                 d.svg.path("M1,-64.5 q4,-2 7,0", stroke: .colour(Ink.line), width: 1.4)
             })

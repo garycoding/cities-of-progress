@@ -43,6 +43,14 @@ public protocol SpriteSource: Sendable {
     func sprite(_ key: SpriteKey) -> SpriteImage?
 }
 
+/// A source that draws people in the five views (ruled 2026-11-21) for some
+/// subjects. A source that is not one draws the side alone, and `GameSprites`
+/// asks it for nothing else; a key in another view then falls back to the side.
+public protocol ViewedSpriteSource: SpriteSource {
+    /// Whether the source draws this subject in every view.
+    func drawsViews(of subject: SpriteSubject) -> Bool
+}
+
 /// A source with no sprites at all: everything is drawn as a placeholder.
 public struct EmptySpriteSource: SpriteSource {
     public init() {}
