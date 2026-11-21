@@ -51,6 +51,19 @@ extension Simulation {
 
     func isExplored(_ t: GridPoint, by team: Int) -> Bool { inMap(t) && teams[team].explored[tileIndex(t)] }
 
+    /// Whether a player's orders may use the whole map: a person under
+    /// `MapSight.mapShown` or `.everything` builds and works anywhere, all
+    /// being revealed (ruled 2026-11-21); a computer player always explores.
+    func mapRevealed(for p: Int) -> Bool { players[p].isHuman && (sight ?? .explore) != .explore }
+
+    /// Whether a player sees every entity, and may target it: a person under `MapSight.everything`.
+    func seesEverything(_ p: Int) -> Bool { players[p].isHuman && sight == .everything }
+
+    /// Whether a player's orders may use a tile: explored by the player's team, or revealed to the player.
+    func isExplored(_ t: GridPoint, byPlayer p: Int) -> Bool {
+        inMap(t) && (mapRevealed(for: p) || teams[players[p].teamIndex].explored[tileIndex(t)])
+    }
+
     /// What each player owns: anything but a founder, and a founder.
     func ownership() -> (others: [Bool], founders: [Bool]) {
         var others = Array(repeating: false, count: players.count)
