@@ -45,6 +45,22 @@ public enum Placement {
     /// built over an oil field.
     public static func site(for kind: BuildingKind) -> SiteKind? { kind == .oilWell ? .oilField : nil }
 
+    /// Whether a bridge may be built from `a` to `b` as the player sees the map:
+    /// the line of `bridgeWater`, every tile of it explored, and no building on
+    /// its water.
+    public static func canBridge(from a: GridPoint, to b: GridPoint, in view: PlayerView) -> Bool {
+        guard let water = bridgeWater(from: a, to: b, width: view.mapWidth, height: view.mapHeight, terrain: view.terrain)
+        else { return false }
+        let built = Set(view.entities.compactMap { e -> GridPoint? in if case .building = e.kind { e.tile } else { nil } })
+        return ([a, b] + water).allSatisfy { view.visibility(at: $0) != .unexplored } && !water.contains(where: built.contains)
+    }
+
+    /// The end of a bridge dragged from `start` toward `pointer`: the pointer's
+    /// tile, brought onto the straight line along the axis it is nearer.
+    public static func bridgeEnd(from start: GridPoint, toward pointer: GridPoint) -> GridPoint {
+        abs(pointer.x - start.x) >= abs(pointer.y - start.y) ? GridPoint(pointer.x, start.y) : GridPoint(start.x, pointer.y)
+    }
+
     /// The water tiles a bridge from the land tile `a` to the land tile `b`
     /// would cross, in order from `a`, or nil if no bridge may run there: the
     /// line must be straight, both ends on passable ground, every tile between

@@ -141,7 +141,9 @@ public struct SelectionPanel: View {
                     }
                 }
                 if let placing = model.placing {
-                    Text("Placing a \(placing.name.lowercased()): click the map to build; Esc to cancel.")
+                    Text(placing == .bridge
+                         ? "Placing a bridge: drag from one bank to the other; Esc to cancel."
+                         : "Placing a \(placing.name.lowercased()): click the map to build; Esc to cancel.")
                         .font(Typeface.text(10.5, bold: true)).foregroundStyle(Palette.teal)
                         .fixedSize(horizontal: false, vertical: true)
                 }

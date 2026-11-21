@@ -43,6 +43,8 @@ final class EntityNode: SKNode {
     private var ring: SKShapeNode?
     /// A car's kill radius, a glow on the ground (ruled 2026-11-21).
     private(set) var glow: SKShapeNode?
+    /// The car's laser beam whilst it fires: a red line with a bright core.
+    private(set) var beam: SKShapeNode?
     private var health: Bar?
     private var construction: Bar?
 
@@ -91,14 +93,21 @@ final class EntityNode: SKNode {
             let s = Projection.screen(entity.position)
             position = CGPoint(x: s.x, y: s.y)
             zPosition = Projection.depth(entity.position)
+            // A bridge lies flat on the water, beneath whoever crosses it.
+            if entity.kind == .building(.bridge) { zPosition = -4_000 + zPosition / 1_000 }
         }
-        if entity.kind == .unit(.car) { updateGlow(owner: entity.owner, context: context) }
+        if entity.kind == .unit(.car) {
+            updateGlow(owner: entity.owner, context: context)
+            updateBeam(entity: entity, context: context)
+        }
 
         let isBuilding: Bool
         if case .building = entity.kind { isBuilding = true } else { isBuilding = false }
         let summary = context.players[entity.owner]
+        var pose = SpriteKey.pose(for: entity.activity, isBuilding: isBuilding)
+        if entity.kind == .building(.bridge) { pose = (entity.bridgeRun ?? .alongX).pose(complete: pose == .complete) }
         let newLook = Look(kind: entity.kind, civilization: summary?.civilization ?? .sumer, age: summary?.age ?? .stone,
-                           pose: SpriteKey.pose(for: entity.activity, isBuilding: isBuilding), frame: context.frame)
+                           pose: pose, frame: context.frame)
         if newLook != look {
             let first = look == nil
             look = newLook
@@ -157,6 +166,43 @@ final class EntityNode: SKNode {
     /// The glow on the ground out to a car's kill radius, in its owner's team
     /// colour, fading outward: drawn above the ground and beneath every person
     /// and building, wherever the car stands.
+    /// The laser from the car to the building it burns (ruled 2026-11-21), drawn
+    /// above everything on the ground and flickering with the frame of animation.
+    private func updateBeam(entity: EntityView, context: DrawContext) {
+        guard let target = entity.laserTarget else {
+            beam?.removeFromParent()
+            beam = nil
+            return
+        }
+        let node: SKShapeNode
+        if let existing = beam { node = existing } else {
+            node = SKShapeNode()
+            node.lineCap = .round
+            node.strokeColor = NSColor(srgbRed: 0.95, green: 0.1, blue: 0.12, alpha: 0.75)
+            node.glowWidth = 3
+            let core = SKShapeNode()
+            core.name = "core"
+            core.lineCap = .round
+            core.strokeColor = NSColor(srgbRed: 1, green: 0.85, blue: 0.8, alpha: 1)
+            core.lineWidth = 1.5
+            node.addChild(core)
+            addChild(node)
+            beam = node
+        }
+        let from = Projection.screen(entity.position), to = Projection.screen(target)
+        let path = CGMutablePath()
+        // From the car's roof, a little above its standing point, to the building's middle.
+        path.move(to: CGPoint(x: 0, y: 14))
+        path.addLine(to: CGPoint(x: to.x - from.x, y: to.y - from.y + 12))
+        node.path = path
+        (node.childNode(withName: "core") as? SKShapeNode)?.path = path
+        let flicker = [1.0, 0.7, 0.9, 0.6][context.frame % 4]
+        node.lineWidth = 3 + 2 * flicker
+        node.alpha = flicker
+        // Above every entity and below the placement outline (50 000).
+        node.zPosition = 40_000 - zPosition
+    }
+
     private func updateGlow(owner: PlayerID, context: DrawContext) {
         guard let radius = context.catalogue.car?.killRadius else { return }
         let node: SKShapeNode
