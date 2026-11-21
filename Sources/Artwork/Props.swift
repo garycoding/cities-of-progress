@@ -99,7 +99,9 @@ extension Drawing {
 
     /// A pole held at `hand`, standing upright with a pennant in the team's colour
     /// streaming back from its top; `wave` moves the cloth through its ripple.
-    mutating func banner(at hand: P, foot: Double, top: Double, wave: Double) {
+    /// `reach` is how far the cloth streams toward the screen's left as a share
+    /// of its length (seen from another side, less; negative, to the right).
+    mutating func banner(at hand: P, foot: Double, top: Double, wave: Double, reach: Double = 1) {
         let x = hand.x
         svg.line([P(x, foot), P(x, top)], stroke: .colour(Ink.handle), width: 2.4)
         // The pennant: a swallowtail whose free edge ripples.
@@ -107,21 +109,21 @@ extension Drawing {
         let t = top + 1.5
         var d = PathData()
         d.move(P(x, t))
-        d.quad(P(x - 8, t - 1.5 + w(0.5)), P(x - 17, t + 1 + w(1)))
-        d.line(P(x - 12.5, t + 5.5 + w(0.8)))
-        d.line(P(x - 17, t + 10 + w(1)))
-        d.quad(P(x - 8, t + 12 + w(0.5)), P(x, t + 11))
+        d.quad(P(x - 8 * reach, t - 1.5 + w(0.5)), P(x - 17 * reach, t + 1 + w(1)))
+        d.line(P(x - 12.5 * reach, t + 5.5 + w(0.8)))
+        d.line(P(x - 17 * reach, t + 10 + w(1)))
+        d.quad(P(x - 8 * reach, t + 12 + w(0.5)), P(x, t + 11))
         d.close()
         var shifted = PathData()
         shifted.move(P(x - 0.8, t + 0.8))
-        shifted.quad(P(x - 8.8, t - 0.7 + w(0.5)), P(x - 17.8, t + 1.8 + w(1)))
-        shifted.line(P(x - 13.3, t + 6.3 + w(0.8)))
-        shifted.line(P(x - 17.8, t + 10.8 + w(1)))
-        shifted.quad(P(x - 8.8, t + 12.8 + w(0.5)), P(x - 0.8, t + 11.8))
+        shifted.quad(P(x - 8 * reach - 0.8, t - 0.7 + w(0.5)), P(x - 17 * reach - 0.8, t + 1.8 + w(1)))
+        shifted.line(P(x - 12.5 * reach - 0.8, t + 6.3 + w(0.8)))
+        shifted.line(P(x - 17 * reach - 0.8, t + 10.8 + w(1)))
+        shifted.quad(P(x - 8 * reach - 0.8, t + 12.8 + w(0.5)), P(x - 0.8, t + 11.8))
         shifted.close()
         svg.path(shifted, fill: .team)
         // A sun on the cloth, in the light colour.
-        svg.circle(P(x - 6, t + 5.6 + w(0.35)), 2, fill: .colour(Ink.light))
+        svg.circle(P(x - 6 * reach, t + 5.6 + w(0.35)), 2 * min(1, abs(reach) + 0.25), fill: .colour(Ink.light))
         svg.path(d, stroke: .colour(Ink.line), width: 1.3)
         // The finial.
         svg.path("M\(num(x - 1.6)),\(num(top + 0.4)) L\(num(x)),\(num(top - 3.4)) L\(num(x + 1.6)),\(num(top + 0.4)) Z",

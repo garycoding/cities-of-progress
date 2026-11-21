@@ -789,11 +789,16 @@ struct Slinger: PersonLook {
             let flight = Double(max(frame - 8, 0))
             let stone = d.project(24 + flight * 9, -50 + flight * 1.5, Drawing.shoulderSpread)
             let stoneBehind = d.view != .side && stone.depth < 0
-            /// The sling's cord as long as it shows in this view, along `degrees` in the figure's plane.
+            // Seen from the front or behind, the sling swings a little out of his
+            // plane, so that its whirl still shows.
+            let squeeze = max(abs(cos(d.yaw * .pi / 180)), 0.35)
+            /// The sling's cord as it shows in this view, along `degrees` in the figure's plane.
             func sling(_ d: inout Drawing, degrees: Double, length: Double, loaded: Bool = true) {
                 if d.view == .side { d.sling(at: at, degrees: degrees, length: length, loaded: loaded); return }
-                let u = P.direction(degrees), shown = (pow(u.x * cos(d.yaw * .pi / 180), 2) + u.y * u.y).squareRoot()
-                d.sling(at: at, degrees: d.onScreen(degrees), length: length * max(shown, 0.15), loaded: loaded)
+                let u = P.direction(degrees), shown = P(u.x * squeeze, u.y)
+                let onScreen = atan2(shown.x, shown.y) * 180 / .pi
+                d.sling(at: at, degrees: onScreen, length: length * (shown.x * shown.x + shown.y * shown.y).squareRoot(),
+                        loaded: loaded)
             }
             func slingAndStone(_ d: inout Drawing) {
                 switch pose {
@@ -805,8 +810,8 @@ struct Slinger: PersonLook {
                         sling(&d, degrees: 180 - around, length: 6)
                         if d.view == .side {
                             d.swish(around: at, radius: 6.8, from: 180 - around + 140, to: 180 - around + 20)
-                        } else if d.view == .frontQuarter || d.view == .backQuarter {
-                            d.whirl(around: at, radius: 6.8, from: 180 - around + 140, to: 180 - around + 20)
+                        } else {
+                            d.whirl(around: at, radius: 6.8, from: 180 - around + 140, to: 180 - around + 20, squeeze: squeeze)
                         }
                     } else {
                         sling(&d, degrees: mix(70, 20, Double(frame - 8) / 3), length: 9, loaded: false)
@@ -936,58 +941,166 @@ struct Founder: PersonLook {
         }
     }
 
+    /// The long dark hair, seen from each side.
+    static func hair(_ view: SpriteView) -> String {
+        switch view {
+        case .side:
+            "M-9.8,-60.4 C-11,-71 4,-73 9.2,-65.4 C3.4,-67.6 -1.6,-65 -3.6,-61.4 C-5.6,-58 -6.4,-53 -5.4,-48 "
+                + "L-11.6,-48.4 C-12.8,-52 -11.8,-57 -9.8,-60.4 Z"
+        case .front:
+            "M-11.4,-49.6 C-13.4,-60 -12.6,-71.4 0,-71 C12.6,-71.4 13.4,-60 11.4,-49.6 L8.8,-49.6 C9.8,-55.6 9.4,-61.6 6.4,-64.6 "
+                + "C3,-66.4 -3,-66.4 -6.4,-64.6 C-9.4,-61.6 -9.8,-55.6 -8.8,-49.6 Z"
+        case .frontQuarter:
+            "M-10.6,-58.6 C-12,-72 7,-74.4 10.2,-63.4 C5,-67.6 0,-66.4 -3,-63.4 C-4.6,-59.6 -5,-54 -4.4,-48 "
+                + "L-12.4,-48.4 C-13.4,-52 -12.6,-55.6 -10.6,-58.6 Z"
+        case .back:
+            "M-11.6,-47.6 C-13.6,-60 -12.6,-71.6 0,-71.2 C12.6,-71.6 13.6,-60 11.6,-47.6 C6,-46.4 -6,-46.4 -11.6,-47.6 Z"
+        case .backQuarter:
+            "M-10.8,-53 C-13,-74 11.4,-75.4 11.8,-58 C12.4,-54 12.2,-50.6 11.4,-47.6 C5,-46.6 -1,-47.4 -4.6,-49 "
+                + "C-6.6,-51.6 -8.6,-52.6 -10.8,-53 Z"
+        }
+    }
+
+    /// The short dark beard along the jaw, where the view shows it.
+    static func beard(_ view: SpriteView) -> String? {
+        switch view {
+        case .side: "M-2.4,-50.8 C1.4,-47.8 7,-47.4 10.2,-50.6 C9.8,-47 7.6,-44.4 5,-43.4 C3,-44.6 -0.2,-46.8 -2.4,-50.8 Z"
+        case .front: "M-8.6,-53.6 C-7.6,-47.4 -3.4,-43.4 0,-43.2 C3.4,-43.4 7.6,-47.4 8.6,-53.6 C6,-50.6 3,-49 0,-49 "
+            + "C-3,-49 -6,-50.6 -8.6,-53.6 Z"
+        case .frontQuarter: "M-3.6,-53.4 C-2.6,-47.6 1.6,-43.6 5,-43.4 C8.6,-43.8 11.2,-47.6 11.4,-53.6 C10,-50.6 7.6,-49 5,-49 "
+            + "C1.8,-49 -1.4,-50.6 -3.6,-53.4 Z"
+        case .backQuarter: "M-10.6,-53.4 C-11.4,-49 -9.6,-45.6 -7.4,-44.6 C-7.4,-47.4 -6.8,-49.8 -5.6,-51.4 Z"
+        case .back: nil
+        }
+    }
+
+    /// The band of the headdress across the brow, seen from each side.
+    static func headband(_ view: SpriteView) -> String {
+        switch view {
+        case .side: "M-11.2,-63 q10,-6.4 21,-4.2"
+        case .front: "M-11.4,-63.4 Q0,-68.6 11.4,-63.4"
+        case .frontQuarter: "M-11.4,-61.8 Q1,-68.2 10.8,-65.8"
+        case .back: "M-11.4,-63 Q0,-67.6 11.4,-63"
+        case .backQuarter: "M-10.8,-65.8 Q-1,-68.2 11.4,-61.8"
+        }
+    }
+
+    /// One antler: from `base` curving through `bend` to `tip`, with two prongs
+    /// along it (`prongs`, the lower first) and a hook at the tip.
+    static func antler(_ d: inout Drawing, base: P, bend: P, tip: P, prongs: (P, P), hook: P) {
+        func along(_ t: Double) -> P { base * ((1 - t) * (1 - t)) + bend * (2 * (1 - t) * t) + tip * (t * t) }
+        var antler = PathData()
+        antler.move(base); antler.quad(bend, tip)
+        for (t, prong) in [(0.38, prongs.0), (0.68, prongs.1)] {
+            antler.move(along(t)); antler.line(along(t) + prong)
+        }
+        antler.move(tip); antler.line(tip + hook)
+        d.svg.path(antler, stroke: .colour(Ink.line), width: 3.6)
+        d.svg.path(antler, stroke: .colour(Ink.light), width: 1.8)
+    }
+
     func draw(_ d: inout Drawing, _ pose: SpritePose, _ frame: Int) {
         let sway = d.rig.sway
         d.figure { d in
-            // The cloak behind, its hem swinging back as he walks.
-            let hem = P(-21 - abs(sway) * 2.5, -9)
-            d.svg.polygon([d.up(P(-9, -47.6)), d.up(P(-2, -47)), P(-3, -12), hem + P(1, 1)], fill: .colour(Ink.hide))
-            d.svg.polygon([d.up(P(-9.6, -45.8)), d.up(P(-6.6, -46.4)), hem + P(4.6, 0.4), hem + P(0.6, -0.4)], fill: .team)
-            d.svg.polygon([d.up(P(-7.4, -47.6)), d.up(P(-1.4, -47)), P(-2.4, -12.4), hem], fill: .none,
-                          stroke: .colour(Ink.line), width: 1.6)
+            // The cloak, hung from both shoulders down his back: behind him
+            // from the front, over him from behind.
+            func cloak(_ d: inout Drawing) {
+                if d.view == .side {
+                    // Its hem swinging back as he walks.
+                    let hem = P(-21 - abs(sway) * 2.5, -9)
+                    d.svg.polygon([d.up(P(-9, -47.6)), d.up(P(-2, -47)), P(-3, -12), hem + P(1, 1)], fill: .colour(Ink.hide))
+                    d.svg.polygon([d.up(P(-9.6, -45.8)), d.up(P(-6.6, -46.4)), hem + P(4.6, 0.4), hem + P(0.6, -0.4)], fill: .team)
+                    d.svg.polygon([d.up(P(-7.4, -47.6)), d.up(P(-1.4, -47)), P(-2.4, -12.4), hem], fill: .none,
+                                  stroke: .colour(Ink.line), width: 1.6)
+                    return
+                }
+                let back = -8 - abs(sway) * 2.5
+                func at(_ x: Double, _ y: Double, _ z: Double) -> P {
+                    let p = d.project(x, y, z).point
+                    return y < -30 ? d.up(p) : p
+                }
+                let outline = [at(-5, -47.4, -8.4), at(-5, -47.4, 8.4), at(back, -9, 15), at(back, -9, -15)]
+                d.svg.polygon(outline.map { $0 + P(-0.6, 0.6) }, fill: .colour(Ink.hide))
+                // The trim of the team's colour down both edges.
+                for side in [-1.0, 1.0] {
+                    d.svg.polygon([at(-5, -46.6, 8.4 * side), at(-5, -46.6, 5.6 * side), at(back, -9.4, 11.4 * side),
+                                   at(back, -9.4, 15 * side)], fill: .team)
+                }
+                d.svg.polygon(outline, fill: .none, stroke: .colour(Ink.line), width: 1.6)
+            }
+            let cloakOver = d.view == .back || d.view == .backQuarter
+            if !cloakOver { cloak(&d) }
+            let hand = d.hand(front: true)
+            let held = d.heldBehind(front: true)
+            func banner(_ d: inout Drawing) {
+                let wave = pose == .walking ? d.phase * 2 : d.phase
+                // The cloth streams back; seen from the front or behind, outward from his head.
+                let reach: Double
+                switch d.view {
+                case .side: reach = 1
+                case .frontQuarter, .backQuarter: reach = 0.75
+                case .front, .back: reach = hand.x < 0 ? 0.6 : -0.6
+                }
+                d.banner(at: hand, foot: hand.y + 26, top: -86, wave: wave, reach: reach)
+            }
             d.arm(front: false)
+            if held { banner(&d) }
             d.legs()
             d.garment(colour: [P(-11.6, -46), P(8, -48), P(13.4, -15), P(-14.6, -14)],
                       outline: [P(-8, -47), P(8, -47), P(12.4, -17), P(-13, -17)], fill: .colour(Ink.light)) { d in
                 // Chevrons down the front.
-                for y in [-40.0, -33.0, -26.0] {
-                    d.svg.path("M\(num(-1)),\(num(d.up(P(0, y)).y)) l3.4,2.6 l3.4,-2.6", stroke: .colour(Ink.moss), width: 1.6)
+                let from: Double?
+                switch d.view {
+                case .side: from = -1
+                case .front: from = -3.4
+                case .frontQuarter: from = -1.4
+                case .back, .backQuarter: from = nil
+                }
+                if let from {
+                    for y in [-40.0, -33.0, -26.0] {
+                        d.svg.path("M\(num(from)),\(num(d.up(P(0, y)).y)) l3.4,2.6 l3.4,-2.6", stroke: .colour(Ink.moss), width: 1.6)
+                    }
                 }
             }
             d.svg.line([d.up(P(-11, -30.4)), d.up(P(10.6, -31))], stroke: .colour(Ink.darkHide), width: 2.2)
             d.zigzag(from: P(-13, -17), to: P(12.4, -17), teeth: 4, depth: 3)
+            if cloakOver { cloak(&d) }
             // The banner, carried upright.
-            let hand = d.joints.frontHand
-            let wave = pose == .walking ? d.phase * 2 : d.phase
-            d.banner(at: hand, foot: hand.y + 26, top: -86, wave: wave)
+            if !held { banner(&d) }
             d.arm(front: true)
             d.head(nose: Founder.nose, behind: { d in
                 // A pair of antlers rising from the crown, the far one behind.
-                for (base, reach) in [(P(-5.6, -64.8), 9.0), (P(-1.6, -66.2), 7.0)] {
-                    let tip = base + P(-reach, -20.5), bend = base + P(2.4, -12.4)
-                    func along(_ t: Double) -> P { base * ((1 - t) * (1 - t)) + bend * (2 * (1 - t) * t) + tip * (t * t) }
-                    var antler = PathData()
-                    antler.move(base); antler.quad(bend, tip)
-                    for (t, prong) in [(0.38, P(4.6, -4.6)), (0.68, P(4.2, -5.2))] {
-                        antler.move(along(t)); antler.line(along(t) + prong)
+                if d.view == .side {
+                    for (base, reach) in [(P(-5.6, -64.8), 9.0), (P(-1.6, -66.2), 7.0)] {
+                        let tip = base + P(-reach, -20.5), bend = base + P(2.4, -12.4)
+                        Founder.antler(&d, base: base, bend: bend, tip: tip, prongs: (P(4.6, -4.6), P(4.2, -5.2)), hook: P(-2.6, 0.6))
                     }
-                    antler.move(tip); antler.line(tip + P(-2.6, 0.6))
-                    d.svg.path(antler, stroke: .colour(Ink.line), width: 3.6)
-                    d.svg.path(antler, stroke: .colour(Ink.light), width: 1.8)
+                    return
                 }
+                // Seen from another side, one on each side of the crown, turned with the head.
+                var antlers: [(depth: Double, draw: (inout Drawing) -> Void)] = []
+                for side in [-1.0, 1.0] {
+                    let base = d.project(-3.6, -65.6, 4.6 * side), bend = d.project(-1.2, -77.8, 7.4 * side)
+                    let tip = d.project(-9.6, -86, 12.6 * side)
+                    let prongs = (d.project(4.6, -4.6, -2.2 * side).point, d.project(4.2, -5.2, -2 * side).point)
+                    let hook = d.project(-2.6, 0.6, 1.4 * side).point
+                    antlers.append((base.depth, { d in
+                        Founder.antler(&d, base: base.point, bend: bend.point, tip: tip.point, prongs: prongs, hook: hook)
+                    }))
+                }
+                for antler in antlers.sorted(by: { $0.depth < $1.depth }) { antler.draw(&d) }
             }, hair: { d in
                 // Long dark hair to the shoulders.
-                d.svg.path("M-9.8,-60.4 C-11,-71 4,-73 9.2,-65.4 C3.4,-67.6 -1.6,-65 -3.6,-61.4 C-5.6,-58 -6.4,-53 -5.4,-48 "
-                           + "L-11.6,-48.4 C-12.8,-52 -11.8,-57 -9.8,-60.4 Z", fill: .colour(Ink.line))
+                d.svg.path(Founder.hair(d.view), fill: .colour(Ink.line))
             }, features: { d in
                 // A short dark beard along the jaw.
-                d.svg.path("M-2.4,-50.8 C1.4,-47.8 7,-47.4 10.2,-50.6 C9.8,-47 7.6,-44.4 5,-43.4 C3,-44.6 -0.2,-46.8 -2.4,-50.8 Z",
-                           fill: .colour(Ink.line))
+                if let beard = Founder.beard(d.view) { d.svg.path(beard, fill: .colour(Ink.line)) }
             }, brow: { d in
                 d.svg.path("M1,-64.6 l7.4,-0.6", stroke: .colour(Ink.line), width: 1.5)
             }, over: { d in
-                d.svg.path("M-11.2,-63 q10,-6.4 21,-4.2", stroke: .colour(Ink.line), width: 3.2)
-                d.svg.path("M-11.2,-63 q10,-6.4 21,-4.2", stroke: .colour(Ink.hide), width: 1.6)
+                let band = Founder.headband(d.view)
+                d.svg.path(band, stroke: .colour(Ink.line), width: 3.2)
+                d.svg.path(band, stroke: .colour(Ink.hide), width: 1.6)
             })
         }
     }
@@ -1018,9 +1131,9 @@ extension Drawing {
     }
 
     /// A swung weapon's arc around `centre` in the figure's own plane, as it
-    /// shows in this view (the profile's `swish`, foreshortened).
-    mutating func whirl(around centre: P, radius: Double, from: Double, to: Double) {
-        let squeeze = cos(yaw * .pi / 180)
+    /// shows in this view (the profile's `swish`, foreshortened);
+    /// `squeeze` is the share of its width that shows.
+    mutating func whirl(around centre: P, radius: Double, from: Double, to: Double, squeeze: Double) {
         func at(_ degrees: Double, _ r: Double) -> P {
             let u = P.direction(degrees)
             return centre + P(u.x * squeeze, u.y) * r

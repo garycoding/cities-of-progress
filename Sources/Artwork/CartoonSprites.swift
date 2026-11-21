@@ -43,8 +43,9 @@ public final class CartoonSprites: ViewedSpriteSource {
         poses.flatMap { pose in (0..<Self.framesPerPose).map { SpriteKey(pose.subject, pose.pose, frame: $0) } }
     }
 
-    /// The kinds drawn in all five views so far (ruled 2026-11-21): the worker, as the exemplar.
-    static let viewed: Set<UnitKind> = [.worker, .scholar, .engineer, .clubman, .slinger]
+    /// The kinds drawn in all five views (ruled 2026-11-21): every Stone person,
+    /// the worker first as the exemplar.
+    static let viewed: Set<UnitKind> = [.worker, .scholar, .engineer, .clubman, .slinger, .founder]
 
     public func drawsViews(of subject: SpriteSubject) -> Bool {
         if case .unit(let kind, .stone) = subject { return Self.viewed.contains(kind) }
