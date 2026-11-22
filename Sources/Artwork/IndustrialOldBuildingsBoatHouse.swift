@@ -31,6 +31,12 @@ import Foundation
 // landward gable, with the winch-house's door and a window over it, and the
 // same long wall as before, now on the right, its owner's band under the
 // eaves. The drawing mirrors the two views for the other edges.
+//
+// A short dock runs from the middle of the water edge out over the water,
+// beyond the footprint (ruled 2026-11-22, scenery only): a timber pier on
+// cast-iron piles, a ring on the water at the foot of each, its deck at the
+// yard's height, with bollards and a gas lamp at its end. Under construction
+// the piles stand with the decking laid part way out.
 
 /// Which way the boat house stands on its footprint: in the side view its
 /// water side faces +x, the screen's lower right; in the back view it is
@@ -70,6 +76,10 @@ private enum Slip {
     static let gauge = 0.1
     /// Where the trawler's stem stands, along x.
     static let stem = 0.86
+    /// The dock beyond the water edge: from the footprint's edge out to
+    /// `dockEnd` along x, from `dock0` to `dock1` across, beside the slipway;
+    /// its deck from `deck0` up to the yard's height.
+    static let dockEnd = 2.08, dock0 = 0.0, dock1 = 0.4, deck0 = 0.9
 }
 
 /// The shed in the back view: the side view's shed turned a quarter round, its
@@ -87,7 +97,10 @@ private enum Behind {
 extension IndustrialOldBuildingsPainter {
     /// The boat house, complete or under construction, turned so that its water side faces +x (`side`) or -y (`back`).
     mutating func boatHouse(complete: Bool, turn: IndustrialBoatHouseTurn) {
+        // The dock lies beyond the footprint's far edge in the back view, so it is drawn before the yard there, and after it in the side view.
+        if turn == .back { dock(complete: complete, turn: turn) }
         cobbles(1, height: Slip.yard)
+        if turn == .side { dock(complete: complete, turn: turn) }
         switch (complete, turn) {
         case (true, .side): boatShed()
         case (false, .side): boatShedRising()
@@ -514,6 +527,72 @@ extension IndustrialOldBuildingsPainter {
         // Timbers laid along y on the yard in front of the scaffold.
         for (row, offsets) in [[0.0, 0.09, 0.18], [0.045, 0.135]].enumerated() {
             for dx in offsets { beam(0.62 + dx, 0.1, 0.62 + dx, 0.7, on: h0 + Double(row) * 2.6, size: 2.6) }
+        }
+    }
+}
+
+extension IndustrialOldBuildingsPainter {
+    // MARK: The dock
+
+    /// The dock, about the side view's footprint and turned by `turn`: a
+    /// timber pier on cast-iron piles out over the water from the middle of the
+    /// water edge, each pile ringed on the water; complete, its deck planked to
+    /// the end with bollards and a gas lamp there; under construction, the
+    /// piles standing and the decking laid part way out.
+    private mutating func dock(complete: Bool, turn: IndustrialBoatHouseTurn) {
+        typealias I = IndustrialOldBuildingsInk
+        let (x0, x1, y0, y1) = (1.0, Slip.dockEnd, Slip.dock0, Slip.dock1)
+        let (h0, h1) = (Slip.deck0, Slip.yard)
+        /// The depth of a place on the screen once turned: what is drawn later stands nearer.
+        func depth(_ x: Double, _ y: Double) -> Double {
+            let p = turn.place(x, y)
+            return p.x + p.y
+        }
+        // The piles in pairs across the pier, the rings on the water at their feet, then the piles, the farthest first.
+        var piles: [(Double, Double)] = []
+        for x in stride(from: x0 + 0.1, through: x1 - 0.05, by: 0.3) { piles += [(x, y0 + 0.04), (x, y1 - 0.04)] }
+        piles.append(contentsOf: [(x1 - 0.04, y0 + 0.04), (x1 - 0.04, y1 - 0.04)])
+        piles.sort { depth($0.0, $0.1) < depth($1.0, $1.1) }
+        for (x, y) in piles {
+            let foot = at(turn, x, y, 0)
+            svg.ellipse(foot + P(0, 0.2), 3.4, 1.4, fill: .none, stroke: .colour(I.glassLight), width: 0.6, opacity: 0.8)
+            svg.ellipse(foot + P(0, 0.1), 2.2, 0.9, fill: .none, stroke: .colour(I.light), width: 0.7, opacity: 0.9)
+        }
+        // The deck: whole when complete, part way out when building, the piles beyond it standing bare and uncut.
+        let reach = complete ? x1 : x0 + (x1 - x0) * 0.55
+        for (x, y) in piles {
+            let bare = x > reach
+            let foot = at(turn, x, y, 0), head = at(turn, x, y, bare ? h1 + 4 : h0)
+            svg.line([foot, head - P(0, 0.4)], stroke: .colour(I.line), width: 2.6)
+            svg.line([foot, head - P(0, 0.4)], stroke: .colour(I.iron), width: 1.5)
+            svg.line([foot + P(-0.3, 0), head + P(-0.3, -0.4)], stroke: .colour(I.ironLight), width: 0.5)
+            if bare { svg.ellipse(head - P(0, 0.4), 1.3, 0.6, fill: .colour(I.ironLight), stroke: .colour(I.line), width: 0.4) }
+        }
+        let deck = turn.rect(x0, y0, reach, y1)
+        block(deck.x0, deck.y0, deck.x1, deck.y1, h0, h1, top: .colour(I.timberLight), left: .colour(I.timber), right: .colour(I.timberDark),
+              width: 0.8)
+        // The planks across the deck, and the gaps between them.
+        var x = x0 + 0.07
+        while x < reach - 0.03 {
+            line([at(turn, x, y0, h1), at(turn, x, y1, h1)], width: 0.35, opacity: 0.55)
+            x += 0.07
+        }
+        if complete {
+            // Bollards along the edges and at the end, and the lamp at the end, the farthest first.
+            enum Fitting { case bollard, lamp }
+            var fittings: [(Double, Double, Fitting)] = [(x0 + 0.3, y0 + 0.07, .bollard), (x1 - 0.1, y0 + 0.07, .bollard),
+                                                         (x1 - 0.1, y1 - 0.07, .bollard), (x1 - 0.42, y1 - 0.07, .lamp)]
+            fittings.sort { depth($0.0, $0.1) < depth($1.0, $1.1) }
+            for (x, y, fitting) in fittings {
+                switch fitting {
+                case .bollard: bollard(at: at(turn, x, y, h1))
+                case .lamp: gasLamp(at: at(turn, x, y, h1), height: 18)
+                }
+            }
+        } else {
+            // A plank or two waiting at the deck's end, and the next pair of piles bare beyond it.
+            let a = turn.rect(reach - 0.2, y0 + 0.1, reach - 0.04, y1 - 0.1)
+            crate(a.x0, a.y0, a.x1, a.y1, from: h1, height: 1.6)
         }
     }
 }

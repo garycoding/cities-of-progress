@@ -117,7 +117,9 @@ import Testing
 
     /// The anchor is the centre of the footprint's diamond: the diamond placed by
     /// the anchor is what the drawing covers, reaching its left, bottom and right
-    /// corners and overhanging none of them.
+    /// corners and overhanging none of them. The boat house's dock reaches
+    /// beyond the diamond toward the water, to the right and, in the side view,
+    /// below; there the drawing reaches the corner at least.
     @Test func theAnchorIsTheCentreOfTheFootprintsDiamond() throws {
         for key in Self.drawn {
             guard case .building(let kind, _) = key.subject else { continue }
@@ -133,23 +135,34 @@ import Testing
                     "\(key) reaches the edge of its picture \(drawn) \(pixels.width)x\(pixels.height)")
             let tolerance = 5.0
             #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
-            #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
-            #expect(abs(Double(drawn.maxY + 1) - (centreY + halfHeight)) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+            let right = Double(drawn.maxX + 1) - (centreX + halfWidth), bottom = Double(drawn.maxY + 1) - (centreY + halfHeight)
+            if kind == .boatHouse {
+                #expect(right >= -tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+                if key.view == .side {
+                    #expect(bottom >= -tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+                } else {
+                    #expect(abs(bottom) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+                }
+                continue
+            }
+            #expect(abs(right) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+            #expect(abs(bottom) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
         }
     }
 
     /// Each building keeps the canvas, and so the size and the anchor, of its
-    /// Alchemy look; the boat house keeps the canvas of its Stone look.
+    /// Alchemy look; the boat house has the canvas every age shares for it, the
+    /// Stone look's grown 16 points to the right and 10 down for the dock
+    /// (ruled 2026-11-22), in both its views.
     @Test func eachBuildingKeepsItsAlchemyCanvas() throws {
         let alchemyOld = AlchemyOldBuildingSprites(), alchemyNew = AlchemyNewBuildingSprites()
-        let stone = StoneBuildingSprites()
-        for key in Self.batch {
+        let shared = Canvas(minX: -68, minY: -108, width: 152, height: 154, pixelsPerUnit: 2)
+        for key in Self.drawn {
             guard case .building(let kind, _) = key.subject else { continue }
             let industrial = try #require(Self.source.sprite(key))
             if kind == .boatHouse {
-                let first = try #require(stone.sprite(SpriteKey(.building(kind, .stone), key.pose)))
-                #expect(industrial.base.width == first.base.width && industrial.base.height == first.base.height, "\(key)")
-                #expect(industrial.anchor == first.anchor, "\(key)")
+                #expect(industrial.base.width == shared.pixelWidth && industrial.base.height == shared.pixelHeight, "\(key)")
+                #expect(industrial.anchor == shared.anchor, "\(key)")
                 continue
             }
             let alchemyKey = SpriteKey(.building(kind, .alchemy), key.pose)

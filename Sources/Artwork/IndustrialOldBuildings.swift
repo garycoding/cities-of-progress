@@ -71,8 +71,10 @@ enum IndustrialOldBuildingsArt {
         return late.contains(kind) ? AlchemyNewBuildingsArt.canvas(kind) : AlchemyOldBuildingsArt.canvas(kind)
     }
 
-    /// The boat house's canvas, the Stone age's (`StoneBuildingsPiece.canvas`).
-    static let boatHouseCanvas = Canvas(minX: -68, minY: -108, width: 136, height: 144, pixelsPerUnit: 2)
+    /// The boat house's canvas, the Stone age's (`StoneBuildingsPiece.canvas`),
+    /// grown 16 points to the right and 10 down for the dock beyond the
+    /// footprint (ruled 2026-11-22), the same in every age.
+    static let boatHouseCanvas = Canvas(minX: -68, minY: -108, width: 152, height: 154, pixelsPerUnit: 2)
 
     /// A building drawn at `pixelsPerUnit` (two for the game) in `view`: its
     /// picture and its mask, grained alike. Only the boat house has a view
