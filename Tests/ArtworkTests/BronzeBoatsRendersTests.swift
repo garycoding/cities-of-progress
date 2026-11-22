@@ -67,7 +67,7 @@ struct BronzeBoatsRenders {
     /// beside its side view, and beneath each the four ways the game draws it
     /// at game size: the side, the side mirrored, the back, and the back mirrored.
     @Test func boatHouseBack() throws {
-        let width = 2000, height = 1020
+        let width = 2240, height = 1020
         let context = Raster.bitmap(width: width, height: height)!
         context.draw(Preview.ground(width: width, height: height, tile: 256), in: CGRect(x: 0, y: 0, width: width, height: height))
         let source = GameSprites()
@@ -81,15 +81,15 @@ struct BronzeBoatsRenders {
                     svg = painter.svg
                 })
                 Preview.place(Preview.tinted(base: drawn.base, mask: drawn.mask, colour: colour), anchor: large.anchor,
-                              at: CGPoint(x: 230 + Double(column) * 440, y: y), in: context)
+                              at: CGPoint(x: 230 + Double(column) * 480, y: y), in: context)
                 Preview.label("\(back ? "back" : "side"), \(complete ? "complete" : "under construction")", in: context,
-                              at: CGPoint(x: 130 + Double(column) * 440, y: y - 150), size: 20)
+                              at: CGPoint(x: 130 + Double(column) * 480, y: y - 150), size: 20)
             }
             for (i, edge) in [FootprintEdge.plusX, .plusY, .minusY, .minusX].enumerated() {
                 let (view, mirrored) = edge.boatHouseView
                 let key = SpriteKey(.building(.boatHouse, .bronze), complete ? .complete : .underConstruction, view: view)
                 let sprite = try #require(source.sprite(key))
-                let at = CGPoint(x: 1010 + Double(i) * 280, y: y + 40)
+                let at = CGPoint(x: 1110 + Double(i) * 300, y: y + 40)
                 Self.place(Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour), anchor: sprite.anchor, at: at,
                            mirrored: mirrored, in: context)
                 Preview.label("\(view.rawValue)\(mirrored ? " mirrored" : ""): \(edge)", in: context, at: CGPoint(x: at.x - 80, y: y - 110),

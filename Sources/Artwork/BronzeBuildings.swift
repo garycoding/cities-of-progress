@@ -60,8 +60,13 @@ enum BronzeBuildingsArt {
         let halfWidth = Double(footprint.x + footprint.y) * 16, halfHeight = Double(footprint.x + footprint.y) * 8
         let margin = 4.0
         let top = Self.height(kind)
-        return Canvas(minX: -(halfWidth + margin), minY: -top, width: 2 * (halfWidth + margin),
-                      height: top + halfHeight + margin, pixelsPerUnit: 2)
+        let canvas = Canvas(minX: -(halfWidth + margin), minY: -top, width: 2 * (halfWidth + margin),
+                            height: top + halfHeight + margin, pixelsPerUnit: 2)
+        // The boat house's dock reaches out over the water beyond its footprint
+        // (ruled 2026-11-22): its canvas grows 16 points to the right and 10
+        // down, its top and left unchanged, in every age that inherits it.
+        guard kind == .boatHouse else { return canvas }
+        return Canvas(minX: canvas.minX, minY: canvas.minY, width: canvas.width + 16, height: canvas.height + 10, pixelsPerUnit: 2)
     }
 
     /// How far above the footprint's centre a building's drawing may reach, in points.

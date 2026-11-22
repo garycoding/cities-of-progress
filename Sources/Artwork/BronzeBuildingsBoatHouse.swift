@@ -13,11 +13,16 @@ import Foundation
 // bronze ring stands at the quay's edge, a net hangs to dry on two poles, and
 // jars and a stack of reed bundles stand about. The footprint lies on land and
 // the water may lie beside any of its edges. Its footprint is two tiles
-// square: x and y run from -1 to 1.
+// square: x and y run from -1 to 1. From the middle of its water edge a short
+// jetty (ruled 2026-11-22) runs a tile out over the water: a deck of mud brick
+// in a frame of bundled reed, at the quay's height, on bound reed posts
+// standing in the water, two taller posts at its head bound in the owner's
+// colour; a ring on the water round each post. It is scenery: boats pass it.
 //
 // Under construction: the quay of bare mud brick, the arches of bundled reed
 // planted and tied, one mat laid over them, the columns half raised, and
-// bundles of reed stacked ready.
+// bundles of reed stacked ready; the jetty's posts stand in the water, its
+// reed stringers laid along them, and its deck laid over the half by the quay.
 //
 // It is drawn in two views (ruled 2026-11-22): the side view, its open end
 // toward +x (the screen's lower right), and the back view, the same building
@@ -56,12 +61,16 @@ extension BronzeBuildingsPainter {
     /// The boat house in the side view.
     mutating func boatHouse(complete: Bool) {
         shedQuay(complete: complete)
+        // The jetty lies before the quay, toward the viewer.
+        jetty(complete: complete, turn: .side)
         if complete { reedShed() } else { reedShedRising() }
     }
 
     /// The boat house in the back view: the same building turned so that its
     /// open end faces -y, its landward end toward the viewer.
     mutating func boatHouseFromBehind(complete: Bool) {
+        // The jetty lies beyond the quay, away from the viewer.
+        jetty(complete: complete, turn: .back)
         shedQuay(complete: complete)
         if complete { reedShedFromBehind() } else { reedShedRisingFromBehind() }
     }
@@ -100,6 +109,68 @@ extension BronzeBuildingsPainter {
             }
         }
     }
+
+    // MARK: The jetty
+
+    /// The jetty from the middle of the water edge out over the water, in the
+    /// shed's frame: from `along` 1 to its head at `Jetty.head`, `Jetty.half`
+    /// either side of the middle. Complete, its deck of mud brick in a frame of
+    /// reed bundles at the quay's height, and the two posts at its head; under
+    /// construction, the posts, the reed stringers along them, and the deck laid
+    /// over the half nearer the quay.
+    private mutating func jetty(complete: Bool, turn: ShedTurn) {
+        typealias I = BronzeBuildingsInk
+        let top = complete ? ReedShed.quay : ReedShed.quay - 1.5
+        let bottom = top - 2.4
+        let (head, half) = (2.05, 0.21)
+        let rows = [1.32, 1.68, 2.0]
+        // The posts in the water, the farther first, each with its ring on the water.
+        let posts = rows.flatMap { a in [(a, -half + 0.03), (a, half - 0.03)] }.sorted { p, q in
+            let (px, py) = turn.map(p.0, p.1), (qx, qy) = turn.map(q.0, q.1)
+            return px + py < qx + qy
+        }
+        for (a, b) in posts {
+            let foot = shed(a, b, 0, turn)
+            svg.ellipse(foot + P(0, 0.4), 4, 1.9, fill: .none, stroke: .colour(I.light), width: 0.8, opacity: 0.85)
+            svg.ellipse(foot + P(0, 0.4), 6.2, 2.9, fill: .none, stroke: .colour(I.light), width: 0.5, opacity: 0.45)
+            reedBundle([foot, shed(a, b, bottom + 0.4, turn)], width: 3.2, binds: [0.5])
+        }
+        // The deck: over the whole jetty, or over the half by the quay while it is built.
+        let end = complete ? head : 1.5
+        if !complete {
+            // The reed stringers laid along the posts out to the head.
+            for b in [-half + 0.03, half - 0.03] {
+                reedBundle([shed(1, b, bottom + 1, turn), shed(head, b, bottom + 1, turn)], width: 2.6, binds: [0.4, 0.75])
+            }
+        }
+        let (x0, y0) = turn.map(1, -half), (x1, y1) = turn.map(end, half)
+        block(min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1), bottom, top,
+              top: .colour(complete ? I.paving : I.rawBrickTop), left: .colour(ReedShed.reedLit), right: .colour(I.reedShade), width: 0.9)
+        // The bindings round the reed frame along the side in view, and the joints of the brick over the deck.
+        var d = PathData()
+        for a in stride(from: 1.15, through: end - 0.05, by: 0.18) {
+            d.move(shed(a, half, bottom, turn)); d.line(shed(a, half, top, turn))
+        }
+        svg.path(d, stroke: .colour(I.terracotta), width: 0.9)
+        var joints = PathData()
+        for a in stride(from: 1.13, through: end - 0.05, by: 0.13) {
+            joints.move(shed(a, -half + 0.02, top, turn)); joints.line(shed(a, half - 0.02, top, turn))
+        }
+        joints.move(shed(1.02, 0, top, turn)); joints.line(shed(end - 0.02, 0, top, turn))
+        svg.path(joints, stroke: .colour(complete ? I.pavingShade : I.rawBrickShade), width: 0.5)
+        guard complete else { return }
+        // The two taller posts at the head, bound in the owner's colour, the farther first.
+        let heads = [(head - 0.06, -half + 0.05), (head - 0.06, half - 0.05)].sorted { p, q in
+            let (px, py) = turn.map(p.0, p.1), (qx, qy) = turn.map(q.0, q.1)
+            return px + py < qx + qy
+        }
+        for (a, b) in heads {
+            let foot = shed(a, b, top, turn)
+            reedBundle([foot, foot - P(0, 11)], width: 3.6, binds: [0.35, 0.75], team: true, colour: ReedShed.reedLit)
+            svg.ellipse(foot - P(0, 11), 1.8, 0.9, fill: .colour(I.reedShade), stroke: .colour(I.line), width: 0.6)
+        }
+    }
+
 
     // MARK: Bundles of reed
 

@@ -67,7 +67,8 @@ import Testing
 
     /// The anchor is the centre of the footprint's diamond: the diamond placed by
     /// the anchor is what the drawing covers, reaching its left, bottom and right
-    /// corners and overhanging none of them.
+    /// corners and overhanging none of them; the boat house's jetty alone runs
+    /// on beyond it over the water, to the right.
     @Test func theAnchorIsTheCentreOfTheFootprintsDiamond() throws {
         for key in Self.batch + Self.back {
             guard case .building(let kind, _) = key.subject else { continue }
@@ -84,8 +85,14 @@ import Testing
                     "\(key) reaches the edge of its picture")
             let tolerance = 5.0
             #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
-            #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
-            #expect(abs(Double(drawn.maxY + 1) - (centreY + halfHeight)) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+            if kind == .boatHouse {
+                // The boat house's jetty reaches out beyond the diamond toward the water, to the right.
+                #expect(Double(drawn.maxX + 1) >= centreX + halfWidth - tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+                #expect(Double(drawn.maxY + 1) >= centreY + halfHeight - tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+            } else {
+                #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+                #expect(abs(Double(drawn.maxY + 1) - (centreY + halfHeight)) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+            }
         }
     }
 
