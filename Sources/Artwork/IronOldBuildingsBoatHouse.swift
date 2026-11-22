@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import Foundation
+import GameCore
 
 // The Iron-age boat house (ruled 2026-11-21): the Stone age's thatched
 // shelter grown into a timber boathouse on a quay of dressed stone. Walls of
@@ -18,8 +19,21 @@ import Foundation
 // the pennant on the ridge pole, a few boards nailed on, and a boat on the
 // slip with its keel, stem and ribs set up and its first planks on, boards,
 // roof tiles and a ladder to hand. Its footprint is two tiles square: x and y
-// run from -1 to 1. The water may lie beside any of its edges; the slip runs
-// toward +y (the screen's lower left), under the gable.
+// run from -1 to 1.
+//
+// The water may lie beside any of its edges, and the boat house is drawn
+// facing it (ruled 2026-11-22) in two views, which the drawing mirrors for the
+// other two edges. The side view is drawn with the slip toward +y (the
+// screen's lower left), under the gable, and then mirrored on the screen, so
+// that in the sprite the slip runs toward +x (the lower right) and the long
+// wall with the oars faces +y. The back view is the same building turned a
+// quarter: the slip runs out of the far gable toward −y (the upper right),
+// away from the viewer, with the bollard and the basket of fish at its foot
+// and the pennant at that gable's peak; the long wall with the oars faces +x,
+// and the landward gable faces the viewer under its pediment, with a door of
+// painted planks, two barred windows, and the anchor and the amphorae stored
+// beside it. Under construction it is the same frame turned the same way, the
+// footing laid across the landward end with a gap for the door.
 
 /// The boat house's measurements, about the centre of its footprint.
 private enum IronShed {
@@ -30,12 +44,30 @@ private enum IronShed {
     static let slipX0 = -0.42, slipX1 = 0.16, slipEnd = 0.97
     /// The boat on the slip: its stern inside the shed, its bow out under the gable.
     static let boatX = -0.13, sternY = -0.42, bowY = 0.74
+    /// In the back view the boat is hauled this much farther out, so that its
+    /// bow shows past the shed's far corner.
+    static let backHaul = 0.2
 }
 
 extension IronOldBuildingsPainter {
-    mutating func boatHouse(complete: Bool) {
+    /// The boat house in the side view (its water side toward +x) or the back
+    /// view (its water side toward −y), complete or under construction.
+    mutating func boatHouse(complete: Bool, view: SpriteView = .side) {
+        if view == .back {
+            quay()
+            if complete { boatShedBack() } else { boatShedBackRising() }
+            return
+        }
+        // Drawn with the slip toward +y and mirrored about the footprint's centre, which the canvas is centred on.
+        svg.raw("<g transform=\"scale(-1 1)\">")
+        quay()
+        if complete { boatShed() } else { boatShedRising() }
+        svg.raw("</g>")
+    }
+
+    /// The quay the boat house stands on, its flagstones jointed.
+    private mutating func quay() {
         typealias I = IronOldBuildingsInk
-        // The quay the boat house stands on.
         block(-1, -1, 1, 1, 0, IronShed.quay, top: .colour(I.paving), left: .colour(I.pavingShade), right: .colour(I.pavingShade),
               width: 1)
         var joints = PathData()
@@ -44,7 +76,6 @@ extension IronOldBuildingsPainter {
             joints.move(iso(-1, t, IronShed.quay)); joints.line(iso(1, t, IronShed.quay))
         }
         svg.path(joints, stroke: .colour(I.line), width: 0.4, opacity: 0.3)
-        if complete { boatShed() } else { boatShedRising() }
     }
 
     // MARK: The complete boat house
@@ -73,14 +104,14 @@ extension IronOldBuildingsPainter {
             for v in stride(from: S.footing + 3.4, to: S.eaves - 1, by: 3.4) { boards.move(p.uv(2, v)); boards.line(p.uv(front - 2, v)) }
             p.svg.path(boards, stroke: .colour(I.timberDark), width: 0.6, opacity: 0.6)
         }
-        withinOpening("slip") { $0.slipway() }
+        withinOpening("slip") { $0.slipway(from: S.y1 - 0.5, to: S.slipEnd) }
         // The far post of the opening and the lintel; the boat's bow, out on the slip, lies over them, and the near post over the boat.
         wall(.left, from: x0, y1, at: h0) { p in
             p.openingPost(0, 3.4)
             p.shape(p.panel(-0.6, S.eaves - 2.8, front + 0.6, S.eaves), .colour(I.timber), width: 0.9)
             for u in stride(from: 3.0, to: front, by: 6) { p.svg.circle(p.uv(u, S.eaves - 1.4), 0.45, fill: .colour(I.ironDark)) }
         }
-        withinOpening("boat") { $0.restingBoat(planked: true) }
+        withinOpening("boat") { $0.restingBoat(planked: true, stern: S.sternY, bow: S.bowY) }
         wall(.left, from: x0, y1, at: h0) { p in p.openingPost(front - 3.4, front) }
         gabledRoof(x0, y0, x1, y1, eaves: h1, rise: S.rise)
         // The pennant at the gable's peak.
@@ -176,14 +207,19 @@ extension IronOldBuildingsPainter {
         svg.raw("</g>")
     }
 
-    /// The slipway: two timber rails on sleepers, sloping from the shed's floor down to the quay's edge.
-    private mutating func slipway() {
+    /// The slipway: two timber rails on sleepers, sloping from the shed's
+    /// floor at `y0` down to the quay's edge at `y1`, toward +y or −y.
+    private mutating func slipway(from y0: Double, to y1: Double) {
         typealias I = IronOldBuildingsInk
         typealias S = IronShed
-        let (a, b, y0, y1) = (S.slipX0, S.slipX1, S.y1 - 0.5, S.slipEnd)
+        let (a, b) = (S.slipX0, S.slipX1)
+        let d = y1 > y0 ? 1.0 : -1.0
         func h(_ y: Double) -> Double { S.quay + 1.6 - 1.4 * max(0, (y - y0) / (y1 - y0)) }
         shadow([iso(a, y0, S.quay), iso(b + 0.04, y0, S.quay), iso(b + 0.04, y1, S.quay), iso(a, y1, S.quay)], opacity: 0.1)
-        for y in stride(from: y0 + 0.04, through: y1 - 0.03, by: 0.1) {
+        // The sleepers, the farthest first.
+        var sleepers = Array(stride(from: 0.04, through: abs(y1 - y0) - 0.03, by: 0.1)).map { y0 + d * $0 }
+        if d < 0 { sleepers.reverse() }
+        for y in sleepers {
             let top = h(y)
             shape([iso(a, y - 0.025, top), iso(b, y - 0.025, top), iso(b, y + 0.025, top), iso(a, y + 0.025, top)],
                   .colour(I.timberDark), width: 0.6)
@@ -191,22 +227,26 @@ extension IronOldBuildingsPainter {
         for x in [a + 0.08, b - 0.08] {
             let rail = [iso(x - 0.03, y0, h(y0) + 1.4), iso(x + 0.03, y0, h(y0) + 1.4), iso(x + 0.03, y1, h(y1) + 1.4), iso(x - 0.03, y1, h(y1) + 1.4)]
             shape(rail, .colour(I.timberLight), width: 0.7)
-            colour([iso(x + 0.03, y1, h(y1)), iso(x + 0.03, y1, h(y1) + 1.4), iso(x - 0.03, y1, h(y1) + 1.4), iso(x - 0.03, y1, h(y1))],
-                   .colour(I.timber))
+            // The rail's end, where it faces the viewer.
+            if d > 0 {
+                colour([iso(x + 0.03, y1, h(y1)), iso(x + 0.03, y1, h(y1) + 1.4), iso(x - 0.03, y1, h(y1) + 1.4), iso(x - 0.03, y1, h(y1))],
+                       .colour(I.timber))
+            }
         }
     }
 
-    /// The fishing boat resting on the slip, along y, its bow toward +y: the
-    /// near (+x) side of its hull, its hollow over the near gunwale, the band of
-    /// the owner's colour, the painted eye and the curled stem. Under
-    /// construction (`planked` false) only its keel, stem, sternpost, ribs and
-    /// lowest planks stand.
-    private mutating func restingBoat(planked: Bool) {
+    /// The fishing boat resting on the slip, along y from its stern at `stern`
+    /// to its bow at `bow`, toward +y or −y: the near (+x) side of its hull,
+    /// its hollow over the near gunwale, the band of the owner's colour, the
+    /// painted eye and the curled stem. Under construction (`planked` false)
+    /// only its keel, stem, sternpost, ribs and lowest planks stand.
+    private mutating func restingBoat(planked: Bool, stern: Double, bow: Double) {
         typealias I = IronOldBuildingsInk
         typealias S = IronShed
         let steps = 14
         let ts = (0...steps).map { Double($0) / Double(steps) }
-        func y(_ t: Double) -> Double { S.sternY + (S.bowY - S.sternY) * t }
+        let d = bow > stern ? 1.0 : -1.0
+        func y(_ t: Double) -> Double { stern + (bow - stern) * t }
         func floor(_ t: Double) -> Double { S.quay + 2.8 - 0.8 * t }
         func beam(_ t: Double) -> Double { 0.17 * pow(sin(t * .pi), 0.5) }
         func gunwale(_ t: Double) -> Double { floor(t) + 9 + 4 * pow(abs(2 * t - 1), 2.6) }
@@ -238,9 +278,9 @@ extension IronOldBuildingsPainter {
             shape(lower + upper.reversed(), .colour(I.timberLight), width: 0.8)
             svg.line(nearRim, stroke: .colour(I.line), width: 2.2)
             svg.line(nearRim, stroke: .colour(I.timberLight), width: 1.1)
-            stem(x: x, y: y(1), from: gunwale(1) - 9, keel: keel(1))
+            stem(x: x, y: y(1), toward: d, from: gunwale(1) - 9, keel: keel(1))
             // The sternpost.
-            pole(iso(x, y(0), keel(0)), iso(x, y(0) - 0.03, gunwale(0) + 4), width: 1.8, colour: I.timber)
+            pole(iso(x, y(0), keel(0)), iso(x, y(0) - d * 0.03, gunwale(0) + 4), width: 1.8, colour: I.timber)
             return
         }
         // The hollow between the gunwales, the far inner side lit, a thwart across.
@@ -264,22 +304,23 @@ extension IronOldBuildingsPainter {
         svg.path(seams, stroke: .colour(I.line), width: 0.45, opacity: 0.7)
         colour(keelLine + keelLine.reversed().map { $0 + P(0, -2.2) }, .colour(I.timberDark))
         eye(at: iso(x + beam(0.86) * 0.9, y(0.86), gunwale(0.86) - 5.2))
-        stem(x: x, y: y(1), from: gunwale(1), keel: keel(1))
+        stem(x: x, y: y(1), toward: d, from: gunwale(1), keel: keel(1))
         // The sternpost, a little raised.
-        pole(iso(x, y(0), gunwale(0) - 2), iso(x, y(0) - 0.04, gunwale(0) + 4), width: 1.8, colour: I.timber)
+        pole(iso(x, y(0), gunwale(0) - 2), iso(x, y(0) - d * 0.04, gunwale(0) + 4), width: 1.8, colour: I.timber)
         line(nearRim, width: 1.2)
         svg.line(nearRim.map { $0 + P(0, 0.8) }, stroke: .colour(I.timberLight), width: 0.6)
     }
 
-    /// The stem at the bow, from the keel up past the gunwale to a curl turned back toward the boat.
-    private mutating func stem(x: Double, y: Double, from top: Double, keel: Double) {
+    /// The stem at the bow, from the keel up past the gunwale to a curl
+    /// turned forward; the bow points toward +y (`toward` 1) or −y (−1).
+    private mutating func stem(x: Double, y: Double, toward s: Double, from top: Double, keel: Double) {
         typealias I = IronOldBuildingsInk
-        let foot = iso(x, y, keel), head = iso(x, y + 0.035, top + 6)
+        let foot = iso(x, y, keel), head = iso(x, y + s * 0.035, top + 6)
         var d = PathData()
         d.move(foot)
-        d.quad(iso(x, y + 0.04, top), head)
-        d.quad(head + P(-0.4, -3.4), head + P(-2.6, -2.4))
-        d.quad(head + P(-3.2, -0.6), head + P(-1.6, 0))
+        d.quad(iso(x, y + s * 0.04, top), head)
+        d.quad(head + P(-0.4 * s, -3.4), head + P(-2.6 * s, -2.4))
+        d.quad(head + P(-3.2 * s, -0.6), head + P(-1.6 * s, 0))
         svg.path(d, stroke: .colour(I.line), width: 2.9)
         svg.path(d, stroke: .colour(I.timber), width: 1.6)
     }
@@ -375,8 +416,8 @@ extension IronOldBuildingsPainter {
             pole(iso(x0 + 0.04, y, h1), iso(mid, y, ridge), width: 1.8, colour: I.timber)
         }
         pole(iso(mid, y0 - 0.04, ridge), iso(mid, y1 + 0.04, ridge), width: 2.2)
-        withinOpening("slip") { $0.slipway() }
-        withinOpening("boat") { $0.restingBoat(planked: false) }
+        withinOpening("slip") { $0.slipway(from: S.y1 - 0.5, to: S.slipEnd) }
+        withinOpening("boat") { $0.restingBoat(planked: false, stern: S.sternY, bow: S.bowY) }
         // The near posts, the wall plate, the boards nailed on below, and the gable's truss.
         wall(.right, from: x1, y1, at: h0 + S.footing) { p in
             let length = (y1 - y0) * 32
@@ -405,6 +446,132 @@ extension IronOldBuildingsPainter {
         roofTiles(-0.94, 0.42, -0.74, 0.66, from: h0, height: 6)
         roofTiles(0.62, -0.86, 0.86, -0.68, from: h0, height: 6)
         bollard(at: iso(0.36, 0.88, h0))
+    }
+
+    // MARK: The back view
+
+    /// The boat house from behind, complete: the same shed turned a quarter,
+    /// its y measurements reflected, so that the slip runs out of the far
+    /// gable toward −y and the landward gable, closed, faces the viewer.
+    private mutating func boatShedBack() {
+        typealias I = IronOldBuildingsInk
+        typealias S = IronShed
+        let (x0, x1, y0, y1, h0, h1) = (S.x0, S.x1, -S.y1, -S.y0, S.quay, S.quay + S.eaves)
+        let front = (x1 - x0) * 32, side = (y1 - y0) * 32
+        shadow([iso(x1, y0, h0), iso(x1 + 0.28, y0 + 0.16, h0), iso(x1 + 0.28, 0.98, h0), iso(x1, y1, h0)])
+        // The water end, behind the shed: the slip, the boat's bow out on it, the bollard and the basket at its foot.
+        slipway(from: y0 + 0.5, to: -S.slipEnd)
+        restingBoat(planked: true, stern: -S.sternY - S.backHaul, bow: -S.bowY - S.backHaul)
+        bollard(at: iso(0.36, -0.88, h0))
+        fishBasket(at: iso(0.66, -0.62, h0))
+        // The long wall facing +x, as in the side view: boards over the footing, the band, the windows, the oars and the net.
+        wall(.right, from: x1, y1, at: h0) { p in
+            p.boardedWall(side, S.eaves)
+            p.grille(5, 11, w: 5, h: 6)
+            p.grille(side - 10, 11, w: 5, h: 6)
+            p.hungOars(side * 0.5, top: 23)
+            p.hungNet(side * 0.5 - 6.5, side * 0.5 + 6.5, top: 21.4, drop: 10)
+        }
+        // The landward gable: boards over the footing, the band, the door of painted planks between two barred windows.
+        wall(.left, from: x0, y1, at: h0) { p in
+            p.boardedWall(front, S.eaves)
+            p.grille(2.6, 11, w: 4, h: 6)
+            p.grille(front - 6.6, 11, w: 4, h: 6)
+            p.plankDoor(front / 2, w: 9, h: 15)
+        }
+        line([iso(x0, y1, h0), iso(x0, y1, h1)], width: 1.2)
+        line([iso(x1, y1, h0), iso(x1, y1, h1)], width: 1.2)
+        line([iso(x1, y0, h0), iso(x1, y0, h1)], width: 1.2)
+        line([iso(x0, y1, h0), iso(x1, y1, h0), iso(x1, y0, h0)], width: 1.2)
+        gabledRoof(x0, y0, x1, y1, eaves: h1, rise: S.rise)
+        // The pennant at the peak of the far gable, over the water.
+        pennant(at: iso((x0 + x1) / 2 - 0.06, y0 - 0.04, h1 + S.rise + 1), height: 17, length: 14)
+        // Stores by the landward end: the anchor against the long wall, and amphorae.
+        anchor(at: iso(x1 + 0.4, 0.18, h0))
+        amphora(at: iso(0.78, 0.62, h0), size: 0.8, paint: I.clayShade)
+        amphora(at: iso(0.58, 0.8, h0), size: 0.9)
+    }
+
+    /// A door of painted planks in a timber frame on a wall drawn with `wall`,
+    /// centred on `u`, `w` wide and `h` tall, with iron straps and a ring, on a step of stone.
+    private mutating func plankDoor(_ u: Double, w: Double, h: Double) {
+        typealias I = IronOldBuildingsInk
+        let r = w / 2
+        shape(panel(u - r - 1.4, 0, u + r + 1.4, h + 1.6), .colour(I.timberLight), width: 0.8)
+        shape(panel(u - r, 0.4, u + r, h), .colour(I.sea), width: 0.8)
+        var seams = PathData()
+        for k in 1..<4 {
+            let x = u - r + w * Double(k) / 4
+            seams.move(uv(x, 0.8)); seams.line(uv(x, h - 0.4))
+        }
+        svg.path(seams, stroke: .colour(I.seaShade), width: 0.6)
+        for v in [3.0, h - 3.4] {
+            shape(panel(u - r + 0.3, v - 0.55, u + r - 0.3, v + 0.55), .colour(I.ironDark), width: 0.3)
+            for x in stride(from: u - r + 1.2, to: u + r, by: 2.2) { svg.circle(uv(x, v), 0.3, fill: .colour(I.ironLight)) }
+        }
+        svg.circle(uv(u + r * 0.55, h * 0.5), 1, fill: .none, stroke: .colour(I.line), width: 0.9)
+        svg.circle(uv(u + r * 0.55, h * 0.5), 1, fill: .none, stroke: .colour(I.ironLight), width: 0.4)
+        shape(panel(u - r - 2.2, -0.8, u + r + 2.2, 0.4), .colour(I.stoneTop), width: 0.6)
+    }
+
+    /// The boat house from behind, under construction: the frame turned as in
+    /// `boatShedBack`, the footing laid across the landward end either side of
+    /// the door, and the boat on the slip running out toward −y.
+    private mutating func boatShedBackRising() {
+        typealias I = IronOldBuildingsInk
+        typealias S = IronShed
+        let (x0, x1, y0, y1, h0) = (S.x0, S.x1, -S.y1, -S.y0, S.quay)
+        let h1 = h0 + S.eaves, ridge = h1 + S.rise, mid = (x0 + x1) / 2
+        func footing(_ a: Double, _ b: Double, _ c: Double, _ d: Double) {
+            block(a, b, c, d, h0, h0 + S.footing, top: .colour(I.rawStoneTop), left: .colour(I.rawStone), right: .colour(I.rawStoneShade),
+                  width: 0.8)
+        }
+        shadow([iso(x1, y0, h0), iso(x1 + 0.18, y0 + 0.1, h0), iso(x1 + 0.18, 0.96, h0), iso(x1, y1, h0)], opacity: 0.1)
+        // The tiles stacked at the water end, and the bollard at the slip's foot.
+        roofTiles(0.62, -0.86, 0.86, -0.68, from: h0, height: 6)
+        bollard(at: iso(0.36, -0.88, h0))
+        // The footing along the far long side, then the far posts and trusses.
+        footing(x0, y0, x0 + 0.08, y1)
+        let ys = [y0 + 0.04, (y0 + y1) / 2, y1 - 0.04]
+        for y in ys { pole(iso(x0 + 0.04, y, h0 + S.footing), iso(x0 + 0.04, y, h1), width: 2, colour: I.timber) }
+        pole(iso(x0 + 0.04, y0, h1), iso(x0 + 0.04, y1, h1), width: 1.8, colour: I.timber)
+        for y in ys.dropLast() { pole(iso(x0 + 0.04, y, h1), iso(mid, y, ridge), width: 1.8, colour: I.timber) }
+        pole(iso(mid, y0 - 0.04, ridge), iso(mid, y1 + 0.04, ridge), width: 2.2)
+        slipway(from: y0 + 0.5, to: -S.slipEnd)
+        restingBoat(planked: false, stern: -S.sternY - S.backHaul, bow: -S.bowY - S.backHaul)
+        // The footing along the near long side, and across the landward end either side of the door.
+        let door0 = mid - 0.14, door1 = mid + 0.14
+        footing(x1 - 0.08, y0, x1, y1)
+        footing(x0, y1 - 0.08, door0, y1)
+        footing(door1, y1 - 0.08, x1, y1)
+        // The door's posts and lintel, set up in the gap.
+        for x in [door0 + 0.02, door1 - 0.02] { pole(iso(x, y1 - 0.04, h0), iso(x, y1 - 0.04, h0 + 16.6), width: 1.8, colour: I.timberLight) }
+        pole(iso(door0 - 0.03, y1 - 0.04, h0 + 16.6), iso(door1 + 0.03, y1 - 0.04, h0 + 16.6), width: 1.8, colour: I.timberLight)
+        // The near posts, the wall plate, the boards nailed on below, and the landward gable's truss.
+        wall(.right, from: x1, y1, at: h0 + S.footing) { p in
+            let length = (y1 - y0) * 32
+            p.colour(p.panel(0, 0, length * 0.55, 9.6), .colour(I.timber))
+            var laps = PathData()
+            for v in stride(from: 0.0, through: 9.6, by: 3.2) { laps.move(p.uv(0, v)); laps.line(p.uv(length * 0.55, v)) }
+            p.svg.path(laps, stroke: .colour(I.line), width: 0.5, opacity: 0.8)
+            p.line([p.uv(0, 0), p.uv(0, 9.6), p.uv(length * 0.55, 9.6), p.uv(length * 0.55, 0)], width: 0.8)
+        }
+        for y in ys { pole(iso(x1 - 0.04, y, h0 + S.footing), iso(x1 - 0.04, y, h1), width: 2, colour: I.timberLight) }
+        pole(iso(x1 - 0.04, y0, h1), iso(x1 - 0.04, y1, h1), width: 1.8)
+        for y in ys.dropLast() { pole(iso(x1 - 0.04, y, h1), iso(mid, y, ridge), width: 1.8) }
+        let gable = y1 - 0.04
+        pole(iso(x0 + 0.04, gable, h1), iso(mid, gable, ridge + 0.8), width: 2)
+        pole(iso(x1 - 0.04, gable, h1), iso(mid, gable, ridge + 0.8), width: 2)
+        pole(iso(x0 - 0.02, gable, h1), iso(x1 + 0.02, gable, h1), width: 2)
+        // The owner's colour already on the tie beam of the landward gable.
+        let beam = [iso(x0 + 0.08, gable + 0.005, h1 - 2.6), iso(x1 - 0.08, gable + 0.005, h1 - 2.6),
+                    iso(x1 - 0.08, gable + 0.005, h1 - 0.6), iso(x0 + 0.08, gable + 0.005, h1 - 0.6)]
+        shape(beam, .team, width: 0.7)
+        // The pennant on the ridge pole's end over the water.
+        pennant(at: iso(mid, y0 - 0.04, ridge), height: 16, length: 14)
+        ladder(foot: iso(x1 + 0.2, 0.2, h0), iso(x1 + 0.2, 0.36, h0), head: iso(x1 + 0.02, 0.2, h1 + 2),
+               iso(x1 + 0.02, 0.36, h1 + 2), rungs: 6)
+        planks(0.48, 0.86, 0.72, on: h0)
     }
 
     /// A stack of sawn boards lying along x from `x0` to `x1` at `y`.
