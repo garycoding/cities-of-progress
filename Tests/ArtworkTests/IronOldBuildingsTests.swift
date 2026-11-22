@@ -98,13 +98,6 @@ import Testing
         for key in Self.batch {
             guard case .building(let kind, _) = key.subject else { continue }
             let iron = try #require(Self.source.sprite(key))
-            // The Bronze look of the boat house is drawn in its own step: its canvas stands for it until then.
-            if kind == .boatHouse, bronze.sprite(SpriteKey(.building(kind, .bronze), key.pose)) == nil {
-                let canvas = BronzeBuildingsArt.canvas(kind)
-                #expect(iron.base.width == canvas.pixelWidth && iron.base.height == canvas.pixelHeight, "\(key)")
-                #expect(iron.anchor == canvas.anchor, "\(key)")
-                continue
-            }
             let old = try #require(bronze.sprite(SpriteKey(.building(kind, .bronze), key.pose)))
             #expect(iron.base.width == old.base.width && iron.base.height == old.base.height, "\(key)")
             #expect(iron.anchor == old.anchor, "\(key)")

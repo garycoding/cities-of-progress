@@ -103,14 +103,7 @@ import Testing
             guard case .building(let kind, _) = key.subject else { continue }
             let alchemy = try #require(Self.source.sprite(key))
             let ironKey = SpriteKey(.building(kind, .iron), key.pose)
-            guard let iron = ironOld.sprite(ironKey) ?? ironNew.sprite(ironKey) else {
-                // The boat house's Iron look is drawn in its own step; until then, the canvas it will be drawn on.
-                #expect(kind == .boatHouse, "\(kind) has no Iron look")
-                let canvas = IronOldBuildingsArt.canvas(kind)
-                #expect(alchemy.base.width == canvas.pixelWidth && alchemy.base.height == canvas.pixelHeight, "\(key)")
-                #expect(alchemy.anchor == canvas.anchor, "\(key)")
-                continue
-            }
+            let iron = try #require(ironOld.sprite(ironKey) ?? ironNew.sprite(ironKey), "\(kind) has no Iron look")
             #expect(alchemy.base.width == iron.base.width && alchemy.base.height == iron.base.height, "\(key)")
             #expect(alchemy.anchor == iron.anchor, "\(key)")
         }
