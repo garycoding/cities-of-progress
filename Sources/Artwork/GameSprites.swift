@@ -21,6 +21,7 @@ public final class GameSprites: SpriteSource {
             StoneBoatSprites(catalogue: catalogue),
             BronzeBuildingSprites(),
             BronzePeopleSprites(catalogue: catalogue),
+            BronzeBoatSprites(catalogue: catalogue),
             IronOldBuildingSprites(),
             IronNewBuildingSprites(),
             IronPeopleSprites(catalogue: catalogue),

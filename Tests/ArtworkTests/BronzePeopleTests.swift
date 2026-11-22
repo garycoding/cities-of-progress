@@ -15,7 +15,7 @@ import Testing
 
     @Test func theBatchIsTheChecklistsBronzePeople() {
         let expected = SpriteKey.required(through: .bronze).filter { key in
-            // The boat is drawn with the boats' art, in its own step.
+            // The boat is drawn with the boats' art, in its own batch (`BronzeBoatSprites`).
             if case .unit(let kind, .bronze) = key.subject { return kind != .boat }
             return false
         }
