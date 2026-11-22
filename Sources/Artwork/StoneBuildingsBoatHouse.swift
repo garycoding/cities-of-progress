@@ -18,8 +18,10 @@ import GameCore
 // being hollowed into a canoe, an adze left in it.
 
 /// The boat house's measurements, about the centre of its footprint (2 by 2):
-/// distances in tiles along the map's axes, heights in points.
-private enum Shed {
+/// distances in tiles along the map's axes as the side view lays them (the open
+/// end toward +x), heights in points. The back view turns the same plan a
+/// quarter (`StoneBoatHouseTurn`).
+enum StoneBoatShed {
     /// The deck: its extent and height.
     static let x0 = -0.8, x1 = 0.4, y0 = -0.56, y1 = 0.44, deck = 7.0
     /// The roof: its ridge runs along x over `ridgeY`; its eaves overhang the deck.
@@ -30,6 +32,22 @@ private enum Shed {
 }
 
 private func spot(_ x: Double, _ y: Double, _ h: Double = 0) -> P { StoneBuildingsSketch.at(x, y, h) }
+
+/// How the boat house's plan is laid on the map: seen from the side, its open
+/// end and landing stage toward +x (the screen's lower right), or seen from
+/// behind, turned a quarter so that they face −y (the upper right) and its
+/// landward end faces the viewer (ruled 2026-11-22).
+enum StoneBoatHouseTurn {
+    case side, back
+
+    /// The point `h` points above the plan's point (`x`, `y`), in tiles from the centre of the footprint.
+    func callAsFunction(_ x: Double, _ y: Double, _ h: Double = 0) -> P {
+        switch self {
+        case .side: StoneBuildingsSketch.at(x, y, h)
+        case .back: StoneBuildingsSketch.at(y, -x, h)
+        }
+    }
+}
 
 extension StoneBuildingsSketch {
     mutating func boatHouse(complete: Bool) {
@@ -47,43 +65,43 @@ extension StoneBuildingsSketch {
     // MARK: The complete boat house
 
     private mutating func shed() {
-        let (x0, x1, y0, y1, deck) = (Shed.x0, Shed.x1, Shed.y0, Shed.y1, Shed.deck)
+        let (x0, x1, y0, y1, deck) = (StoneBoatShed.x0, StoneBoatShed.x1, StoneBoatShed.y0, StoneBoatShed.y1, StoneBoatShed.deck)
         // The roof's shadow on the ground, to the right, and the shade under the deck.
         shadow(StoneBuildingsOutline([spot(x0 + 0.1, y0 - 0.1), spot(x1 + 0.22, y0 - 0.1), spot(x1 + 0.22, y1 + 0.12),
                                       spot(x0 + 0.1, y1 + 0.12)]), opacity: 0.18)
         // The piles behind, in the shade under the deck.
-        for (x, y) in [(x0, y0), (x1, y0), (-0.2, y0)] { pile(x, y, top: deck, colour: Ink.handle) }
+        for (x, y) in [(x0, y0), (x1, y0), (-0.2, y0)] { boatHousePile(x, y, top: deck, colour: Ink.handle) }
         stage()
         deckBoards()
         // The open end of the shed, and what shows through it.
-        let gable = [spot(x1, y1, deck), spot(x1, y0, deck), spot(Shed.roofX1, Shed.ridgeY - Shed.eaveReach, Shed.eave),
-                     spot(Shed.roofX1, Shed.ridgeY, Shed.ridge), spot(Shed.roofX1, Shed.ridgeY + Shed.eaveReach, Shed.eave)]
+        let gable = [spot(x1, y1, deck), spot(x1, y0, deck), spot(StoneBoatShed.roofX1, StoneBoatShed.ridgeY - StoneBoatShed.eaveReach, StoneBoatShed.eave),
+                     spot(StoneBoatShed.roofX1, StoneBoatShed.ridgeY, StoneBoatShed.ridge), spot(StoneBoatShed.roofX1, StoneBoatShed.ridgeY + StoneBoatShed.eaveReach, StoneBoatShed.eave)]
         colour(gable, .colour(StoneBuildingsInk.hollow), shift: P(0, 0))
         // The far posts, and the canoe resting on the deck, its bow out under the gable.
-        for x in [x0 + 0.04, -0.2] { pole(spot(x, y0 + 0.04, deck), spot(x, y0 + 0.04, Shed.eave + 3), width: 2.4, colour: Ink.handle) }
+        for x in [x0 + 0.04, -0.2] { pole(spot(x, y0 + 0.04, deck), spot(x, y0 + 0.04, StoneBoatShed.eave + 3), width: 2.4, colour: Ink.handle) }
         restingCanoe(from: -0.62, to: 0.62, y: -0.08, h: deck + 0.5)
         paddleLeaning(at: spot(x1 - 0.06, y0 + 0.1, deck))
         // The posts at the open end, and the tie beam across under the gable.
-        for y in [y0 + 0.04, y1 - 0.04] { pole(spot(x1, y, deck - 0.5), spot(x1, y, Shed.eave + 1.5), width: 2.6) }
-        pole(spot(x1, y0 - 0.08, Shed.eave), spot(x1, y1 + 0.1, Shed.eave), width: 2.2)
+        for y in [y0 + 0.04, y1 - 0.04] { pole(spot(x1, y, deck - 0.5), spot(x1, y, StoneBoatShed.eave + 1.5), width: 2.6) }
+        pole(spot(x1, y0 - 0.08, StoneBoatShed.eave), spot(x1, y1 + 0.1, StoneBoatShed.eave), width: 2.2)
         // The near posts, under the eaves.
-        for x in [x0 + 0.04, -0.2] { pole(spot(x, y1 - 0.04, deck - 0.5), spot(x, y1 - 0.04, Shed.eave + 1.5), width: 2.6) }
+        for x in [x0 + 0.04, -0.2] { pole(spot(x, y1 - 0.04, deck - 0.5), spot(x, y1 - 0.04, StoneBoatShed.eave + 1.5), width: 2.6) }
         deckEdges()
         roof()
         // The piles in front of the deck's faces.
-        for (x, y) in [(x0, y1), (-0.2, y1), (x1, y1), (x1, -0.06)] { pile(x, y, top: deck, colour: Ink.wood) }
-        mooringPost(at: spot(Shed.stageX1 - 0.03, Shed.stageY1 + 0.02))
+        for (x, y) in [(x0, y1), (-0.2, y1), (x1, y1), (x1, -0.06)] { boatHousePile(x, y, top: deck, colour: Ink.wood) }
+        mooringPost(at: spot(StoneBoatShed.stageX1 - 0.03, StoneBoatShed.stageY1 + 0.02))
     }
 
     /// A pile from below the ground up to `top`, with a lashing under the deck.
-    private mutating func pile(_ x: Double, _ y: Double, top: Double, colour: String) {
-        pole(spot(x, y, -1), spot(x, y, top + 0.5), width: 3, colour: colour)
-        stroke([spot(x, y, top - 1.6) + P(-1.6, 0), spot(x, y, top - 1.6) + P(1.6, 0)], width: 1, colour: Ink.darkHide)
+    mutating func boatHousePile(_ x: Double, _ y: Double, top: Double, colour: String, turn: StoneBoatHouseTurn = .side) {
+        pole(turn(x, y, -1), turn(x, y, top + 0.5), width: 3, colour: colour)
+        stroke([turn(x, y, top - 1.6) + P(-1.6, 0), turn(x, y, top - 1.6) + P(1.6, 0)], width: 1, colour: Ink.darkHide)
     }
 
     /// The deck's top: poles laid across it, side by side, in the light under the roof.
     private mutating func deckBoards() {
-        let (x0, x1, y0, y1, h) = (Shed.x0, Shed.x1, Shed.y0, Shed.y1, Shed.deck)
+        let (x0, x1, y0, y1, h) = (StoneBoatShed.x0, StoneBoatShed.x1, StoneBoatShed.y0, StoneBoatShed.y1, StoneBoatShed.deck)
         shape([spot(x0, y0, h), spot(x1, y0, h), spot(x1, y1, h), spot(x0, y1, h)], .colour(StoneBuildingsInk.woodEnd), line: 1)
         for x in stride(from: x0 + 0.1, to: x1, by: 0.1) {
             stroke([spot(x, y0 + 0.02, h), spot(x, y1 - 0.02, h)], width: 0.6, colour: Ink.wood)
@@ -93,7 +111,7 @@ extension StoneBuildingsSketch {
     /// The deck's two faces toward the viewer: the long one painted in the
     /// team's colour with a zigzag in the light colour, the end one in shade.
     private mutating func deckEdges() {
-        let (x0, x1, y0, y1, h) = (Shed.x0, Shed.x1, Shed.y0, Shed.y1, Shed.deck)
+        let (x0, x1, y0, y1, h) = (StoneBoatShed.x0, StoneBoatShed.x1, StoneBoatShed.y0, StoneBoatShed.y1, StoneBoatShed.deck)
         let low = h - 4.4
         let front = [spot(x0, y1, low), spot(x1, y1, low), spot(x1, y1, h), spot(x0, y1, h)]
         colour(front, .team, shift: StoneBuildingsSketch.nudge)
@@ -114,39 +132,39 @@ extension StoneBuildingsSketch {
     /// in shade, the courses in rows of scallops, the eaves' ragged ends, the
     /// bound roll along the ridge, and the pennant at the gable's peak.
     private mutating func roof() {
-        let (rx0, rx1, ry, reach) = (Shed.roofX0, Shed.roofX1, Shed.ridgeY, Shed.eaveReach)
+        let (rx0, rx1, ry, reach) = (StoneBoatShed.roofX0, StoneBoatShed.roofX1, StoneBoatShed.ridgeY, StoneBoatShed.eaveReach)
         let near = ry + reach, far = ry - reach
         let lip = 3.2
         // The thickness of the thatch along the near eaves and up the gable's edge.
-        shape([spot(rx0, near, Shed.eave), spot(rx1, near, Shed.eave), spot(rx1, near, Shed.eave - lip), spot(rx0, near, Shed.eave - lip)],
+        shape([spot(rx0, near, StoneBoatShed.eave), spot(rx1, near, StoneBoatShed.eave), spot(rx1, near, StoneBoatShed.eave - lip), spot(rx0, near, StoneBoatShed.eave - lip)],
               .colour(StoneBuildingsInk.thatchDeep), line: 1.1)
-        let barge = [spot(rx1, far, Shed.eave), spot(rx1, ry, Shed.ridge), spot(rx1, near, Shed.eave)]
-        shape(barge + [spot(rx1, near, Shed.eave - lip), spot(rx1 + 0.03, ry, Shed.ridge - lip), spot(rx1, far, Shed.eave - lip)],
+        let barge = [spot(rx1, far, StoneBoatShed.eave), spot(rx1, ry, StoneBoatShed.ridge), spot(rx1, near, StoneBoatShed.eave)]
+        shape(barge + [spot(rx1, near, StoneBoatShed.eave - lip), spot(rx1 + 0.03, ry, StoneBoatShed.ridge - lip), spot(rx1, far, StoneBoatShed.eave - lip)],
               .colour(StoneBuildingsInk.thatchShade), line: 1.1)
         // The near slope, and its courses.
-        let slope = [spot(rx0, near, Shed.eave), spot(rx1, near, Shed.eave), spot(rx1, ry, Shed.ridge), spot(rx0, ry, Shed.ridge)]
+        let slope = [spot(rx0, near, StoneBoatShed.eave), spot(rx1, near, StoneBoatShed.eave), spot(rx1, ry, StoneBoatShed.ridge), spot(rx0, ry, StoneBoatShed.ridge)]
         shape(slope, .colour(Ink.hide))
         // The slope darkens a little toward the far end, away from the light.
-        colour([spot(rx0, near, Shed.eave), spot(rx0 + 0.3, near, Shed.eave), spot(rx0 + 0.3, ry, Shed.ridge), spot(rx0, ry, Shed.ridge)],
+        colour([spot(rx0, near, StoneBoatShed.eave), spot(rx0 + 0.3, near, StoneBoatShed.eave), spot(rx0 + 0.3, ry, StoneBoatShed.ridge), spot(rx0, ry, StoneBoatShed.ridge)],
                .colour(StoneBuildingsInk.thatchShade), shift: P(0, 0), opacity: 0.45)
         for f in [0.22, 0.44, 0.66, 0.86] {
-            let y = ry + reach * f, h = Shed.ridge - (Shed.ridge - Shed.eave) * f
+            let y = ry + reach * f, h = StoneBoatShed.ridge - (StoneBoatShed.ridge - StoneBoatShed.eave) * f
             let row = StoneBuildingsSketch.points(from: spot(rx0 + 0.04, y, h), to: spot(rx1 - 0.04, y, h), count: 13)
             scallops(row, width: 0.9, opacity: 0.85) { _ in P(-0.25, 1.1) }
         }
         stroke(StoneBuildingsOutline(slope), width: 1.2)
         // The straw ends along the eaves.
-        let edge = StoneBuildingsSketch.points(from: spot(rx0, near, Shed.eave - lip), to: spot(rx1, near, Shed.eave - lip), count: 15)
+        let edge = StoneBuildingsSketch.points(from: spot(rx0, near, StoneBoatShed.eave - lip), to: spot(rx1, near, StoneBoatShed.eave - lip), count: 15)
         scallops(edge, width: 1) { _ in P(0, 0.9) }
         // The roll of thatch bound along the ridge.
-        let roll = [spot(rx0 - 0.03, ry, Shed.ridge + 2.2), spot(rx1 + 0.03, ry, Shed.ridge + 2.2), spot(rx1 + 0.03, ry, Shed.ridge - 1.4),
-                    spot(rx0 - 0.03, ry, Shed.ridge - 1.4)]
+        let roll = [spot(rx0 - 0.03, ry, StoneBoatShed.ridge + 2.2), spot(rx1 + 0.03, ry, StoneBoatShed.ridge + 2.2), spot(rx1 + 0.03, ry, StoneBoatShed.ridge - 1.4),
+                    spot(rx0 - 0.03, ry, StoneBoatShed.ridge - 1.4)]
         shape(roll, .colour(StoneBuildingsInk.thatchShade), line: 1.1, shift: StoneBuildingsSketch.nudge)
         for x in stride(from: rx0 + 0.12, to: rx1, by: 0.26) {
-            stroke([spot(x, ry, Shed.ridge + 2.2), spot(x, ry, Shed.ridge - 1.4)], width: 1.5, colour: Ink.darkHide)
+            stroke([spot(x, ry, StoneBoatShed.ridge + 2.2), spot(x, ry, StoneBoatShed.ridge - 1.4)], width: 1.5, colour: Ink.darkHide)
         }
         // Crossed poles over the gable's peak, the pennant tied to them.
-        let peak = spot(rx1, ry, Shed.ridge)
+        let peak = spot(rx1, ry, StoneBoatShed.ridge)
         pole(peak + P(-1, 2), peak + P(-6, -9), width: 2, colour: Ink.wood)
         pole(peak + P(1, 2), peak + P(6, -9), width: 2, colour: Ink.wood)
         pennant(at: peak + P(0, 1), height: 26)
@@ -155,7 +173,8 @@ extension StoneBuildingsSketch {
     /// A dugout canoe resting on the deck along the map's x axis, from `from`
     /// to `to` tiles at `y`, its bottom `h` points up: the near side of the
     /// hull, the hollow seen over its near gunwale, and its raised ends.
-    private mutating func restingCanoe(from x0: Double, to x1: Double, y: Double, h: Double) {
+    mutating func restingCanoe(from x0: Double, to x1: Double, y: Double, h: Double, turn: StoneBoatHouseTurn = .side) {
+        let spot = turn
         let steps = 12
         /// The hull's half width in tiles, and its gunwale's height, at a fraction along it.
         func beam(_ t: Double) -> Double { 0.13 * pow(sin(t * .pi), 0.6) }
@@ -180,7 +199,7 @@ extension StoneBuildingsSketch {
     }
 
     /// A paddle leaning on a post at the open end, its leaf-shaped blade down.
-    private mutating func paddleLeaning(at foot: P) {
+    mutating func paddleLeaning(at foot: P) {
         let top = foot + P(5, -24)
         pole(foot + P(1.4, -7), top, width: 1.6, colour: Ink.handle, line: 0.8)
         var blade = StoneBuildingsOutline()
@@ -197,7 +216,7 @@ extension StoneBuildingsSketch {
     /// The landing stage: poles laid across two stringers on four piles, running
     /// from the open end of the shed to the footprint's edge.
     private mutating func stage() {
-        let (sx0, sx1, sy0, sy1, h) = (Shed.x1 - 0.02, Shed.stageX1, Shed.stageY0, Shed.stageY1, Shed.stage)
+        let (sx0, sx1, sy0, sy1, h) = (StoneBoatShed.x1 - 0.02, StoneBoatShed.stageX1, StoneBoatShed.stageY0, StoneBoatShed.stageY1, StoneBoatShed.stage)
         shadow(StoneBuildingsOutline([spot(sx0, sy0 - 0.04), spot(sx1 + 0.06, sy0 - 0.04), spot(sx1 + 0.06, sy1 + 0.06),
                                       spot(sx0, sy1 + 0.06)]), opacity: 0.14)
         for (x, y) in [(sx1 - 0.03, sy0 + 0.02), (0.68, sy0 + 0.02)] { pole(spot(x, y, -1), spot(x, y, h), width: 2.6, colour: Ink.handle) }
@@ -211,7 +230,7 @@ extension StoneBuildingsSketch {
     }
 
     /// The mooring post at the stage's end, a rope coiled round its head.
-    private mutating func mooringPost(at foot: P) {
+    mutating func mooringPost(at foot: P) {
         pole(foot + P(0, 1), foot - P(0, 15), width: 3, colour: Ink.wood)
         svg.ellipse(foot - P(0, 15), 1.5, 0.8, fill: .colour(StoneBuildingsInk.woodEnd), stroke: .colour(Ink.line), width: 0.7)
         for k in 0..<3 {
@@ -222,7 +241,7 @@ extension StoneBuildingsSketch {
     }
 
     /// A rack of two forked posts and a bar, with fish hung from it to dry.
-    private mutating func fishRack(at foot: P) {
+    mutating func fishRack(at foot: P) {
         moved(to: foot) { s in
             let along = P(16, -8), up = P(0, -19)
             s.shadow(StoneBuildingsSketch.lump(along * 0.5 + P(2, 1), 11, 3))
@@ -239,7 +258,7 @@ extension StoneBuildingsSketch {
     }
 
     /// A fish hung by its tail: a pale body darker along its back, with an eye.
-    private mutating func hungFish(at top: P, length: Double) {
+    mutating func hungFish(at top: P, length: Double) {
         var body = StoneBuildingsOutline()
         body.move(top + P(-1.6, -0.6))
         body.line(top + P(0, 1.4))
@@ -256,7 +275,7 @@ extension StoneBuildingsSketch {
     }
 
     /// A clump of reeds at the water's edge: blades of moss and two seed heads.
-    private mutating func reeds(at foot: P, turn: Int) {
+    mutating func reeds(at foot: P, turn: Int) {
         moved(to: foot) { s in
             s.shadow(StoneBuildingsSketch.lump(P(0.5, 0.4), 7, 2.2))
             let blades: [(Double, Double)] = turn == 0
@@ -282,11 +301,11 @@ extension StoneBuildingsSketch {
     /// The boat house being built: the piles and part of the deck, the roof's
     /// rafters tied to the ridge pole, sheaves of thatch, and a log being hollowed.
     private mutating func shedFrame() {
-        let (x0, x1, y0, y1, deck) = (Shed.x0, Shed.x1, Shed.y0, Shed.y1, Shed.deck)
-        let (rx0, rx1, ry, reach) = (Shed.roofX0 + 0.04, Shed.roofX1 - 0.04, Shed.ridgeY, Shed.eaveReach - 0.08)
+        let (x0, x1, y0, y1, deck) = (StoneBoatShed.x0, StoneBoatShed.x1, StoneBoatShed.y0, StoneBoatShed.y1, StoneBoatShed.deck)
+        let (rx0, rx1, ry, reach) = (StoneBoatShed.roofX0 + 0.04, StoneBoatShed.roofX1 - 0.04, StoneBoatShed.ridgeY, StoneBoatShed.eaveReach - 0.08)
         shadow(StoneBuildingsOutline([spot(x0 + 0.1, y0), spot(x1 + 0.16, y0), spot(x1 + 0.16, y1 + 0.08), spot(x0 + 0.1, y1 + 0.08)]),
                opacity: 0.12)
-        for (x, y) in [(x0, y0), (x1, y0), (-0.2, y0)] { pile(x, y, top: deck, colour: Ink.handle) }
+        for (x, y) in [(x0, y0), (x1, y0), (-0.2, y0)] { boatHousePile(x, y, top: deck, colour: Ink.handle) }
         // The bearers, and the deck's poles laid over half of them.
         pole(spot(x0, y0, deck - 1), spot(x0, y1, deck - 1), width: 2.4, colour: Ink.handle)
         pole(spot(-0.2, y0, deck - 1), spot(-0.2, y1, deck - 1), width: 2.4, colour: Ink.handle)
@@ -298,30 +317,30 @@ extension StoneBuildingsSketch {
         }
         // The rafters in pairs, crossed over the ridge pole, the far ones first.
         let pairs = stride(from: rx0, through: rx1 + 0.001, by: (rx1 - rx0) / 3).map { $0 }
-        for x in pairs { pole(spot(x, ry - reach, deck), spot(x, ry, Shed.ridge + 3), width: 2.2, colour: Ink.handle) }
-        pole(spot(rx0 - 0.05, ry, Shed.ridge), spot(rx1 + 0.05, ry, Shed.ridge), width: 2.6)
+        for x in pairs { pole(spot(x, ry - reach, deck), spot(x, ry, StoneBoatShed.ridge + 3), width: 2.2, colour: Ink.handle) }
+        pole(spot(rx0 - 0.05, ry, StoneBoatShed.ridge), spot(rx1 + 0.05, ry, StoneBoatShed.ridge), width: 2.6)
         for x in pairs {
-            pole(spot(x, ry + reach, deck), spot(x, ry, Shed.ridge + 3), width: 2.2)
-            stroke([spot(x, ry, Shed.ridge) + P(-2, -1), spot(x, ry, Shed.ridge) + P(2, 1)], width: 1.6, colour: Ink.darkHide)
+            pole(spot(x, ry + reach, deck), spot(x, ry, StoneBoatShed.ridge + 3), width: 2.2)
+            stroke([spot(x, ry, StoneBoatShed.ridge) + P(-2, -1), spot(x, ry, StoneBoatShed.ridge) + P(2, 1)], width: 1.6, colour: Ink.darkHide)
         }
         // The front board, already painted.
         let low = deck - 4.4
         let front = [spot(x0, y1, low), spot(x1, y1, low), spot(x1, y1, deck), spot(x0, y1, deck)]
         colour(front, .team, shift: StoneBuildingsSketch.nudge)
         stroke(StoneBuildingsOutline(front), width: 1.1)
-        for (x, y) in [(x0, y1), (-0.2, y1), (x1, y1)] { pile(x, y, top: deck, colour: Ink.wood) }
-        pennant(at: spot(rx1, ry, Shed.ridge + 3), height: 22)
+        for (x, y) in [(x0, y1), (-0.2, y1), (x1, y1)] { boatHousePile(x, y, top: deck, colour: Ink.wood) }
+        pennant(at: spot(rx1, ry, StoneBoatShed.ridge + 3), height: 22)
         // The stage's piles, set, with no deck on them yet.
-        for (x, y) in [(Shed.stageX1 - 0.03, Shed.stageY0 + 0.02), (0.68, Shed.stageY0 + 0.02), (Shed.stageX1 - 0.03, Shed.stageY1 - 0.02),
-                       (0.68, Shed.stageY1 - 0.02)] {
-            pole(spot(x, y, -1), spot(x, y, Shed.stage), width: 2.6, colour: Ink.wood)
+        for (x, y) in [(StoneBoatShed.stageX1 - 0.03, StoneBoatShed.stageY0 + 0.02), (0.68, StoneBoatShed.stageY0 + 0.02), (StoneBoatShed.stageX1 - 0.03, StoneBoatShed.stageY1 - 0.02),
+                       (0.68, StoneBoatShed.stageY1 - 0.02)] {
+            pole(spot(x, y, -1), spot(x, y, StoneBoatShed.stage), width: 2.6, colour: Ink.wood)
         }
         sheaves(at: spot(-0.3, 0.82))
         logBeingHollowed(at: spot(0.62, 0.58))
     }
 
     /// A log on two chocks, half hollowed into a canoe, chips about it and an adze left standing in it.
-    private mutating func logBeingHollowed(at foot: P) {
+    mutating func logBeingHollowed(at foot: P) {
         moved(to: foot) { s in
             let along = StoneBuildingsSketch.unit(P(32, -16))
             s.shadow(StoneBuildingsSketch.lump(along * 2 + P(1, 1), 17, 4.6))

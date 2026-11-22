@@ -7,19 +7,25 @@ import Synchronization
 
 // The buildings of the Stone age, in the Stone-age look (docs/art-style.md):
 // the town centre, the house, the storage pit and the boat house, each complete
-// and under construction. This file holds the batch's source and the drawing
-// kit the buildings share; each building is drawn in a file of its own.
+// and under construction, and the boat house seen from behind as well. This
+// file holds the batch's source and the drawing kit the buildings share; each
+// building is drawn in a file of its own.
 
 /// The sprites of the Stone age's buildings: `SpriteSubject.building(kind,
 /// .stone)` for the town centre, the house, the storage pit and the boat house
 /// (ruled 2026-11-21), in the poses
-/// `complete` and `underConstruction`, at frame 0 (buildings do not move).
+/// `complete` and `underConstruction`, at frame 0 (buildings do not move), seen
+/// from the side; the boat house also from behind (`SpriteView.back`), so that
+/// it can face water on any edge of its footprint (ruled 2026-11-22).
 /// Every other key gives nil. A picture is drawn the first time it is asked for
 /// and kept, so that a caller that asks on every redraw pays for a look-up.
-public struct StoneBuildingSprites: SpriteSource {
+public struct StoneBuildingSprites: ViewedSpriteSource {
     private let kept = StoneBuildingsKept()
 
     public init() {}
+
+    /// Only the boat house is drawn in a view other than the side: from behind.
+    public func drawsViews(of subject: SpriteSubject) -> Bool { subject == .building(.boatHouse, .stone) }
 
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
         guard let piece = StoneBuildingsPiece(key) else { return nil }
@@ -38,17 +44,21 @@ final class StoneBuildingsKept: Sendable {
     let images = Mutex<[StoneBuildingsPiece: SpriteImage]>([:])
 }
 
-/// One of the batch's pictures: a kind of building, complete or under construction.
+/// One of the batch's pictures: a kind of building, complete or under
+/// construction, seen from the side or (the boat house alone) from behind.
 struct StoneBuildingsPiece: Hashable, Sendable {
     var kind: BuildingKind
     var complete: Bool
+    /// Seen from behind (`SpriteView.back`) rather than from the side.
+    var back: Bool
 
     /// The kinds this batch draws.
     static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .boatHouse]
 
-    init(kind: BuildingKind, complete: Bool) {
+    init(kind: BuildingKind, complete: Bool, back: Bool = false) {
         self.kind = kind
         self.complete = complete
+        self.back = back
     }
 
     /// The piece a key names, or nil where the key is not this batch's.
@@ -60,13 +70,18 @@ struct StoneBuildingsPiece: Hashable, Sendable {
         case .underConstruction: complete = false
         default: return nil
         }
+        switch key.view {
+        case .side: back = false
+        case .back where kind == .boatHouse: back = true
+        default: return nil
+        }
         self.kind = kind
     }
 
     /// The part of the picture's plane the sprite covers, in points, with the
     /// origin on the ground at the centre of the footprint, drawn at twice its
-    /// size (docs/architecture.md, "Sprites"). Both poses of a kind share it,
-    /// so that the grain is made once for each kind.
+    /// size (docs/architecture.md, "Sprites"). Both poses and both views of a
+    /// kind share it, so that the grain is made once for each kind.
     var canvas: Canvas {
         switch kind {
         case .townCentre: Canvas(minX: -100, minY: -128, width: 200, height: 180, pixelsPerUnit: 2)
@@ -83,7 +98,7 @@ struct StoneBuildingsPiece: Hashable, Sendable {
             switch kind {
             case .townCentre: sketch.townCentre(complete: complete)
             case .storagePit: sketch.storagePit(complete: complete)
-            case .boatHouse: sketch.boatHouse(complete: complete)
+            case .boatHouse: if back { sketch.boatHouseBack(complete: complete) } else { sketch.boatHouse(complete: complete) }
             default: sketch.house(complete: complete)
             }
             svg = sketch.svg
