@@ -34,6 +34,13 @@ import GameCore
 // painted planks, two barred windows, and the anchor and the amphorae stored
 // beside it. Under construction it is the same frame turned the same way, the
 // footing laid across the landward end with a gap for the door.
+//
+// From the middle of the water edge a short timber jetty runs a tile out over
+// the water (ruled 2026-11-22, scenery only): a deck of planks on piles, each
+// pile with a ring of water at its foot, ending in a head of dressed stone
+// with an iron mooring ring. In the back view it runs toward the upper right,
+// past the shed's far corner. Under construction the piles stand, the first
+// planks are laid, and the stone head is rising.
 
 /// The boat house's measurements, about the centre of its footprint.
 private enum IronShed {
@@ -47,6 +54,9 @@ private enum IronShed {
     /// In the back view the boat is hauled this much farther out, so that its
     /// bow shows past the shed's far corner.
     static let backHaul = 0.2
+    /// The jetty: its half-width, where it ends beyond the quay's edge (at 1),
+    /// where its stone head begins, and the heights of its deck and its head.
+    static let dockHalf = 0.21, dockEnd = 2.0, headStart = 1.72, deckFoot = 2.0, deck = 3.2, head = 4.2
 }
 
 extension IronOldBuildingsPainter {
@@ -54,14 +64,17 @@ extension IronOldBuildingsPainter {
     /// view (its water side toward −y), complete or under construction.
     mutating func boatHouse(complete: Bool, view: SpriteView = .side) {
         if view == .back {
+            // The jetty lies behind the quay, toward −y, and is drawn first.
+            jetty(toward: -1, complete: complete)
             quay()
             if complete { boatShedBack() } else { boatShedBackRising() }
             return
         }
-        // Drawn with the slip toward +y and mirrored about the footprint's centre, which the canvas is centred on.
+        // Drawn with the slip toward +y and mirrored about the footprint's centre (the anchor), the jetty last, nearest the viewer.
         svg.raw("<g transform=\"scale(-1 1)\">")
         quay()
         if complete { boatShed() } else { boatShedRising() }
+        jetty(toward: 1, complete: complete)
         svg.raw("</g>")
     }
 
@@ -446,6 +459,75 @@ extension IronOldBuildingsPainter {
         roofTiles(-0.94, 0.42, -0.74, 0.66, from: h0, height: 6)
         roofTiles(0.62, -0.86, 0.86, -0.68, from: h0, height: 6)
         bollard(at: iso(0.36, 0.88, h0))
+    }
+
+    // MARK: The jetty
+
+    /// The timber jetty with its stone head, running from the middle of the
+    /// quay's edge toward +y (`d` 1) or −y (−1) over the water: piles with a
+    /// ring of water at each foot, a deck of planks, and the head of dressed
+    /// stone with an iron ring on its +x face. Under construction the piles
+    /// stand on their bearers, a few planks are down and the head is half raised.
+    private mutating func jetty(toward d: Double, complete: Bool) {
+        typealias I = IronOldBuildingsInk
+        typealias S = IronShed
+        let w = S.dockHalf
+        func span(_ a: Double, _ b: Double) -> (Double, Double) { (min(d * a, d * b), max(d * a, d * b)) }
+        let headTop = complete ? S.head : S.deck - 0.8
+        let (h0, h1) = span(S.headStart, S.dockEnd)
+        func ripple(around points: [P]) {
+            svg.polygon(points, fill: .none, stroke: .colour(I.light), width: 0.7, opacity: 0.75)
+        }
+        func head() {
+            let o = 0.05
+            ripple(around: level(-w - 0.05 - o, h0 - o, w + 0.05 + o, h1 + o))
+            block(-w - 0.05, h0, w + 0.05, h1, -0.6, headTop, top: .colour(complete ? I.stoneTop : I.rawStoneTop),
+                  left: .colour(complete ? I.stone : I.rawStone), right: .colour(complete ? I.stoneShade : I.rawStoneShade), width: 0.9)
+            // The courses on its +x face, and the iron ring.
+            wall(.right, from: w + 0.05, h1, at: -0.6) { p in
+                let length = (h1 - h0) * 32
+                p.courses(0, length, 0, headTop + 0.6, course: 2.4, brick: 5)
+                if complete {
+                    p.svg.ellipse(p.uv(length / 2, 2.6), 1.3, 1.1, fill: .none, stroke: .colour(I.line), width: 1.3)
+                    p.svg.ellipse(p.uv(length / 2, 2.6), 1.3, 1.1, fill: .none, stroke: .colour(I.ironLight), width: 0.5)
+                    p.svg.circle(p.uv(length / 2, 3.8), 0.5, fill: .colour(I.ironDark))
+                }
+            }
+        }
+        if d < 0 { head() }
+        // The piles, two to a bent along the deck's sides, the farthest first,
+        // each with its ring of water; they stand above the deck as posts.
+        var piles: [(Double, Double)] = []
+        for t in [1.1, 1.4, S.headStart - 0.04] { for x in [-w - 0.01, w + 0.01] { piles.append((x, d * t)) } }
+        piles.sort { $0.0 + $0.1 < $1.0 + $1.1 }
+        for (x, y) in piles {
+            let foot = iso(x, y, 0)
+            svg.ellipse(foot + P(0, 0.4), 3.4, 1.4, fill: .none, stroke: .colour(I.light), width: 0.7, opacity: 0.85)
+        }
+        func pile(_ x: Double, _ y: Double) {
+            pole(iso(x, y, -0.4), iso(x, y, S.deck + 2.4), width: 2.2, colour: I.timberDark)
+            svg.ellipse(iso(x, y, S.deck + 2.4), 1.1, 0.55, fill: .colour(I.timberLight), stroke: .colour(I.line), width: 0.4)
+        }
+        for (x, y) in piles where x < 0 { pile(x, y) }
+        // The deck: planks across it on two bearers. Under construction, the bearers bare beyond the first planks.
+        let (y0, y1) = span(1, S.headStart)
+        if complete {
+            block(-w, y0, w, y1, S.deckFoot, S.deck, top: .colour(I.timberLight), left: .colour(I.timber), right: .colour(I.timberDark),
+                  width: 0.9)
+            var seams = PathData()
+            for t in stride(from: 1.07, to: S.headStart - 0.02, by: 0.07) { seams.move(iso(-w, d * t, S.deck)); seams.line(iso(w, d * t, S.deck)) }
+            svg.path(seams, stroke: .colour(I.line), width: 0.4, opacity: 0.55)
+        } else {
+            for x in [-w + 0.04, w - 0.04] { pole(iso(x, y0, S.deckFoot + 0.6), iso(x, y1, S.deckFoot + 0.6), width: 1.8, colour: I.timber) }
+            let (p0, p1) = span(1, 1.34)
+            block(-w, p0, w, p1, S.deckFoot, S.deck, top: .colour(I.timberLight), left: .colour(I.timber), right: .colour(I.timberDark),
+                  width: 0.9)
+            var seams = PathData()
+            for t in stride(from: 1.07, to: 1.33, by: 0.07) { seams.move(iso(-w, d * t, S.deck)); seams.line(iso(w, d * t, S.deck)) }
+            svg.path(seams, stroke: .colour(I.line), width: 0.4, opacity: 0.55)
+        }
+        for (x, y) in piles where x > 0 { pile(x, y) }
+        if d > 0 { head() }
     }
 
     // MARK: The back view

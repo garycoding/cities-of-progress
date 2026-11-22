@@ -120,10 +120,19 @@ import Testing
             // Two pixels a point: a tile's diamond is 128 by 64 pixels.
             let halfWidth = Double(footprint.x + footprint.y) * 32, halfHeight = Double(footprint.x + footprint.y) * 16
             let drawn = try #require(pixels.bounds(alphaAbove: 128), "\(key) is empty")
+            let tolerance = 5.0
+            // The boat house's jetty runs out over the water beyond the diamond,
+            // toward the lower right or the upper right, on the canvas grown for
+            // it (BronzeBuildingsArt.canvas); its left corner and top are as for any building.
+            if kind == .boatHouse {
+                #expect(drawn.minY > 0 && drawn.minX > 0, "\(key) reaches the edge of its picture")
+                #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
+                #expect(Double(drawn.maxX + 1) >= centreX + halfWidth - tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+                continue
+            }
             // Nothing is cut off by the edges of the picture.
             #expect(drawn.minY > 0 && drawn.minX > 0 && drawn.maxX < pixels.width - 1 && drawn.maxY < pixels.height - 1,
                     "\(key) reaches the edge of its picture")
-            let tolerance = 5.0
             #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
             #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
             #expect(abs(Double(drawn.maxY + 1) - (centreY + halfHeight)) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
