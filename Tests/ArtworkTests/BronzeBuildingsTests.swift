@@ -13,12 +13,12 @@ import Testing
 
     /// Every key of the batch: each building of the standard catalogue in the
     /// Bronze age's look, complete and under construction, at frame 0.
-    private static let batch: [SpriteKey] = Catalogue.standard.buildings.filter({ $0.age <= .bronze && $0.kind != .bridge && $0.kind != .boatHouse }).flatMap { stats in
+    private static let batch: [SpriteKey] = Catalogue.standard.buildings.filter({ $0.age <= .bronze && $0.kind != .bridge }).flatMap { stats in
         [SpriteKey(.building(stats.kind, .bronze), .complete), SpriteKey(.building(stats.kind, .bronze), .underConstruction)]
     }
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
-        #expect(Self.batch.count == 14)
+        #expect(Self.batch.count == 16)
         var keys = SpriteKey.required(through: .ai)
         for key in Self.batch {
             keys.append(SpriteKey(key.subject, key.pose, frame: 1))
@@ -33,7 +33,7 @@ import Testing
     /// A building takes the look of its owner's age: once its owner is in the
     /// Bronze age, every building, the Stone age's included, is drawn from here.
     @Test func everyBuildingOfABronzeAgeOwnerIsSupplied() {
-        for stats in Catalogue.standard.buildings.filter({ $0.age <= .bronze && $0.kind != .bridge && $0.kind != .boatHouse }) {
+        for stats in Catalogue.standard.buildings.filter({ $0.age <= .bronze && $0.kind != .bridge }) {
             let entity = EntityView(id: EntityID(1), owner: PlayerID(0), kind: .building(stats.kind), position: MapPosition(x: 5, y: 5),
                                     tile: GridPoint(4, 4), facing: .right, health: stats.health, maxHealth: stats.health,
                                     activity: .idle)

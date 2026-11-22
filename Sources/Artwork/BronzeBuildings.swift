@@ -35,7 +35,7 @@ enum BronzeBuildingsArt {
     /// building of the standard catalogue in the Bronze age's look, complete or
     /// under construction, at frame 0.
     static func subject(of key: SpriteKey) -> (kind: BuildingKind, complete: Bool)? {
-        guard case .building(let kind, .bronze) = key.subject, key.frame == 0, kind != .boatHouse,
+        guard case .building(let kind, .bronze) = key.subject, key.frame == 0,
               Catalogue.standard.buildings.contains(where: { $0.kind == kind }) else { return nil }
         if key.pose == .complete { return (kind, true) }
         if key.pose == .underConstruction { return (kind, false) }
@@ -65,8 +65,9 @@ enum BronzeBuildingsArt {
         case .barracks: 96
         case .watchTower: 120
         case .palisade: 58
+        case .boatHouse: 76
         // Iron-age buildings are drawn by their own batch.
-        case .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge, .boatHouse: 80
+        case .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: 80
         }
     }
 
@@ -93,8 +94,9 @@ extension BronzeBuildingsPainter {
         case .barracks: barracks(complete: complete)
         case .watchTower: watchTower(complete: complete)
         case .palisade: palisade(complete: complete)
+        case .boatHouse: boatHouse(complete: complete)
         // Iron-age buildings are drawn by their own batch.
-        case .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge, .boatHouse: break
+        case .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: break
         }
     }
 }
