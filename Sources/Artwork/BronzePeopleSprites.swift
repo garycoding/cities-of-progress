@@ -71,7 +71,7 @@ enum BronzePeopleLooks {
         case .spearman: BronzePeopleSpearman()
         case .archer: BronzePeopleArcher()
         case .chariot: BronzePeopleChariot()
-        case .founder, .clubman, .slinger, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car: nil
+        case .founder, .clubman, .slinger, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car, .boat: nil
         }
     }
 

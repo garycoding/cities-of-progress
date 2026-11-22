@@ -157,8 +157,13 @@ public struct GatheringStats: Hashable, Codable, Sendable {
         self.herdingPerSecond = herdingPerSecond; self.farmingPerSecond = farmingPerSecond; self.load = load
     }
 
-    public func perSecond(_ kind: SiteKind) -> Double { perSecondBySite[kind.rawValue] }
-    public func amount(_ kind: SiteKind) -> Int { amountBySite[kind.rawValue] }
+    /// A kind newer than a saved table (fish, 2026-11-21) takes the standard figure.
+    public func perSecond(_ kind: SiteKind) -> Double {
+        kind.rawValue < perSecondBySite.count ? perSecondBySite[kind.rawValue] : Catalogue.standard.gathering.perSecond(kind)
+    }
+    public func amount(_ kind: SiteKind) -> Int {
+        kind.rawValue < amountBySite.count ? amountBySite[kind.rawValue] : Catalogue.standard.gathering.amount(kind)
+    }
 }
 
 /// How the alchemist's workshop makes gunpowder (ruled 2026-11-19): up to
@@ -346,6 +351,9 @@ public struct Catalogue: Hashable, Codable, Sendable {
             // A person's car (ruled 2026-11-21): free, outside the population, twice a worker's speed.
             UnitStats(kind: .car, age: .stone, cost: cost([:]), trainTime: 0, health: 1, armour: 0,
                       speed: 2.0, sight: 8, attack: nil, trainedAt: [], population: 0),
+            // A boat (ruled 2026-11-21): on the water only, a worker's speed, health and load.
+            UnitStats(kind: .boat, age: .stone, cost: cost([.wood: 50]), trainTime: s(15), health: 25, armour: 0,
+                      speed: 1.0, sight: 5, attack: nil, trainedAt: [.boatHouse]),
             UnitStats(kind: .clubman, age: .stone, cost: cost([.food: 50, .wood: 10]), trainTime: s(12), health: 40, armour: 0,
                       speed: 1.1, sight: 5, attack: Attack(damage: 4, range: 1, interval: s(1.5)), trainedAt: [.townCentre, .barracks]),
             UnitStats(kind: .slinger, age: .stone, cost: cost([.food: 40, .stone: 15]), trainTime: s(12), health: 28, armour: 0,
@@ -409,6 +417,10 @@ public struct Catalogue: Hashable, Codable, Sendable {
             // One water tile's piece of a bridge (ruled 2026-11-21); the cost is for each piece.
             BuildingStats(kind: .bridge, age: .stone, cost: cost([.wood: 10]), buildTime: s(6), health: 150, armour: 1,
                           footprint: GridPoint(1, 1), sight: 1),
+            // A boat house on the shore (ruled 2026-11-21): it trains boats and takes in their loads.
+            BuildingStats(kind: .boatHouse, age: .stone, cost: cost([.wood: 100]), buildTime: s(30), health: 300, armour: 0,
+                          footprint: GridPoint(2, 2), sight: 4, accepts: [.food, .stone, .bronze, .gold, .iron],
+                          trains: [.boat]),
             // The Iron age's buildings. Their figures are provisional until the Iron age's rules are built.
             BuildingStats(kind: .farm, age: .iron, cost: cost([.wood: 60]), buildTime: s(20), health: 150, armour: 0,
                           footprint: GridPoint(3, 3), sight: 2, researches: [.plough]),
@@ -472,13 +484,15 @@ public struct Catalogue: Hashable, Codable, Sendable {
             AdvanceStats(from: .alchemy, cost: cost([.food: 1000, .iron: 300, .gold: 300, .gunpowder: 150]), study: s(4 * 250)),
         ]
         let gathering = GatheringStats(
-            perSecond: [.tree: 0.6, .prey: 0.8, .stone: 0.5, .copper: 0.4, .tin: 0.4, .gold: 0.4, .iron: 0.4, .oilField: 0],
+            perSecond: [.tree: 0.6, .prey: 0.8, .stone: 0.5, .copper: 0.4, .tin: 0.4, .gold: 0.4, .iron: 0.4, .oilField: 0,
+                        .fish: 0.7],
             herdingPerSecond: 0.7,
             farmingPerSecond: 0.9,
             farmYield: 300,
             farmReseed: cost([.wood: 60]),
             load: 10,
-            siteAmount: [.tree: 100, .prey: 150, .stone: 300, .copper: 500, .tin: 500, .gold: 400, .iron: 500, .oilField: 2000]
+            siteAmount: [.tree: 100, .prey: 150, .stone: 300, .copper: 500, .tin: 500, .gold: 400, .iron: 500, .oilField: 2000,
+                         .fish: 200]
         )
         let bonuses: [Bonus] = [
             Bonus(.spearman, against: .chariot, 3),

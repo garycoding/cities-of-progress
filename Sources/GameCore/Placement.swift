@@ -119,10 +119,25 @@ public enum Placement {
         let tiles = footprint(kind, at: origin, catalogue: catalogue)
         let needs = site(for: kind) != nil
         if needs && !tiles.contains(where: wanted.contains) { return false }
+        if kind == .boatHouse && !touchesWater(tiles, width: width, height: height, terrain: terrain) { return false }
         return tiles.allSatisfy { t in
             t.x >= 0 && t.y >= 0 && t.x < width && t.y < height
                 && terrain[t.y * width + t.x].isBuildable && (!occupied.contains(t) || needs && wanted.contains(t)) && explored(t)
         }
+    }
+
+    /// Whether a footprint has a water tile beside one of its edges, as a boat
+    /// house's must (ruled 2026-11-21): the boats come and go on that water.
+    public static func touchesWater(_ tiles: [GridPoint], width: Int, height: Int, terrain: [Terrain]) -> Bool {
+        let inside = Set(tiles)
+        for t in tiles {
+            for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                let n = GridPoint(t.x + dx, t.y + dy)
+                guard !inside.contains(n), n.x >= 0, n.y >= 0, n.x < width, n.y < height else { continue }
+                if terrain[n.y * width + n.x].isWater { return true }
+            }
+        }
+        return false
     }
 
     /// The same rule as the player sees it: for the drawing's outline and the

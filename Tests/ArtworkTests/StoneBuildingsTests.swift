@@ -10,7 +10,7 @@ import Testing
 /// The Stone age's buildings (`StoneBuildingSprites`): which keys they answer,
 /// where their pictures stand, and that they are drawn the same every time.
 @Suite struct StoneBuildingsTests {
-    private static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit]
+    private static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .boatHouse]
     private static let poses: [SpritePose] = [.complete, .underConstruction]
     private static let keys = kinds.flatMap { kind in poses.map { SpriteKey(.building(kind, .stone), $0) } }
 

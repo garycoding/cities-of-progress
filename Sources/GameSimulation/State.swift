@@ -205,6 +205,8 @@ struct Entity: Codable, Sendable, Hashable {
     var unitKind: UnitKind? { if case .unit(let k) = kind { k } else { nil } }
     var buildingKind: BuildingKind? { if case .building(let k) = kind { k } else { nil } }
     var isPerson: Bool { if case .unit = kind { true } else { false } }
+    /// Whether this is a boat, which moves on water only (ruled 2026-11-21).
+    var isBoat: Bool { kind == .unit(.boat) }
     var isFounder: Bool { unitKind == .founder }
     /// Nothing harms a founder or a person's car, and neither is a target.
     var isUnharmable: Bool { unitKind == .founder || unitKind == .car }

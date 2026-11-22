@@ -428,6 +428,7 @@ public struct PanelModel: Sendable {
         case .fieldGun: "d"
         case .armouredCar: "v"
         case .car: nil
+        case .boat: "b"
         case .founder: nil
         }
     }
@@ -452,6 +453,8 @@ public struct PanelModel: Sendable {
         case .oilWell: "r"
         // "x" for a crossing: "b" is the barracks.
         case .bridge: "x"
+        // "i" for an inlet: "b" is the barracks and "o" the stone wall.
+        case .boatHouse: "i"
         }
     }
 

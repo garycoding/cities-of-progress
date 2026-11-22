@@ -28,7 +28,8 @@ private func distance(_ site: ResourceSite, from c: MapPosition) -> Double { sit
 
 private func count(_ kind: SiteKind, in map: GameMap, within radius: Double, of start: GridPoint) -> Int {
     let c = centre(of: start)
-    return map.sites.filter { $0.kind == kind && distance($0, from: c) <= radius }.count
+    // On land: the water's own sites, for boats, are counted apart.
+    return map.sites.filter { $0.kind == kind && map[$0.tile].isPassable && distance($0, from: c) <= radius }.count
 }
 
 /// The checksum the brief asks for: terrain raw values, then each site's fields in order.
@@ -66,8 +67,8 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
 /// Stored values, which a second process reproduces. If a deliberate change to
 /// the generator alters the map, regenerate them and say so in the commit.
 @Test func storedChecksumsMatch() {
-    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 2, seed: 1))) == 11_248_579_691_421_863_391)
-    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 6, seed: 2))) == 7_832_412_196_117_367_643)
+    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 2, seed: 1))) == 367_805_829_030_684_542)
+    #expect(checksum(MapGenerator().generate(MapRequest(playerCount: 6, seed: 2))) == 18_390_609_078_460_926_163)
 }
 
 // MARK: - Shape
@@ -88,7 +89,9 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
 @Test func sitesAreOnTheGroundTheyBelongOn() {
     for map in Maps.byPlayers[4]! {
         for site in map.sites {
-            #expect(map[site.tile].isPassable)
+            // Fish live only in the water; rocks may rise from it (ruled 2026-11-21); the rest stand on land.
+            if site.kind == .fish { #expect(!map[site.tile].isPassable); continue }
+            if !map[site.tile].isPassable { #expect([.stone, .copper, .tin, .gold, .iron].contains(site.kind)); continue }
             if site.kind == .tree { #expect(map[site.tile] == .forest) }
             else { #expect(map[site.tile] != .forest) }
         }
@@ -115,6 +118,53 @@ private func reachableTiles(in map: GameMap, from start: GridPoint, ignoringSite
         #expect(count(.tin, in: map, within: 14, of: start) >= 5, "tin near \(start)")
         #expect(count(.iron, in: map, within: 30, of: start) >= 5, "iron near \(start)")
     } }
+}
+
+// MARK: - The water's resources (ruled 2026-11-21)
+
+@Test func fishComeInShoalsOfTwoByTwo() {
+    for maps in Maps.byPlayers.values { for map in maps {
+        let fish = Set(map.sites.filter { $0.kind == .fish }.map(\.tile))
+        #expect(!fish.isEmpty)
+        #expect(fish.count % 4 == 0)
+        // Every fish tile is in a whole square of four fish tiles.
+        for t in fish {
+            let squares = [(0, 0), (-1, 0), (0, -1), (-1, -1)].map { d in
+                [(0, 0), (1, 0), (0, 1), (1, 1)].allSatisfy { fish.contains(GridPoint(t.x + d.0 + $0.0, t.y + d.1 + $0.1)) }
+            }
+            #expect(squares.contains(true), "\(t)")
+        }
+    } }
+}
+
+@Test func rocksInTheWaterHaveWaterAllRound() {
+    var kinds: Set<SiteKind> = []
+    for maps in Maps.byPlayers.values { for map in maps {
+        for site in map.sites where site.kind != .fish && !map[site.tile].isPassable {
+            kinds.insert(site.kind)
+            for dy in -1...1 { for dx in -1...1 {
+                #expect(!map[GridPoint(site.tile.x + dx, site.tile.y + dy)].isPassable, "\(site.kind) at \(site.tile)")
+            } }
+        }
+    } }
+    #expect(kinds == [.stone, .copper, .tin, .gold, .iron])
+}
+
+@Test func aStartWithWaterInReachHasAShoalAndARockThere() {
+    for maps in Maps.byPlayers.values { for map in maps { for start in map.starts {
+        let c = centre(of: start)
+        // Water in reach wide enough for a shoal: a square of two by two.
+        let water = (0..<(map.width * map.height)).contains { i in
+            let t = GridPoint(i % map.width, i / map.width)
+            guard t.x < map.width - 1, t.y < map.height - 1 else { return false }
+            let dx = Double(t.x) + 0.5 - c.x, dy = Double(t.y) + 0.5 - c.y
+            return dx * dx + dy * dy <= 30 * 30
+                && [(0, 0), (1, 0), (0, 1), (1, 1)].allSatisfy { !map[GridPoint(t.x + $0.0, t.y + $0.1)].isPassable }
+        }
+        guard water else { continue }
+        let afloat = map.sites.filter { !map[$0.tile].isPassable && distance($0, from: c) <= 31 }
+        #expect(afloat.contains { $0.kind == .fish } || afloat.contains { $0.kind == .stone }, "nothing afloat near \(start)")
+    } } }
 }
 
 // MARK: - Fairness
@@ -240,6 +290,7 @@ private func colour(_ k: SiteKind) -> (UInt8, UInt8, UInt8) {
     case .gold: (250, 215, 30)
     case .iron: (90, 50, 50)
     case .oilField: (20, 20, 20)
+    case .fish: (230, 250, 255)
     }
 }
 

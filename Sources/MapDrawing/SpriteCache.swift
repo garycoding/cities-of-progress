@@ -53,10 +53,13 @@ final class SpriteCache {
     private struct PersonKey: Hashable { var kind: UnitKind; var civilization: Civilization; var pose: String; var frame: Int }
     private struct BuildingKey: Hashable { var kind: BuildingKind; var civilization: Civilization; var constructing: Bool }
     private struct TerrainKey: Hashable { var terrain: Terrain; var variant: Int; var dimmed: Bool }
+    private struct SiteKey: Hashable { var kind: SiteKind; var afloat: Bool; var frame: Int }
     private var people: [PersonKey: ResolvedSprite] = [:]
     private var buildings: [BuildingKey: ResolvedSprite] = [:]
-    private var sites: [SiteKind: ResolvedSprite] = [:]
+    private var sites: [SiteKey: ResolvedSprite] = [:]
+    private var sitePlaceholders: [SiteKind: ResolvedSprite] = [:]
     private var outcrop: ResolvedSprite?
+    private var outcropAfloat: ResolvedSprite?
     private var terrainTextures: [TerrainKey: (texture: SKTexture, size: CGSize)] = [:]
     private var variantCounts: [Terrain: Int] = [:]
     private var footprints: [BuildingKind: GridPoint] = [:]
@@ -132,14 +135,33 @@ final class SpriteCache {
         }
     }
 
-    func sprite(forSite kind: SiteKind) -> ResolvedSprite {
-        if let known = sites[kind] { return known }
-        let sprite = supplied(SpriteKey(.site(kind), .complete)) ?? Self.placeholder(Placeholders.site(kind))
-        sites[kind] = sprite
+    /// The sprite of a site at a frame of its animation: `afloat` on a water
+    /// tile (ruled 2026-11-21), falling back to `complete`, then to frame 0,
+    /// then to a placeholder.
+    func sprite(forSite kind: SiteKind, afloat: Bool = false, frame: Int = 0) -> ResolvedSprite {
+        let key = SiteKey(kind: kind, afloat: afloat, frame: frame)
+        if let known = sites[key] { return known }
+        let sprite = suppliedWithFallback(.site(kind), pose: afloat ? .afloat : .complete, frame: frame, fallback: .complete)
+            ?? sitePlaceholder(kind)
+        sites[key] = sprite
         return sprite
     }
 
-    func spriteForOutcrop() -> ResolvedSprite {
+    private func sitePlaceholder(_ kind: SiteKind) -> ResolvedSprite {
+        if let known = sitePlaceholders[kind] { return known }
+        let sprite = Self.placeholder(Placeholders.site(kind))
+        sitePlaceholders[kind] = sprite
+        return sprite
+    }
+
+    /// The outcrop on land, or rising from the water (falling back to the land picture).
+    func spriteForOutcrop(afloat: Bool = false) -> ResolvedSprite {
+        if afloat {
+            if let known = outcropAfloat { return known }
+            let sprite = supplied(SpriteKey(.outcrop, .afloat)) ?? spriteForOutcrop()
+            outcropAfloat = sprite
+            return sprite
+        }
         if let known = outcrop { return known }
         let sprite = supplied(SpriteKey(.outcrop, .complete)) ?? Self.placeholder(Placeholders.outcrop())
         outcrop = sprite

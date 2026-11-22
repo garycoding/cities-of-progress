@@ -18,7 +18,7 @@ import Testing
     }
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
-        #expect(Self.batch.count == 14)
+        #expect(Self.batch.count == 16)
         var keys = SpriteKey.required(through: .ai)
         for key in Self.batch {
             keys.append(SpriteKey(key.subject, key.pose, frame: 1))

@@ -224,7 +224,7 @@ struct PersonGlyph: View {
             case .slinger, .archer, .musketeer, .rifleman:
                 mark.addArc(center: CGPoint(x: mid + u * 0.30, y: u * 0.62), radius: u * 0.26,
                             startAngle: .degrees(-70), endAngle: .degrees(70), clockwise: false)
-            case .chariot, .horseman, .catapult, .knight, .cannon, .fieldGun, .armouredCar, .car:
+            case .chariot, .horseman, .catapult, .knight, .cannon, .fieldGun, .armouredCar, .car, .boat:
                 mark.addEllipse(in: CGRect(x: mid - u * 0.46, y: u * 0.76, width: u * 0.24, height: u * 0.24))
                 mark.addEllipse(in: CGRect(x: mid + u * 0.22, y: u * 0.76, width: u * 0.24, height: u * 0.24))
             case .engineer:
@@ -293,6 +293,9 @@ struct BuildingGlyph: View {
                 parts = [(rect(0.44, 0.1, 0.12, 0.8), Palette.ink), (rect(0.2, 0.8, 0.6, 0.1), Palette.inkSoft)]
             case .bridge:
                 parts = [(rect(0.0, 0.4, 1.0, 0.2), Color(red: 0.55, green: 0.38, blue: 0.24))]
+            case .boatHouse:
+                parts = [(rect(0.1, 0.3, 0.8, 0.45), Color(red: 0.55, green: 0.38, blue: 0.24)),
+                         (rect(0.0, 0.75, 1.0, 0.2), Color(red: 0.36, green: 0.52, blue: 0.72))]
             case .palisade:
                 parts = [(rect(0.12, 0.3, 0.14, 0.6), Color(red: 0.55, green: 0.38, blue: 0.24)), (rect(0.43, 0.24, 0.14, 0.66), Color(red: 0.55, green: 0.38, blue: 0.24)), (rect(0.74, 0.3, 0.14, 0.6), Color(red: 0.55, green: 0.38, blue: 0.24))]
             }

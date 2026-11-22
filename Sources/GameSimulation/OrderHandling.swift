@@ -106,13 +106,16 @@ extension Simulation {
     }
 
     mutating func gather(_ ids: [EntityID], at site: SiteID, player: PlayerID) -> OrderResult {
-        guard let people = ownPeople(ids, player) else { return .refused(.notYours) }
-        let workers = people.filter { entities[$0].unitKind == .worker }
-        guard !workers.isEmpty else { return .refused(.notYours) }
+        guard let people = ownPeople(ids, player),
+              people.contains(where: { [.worker, .boat].contains(entities[$0].unitKind) }) else { return .refused(.notYours) }
         let p = player.rawValue
         guard let s = siteIndex(of: site), isExplored(sites[s].tile, byPlayer: p) else {
             return .refused(.invalidTarget)
         }
+        // Workers gather on land, boats in the water (ruled 2026-11-21).
+        let gatherer: UnitKind = isAfloat(sites[s]) ? .boat : .worker
+        let workers = people.filter { entities[$0].unitKind == gatherer }
+        guard !workers.isEmpty else { return .refused(.invalidTarget) }
         let kind = sites[s].kind
         guard players[p].age >= kind.firstAge else { return .refused(.ageNotReached(kind.firstAge)) }
         guard catalogue.gathering.perSecond(kind) > 0 else { return .refused(.invalidTarget) }

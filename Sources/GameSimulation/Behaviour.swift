@@ -63,7 +63,7 @@ extension Simulation {
         let owner = entities[i].owner.rawValue
         let load = catalogue.gathering.load
         var siteIndex = self.siteIndex(of: site)
-        if siteIndex == nil, let next = nearestSite(kind, near: tile, player: owner) {
+        if siteIndex == nil, let next = nearestSite(kind, near: tile, player: owner, afloat: entities[i].isBoat) {
             // The site is exhausted: the worker turns to the nearest other of its kind.
             entities[i].task = .gather(site: sites[next].id, kind: kind, tile: sites[next].tile)
             entities[i].route = Route()
@@ -102,7 +102,8 @@ extension Simulation {
     mutating func carryHome(_ i: Int, kind: SiteKind, thenIdle: Bool) {
         entities[i].doing = .carrying
         var drop = entities[i].dropOff.flatMap { index(of: $0) }
-        if let d = drop, !accepts(d, kind.yield, from: entities[i].owner) { drop = nil }
+        if let d = drop, !accepts(d, kind.yield, from: entities[i].owner)
+            || (entities[d].buildingKind == .boatHouse) != entities[i].isBoat { drop = nil }
         if drop == nil {
             drop = nearestDropOff(for: i, accepting: kind.yield)
             entities[i].dropOff = drop.map { entities[$0].id }
@@ -134,7 +135,9 @@ extension Simulation {
         let owner = entities[i].owner, position = entities[i].position
         var best: Int?
         var bestDistance = Double.infinity
-        for j in entities.indices where !entities[j].isPerson && accepts(j, resource, from: owner) {
+        let boat = entities[i].isBoat
+        for j in entities.indices where !entities[j].isPerson && accepts(j, resource, from: owner)
+            && (entities[j].buildingKind == .boatHouse) == boat {
             let d = Goal.tiles(entities[j].origin, entities[j].size, reach: 0).distance(to: position)
             if d < bestDistance { best = j; bestDistance = d }
         }
@@ -143,15 +146,19 @@ extension Simulation {
 
     /// The nearest site of a kind with something left, near where the last one was,
     /// on a tile the player's orders may use (`isExplored(_:byPlayer:)`).
-    func nearestSite(_ kind: SiteKind, near tile: GridPoint, player p: Int) -> Int? {
+    func nearestSite(_ kind: SiteKind, near tile: GridPoint, player p: Int, afloat: Bool = false) -> Int? {
         var best: Int?
         var bestDistance = Double.infinity
-        for s in sites.indices where sites[s].kind == kind && sites[s].remaining > 0 && isExplored(sites[s].tile, byPlayer: p) {
+        for s in sites.indices where sites[s].kind == kind && sites[s].remaining > 0 && isExplored(sites[s].tile, byPlayer: p)
+            && isAfloat(sites[s]) == afloat {
             let d = sites[s].tile.centre.distance(to: tile.centre)
             if d <= Rule.resiteRadius && d < bestDistance { best = s; bestDistance = d }
         }
         return best
     }
+
+    /// Whether a site stands in the water, where only boats gather (ruled 2026-11-21).
+    func isAfloat(_ site: ResourceSite) -> Bool { inMap(site.tile) && terrain[tileIndex(site.tile)].isWater }
 
     /// Credit a worker's load to its owner. Copper and tin ore pair into bronze,
     /// one unit of each to one of bronze; unpaired ore is held up to one load of
@@ -427,7 +434,8 @@ extension Simulation {
             if entities[b].trainProgress >= stats.trainTime && population[p] + stats.population <= populationLimit(p) {
                 entities[b].queue.removeFirst()
                 entities[b].trainProgress = 0
-                let spot = freeTile(besideBuilding: b, index: entities[b].spawned)
+                // A boat comes out on the water beside its boat house (ruled 2026-11-21).
+                let spot = freeTile(besideBuilding: b, index: entities[b].spawned, afloat: head == .boat)
                 entities[b].spawned += 1
                 let id = spawnPerson(head, owner: entities[b].owner, at: spot.centre)
                 record(.trained(id, head), for: p)

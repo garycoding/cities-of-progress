@@ -26,8 +26,9 @@ enum IronNewBuildingsDeposit {
     private static let oreShade = "#4c4a4f"
     private static let rust = "#c9773f"
 
-    static func draw(_ svg: inout SVG) {
-        svg.ellipse(P(0, 4), 27, 8, fill: .colour("#000000"), opacity: 0.16)
+    /// The deposit; without `shadow`, without its shadow on the ground, to rise from the water.
+    static func draw(_ svg: inout SVG, shadow: Bool = true) {
+        if shadow { svg.ellipse(P(0, 4), 27, 8, fill: .colour("#000000"), opacity: 0.16) }
         // The crag behind: its faces, then the bands of ore across them.
         let outline = [P(-21, 5), P(-23, -6), P(-18, -16), P(-9, -24), P(1, -27), P(9, -22), P(17, -14), P(20, -3), P(17, 6),
                        P(5, 10), P(-9, 10)]

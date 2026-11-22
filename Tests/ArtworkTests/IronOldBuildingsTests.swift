@@ -12,7 +12,7 @@ import Testing
     /// One source shared by the tests that only look at the sprites.
     private static let source = IronOldBuildingSprites()
 
-    /// The buildings of the Stone and Bronze ages: the batch's kinds.
+    /// The buildings of the Stone and Bronze ages, the boat house among them: the batch's kinds.
     private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .bronze && $0.kind != .bridge }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Iron age's look,
@@ -22,7 +22,7 @@ import Testing
     }
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
-        #expect(Self.batch.count == 14)
+        #expect(Self.batch.count == 16)
         var keys = SpriteKey.required(through: .ai)
         for kind in BuildingKind.allCases {
             for age in Age.allCases {

@@ -213,7 +213,8 @@ public final class MapScene: SKScene {
                 siteNodes[site.id] = node
             }
             node.generation = generation
-            node.apply(site, visibility: view.visibility(at: site.tile), cache: cache)
+            node.apply(site, afloat: view.terrain(at: site.tile).isWater, frame: animationFrame,
+                       visibility: view.visibility(at: site.tile), cache: cache)
             seenSites += 1
         }
         if siteNodes.count != seenSites {
@@ -227,7 +228,7 @@ public final class MapScene: SKScene {
             let node: OutcropNode
             if let existing = outcropNodes[tile] { node = existing } else {
                 node = OutcropNode()
-                node.place(at: tile, cache: cache)
+                node.place(at: tile, afloat: view.terrain(at: tile).isWater, cache: cache)
                 world.addChild(node)
                 outcropNodes[tile] = node
             }

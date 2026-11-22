@@ -243,7 +243,7 @@ enum Placeholders {
             c.strokePath()
             line(c, CGPoint(x: h.x - 2 + 11 * cos(-1.1), y: h.y + 6 + 11 * sin(-1.1)),
                  CGPoint(x: h.x - 2 + 11 * cos(1.1), y: h.y + 6 + 11 * sin(1.1)), colour(0.9, 0.9, 0.85), width: 1)
-        case .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car:
+        case .chariot, .swordsman, .horseman, .catapult, .knight, .musketeer, .cannon, .rifleman, .fieldGun, .armouredCar, .car, .boat:
             break
         }
     }
@@ -404,7 +404,7 @@ enum Placeholders {
                 line(c, onRightFace(u, 0.05), onRightFace(u, 1), colour(0.2, 0.12, 0.05, 0.7), width: 1)
                 line(c, onLeftFace(u, 0.05), onLeftFace(u, 1), colour(0.2, 0.12, 0.05, 0.7), width: 1)
             }
-        case .storagePit, .stockPen, .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge:
+        case .storagePit, .stockPen, .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge, .boatHouse:
             break
         }
     }
@@ -485,6 +485,12 @@ enum Placeholders {
             case .oilField:
                 ellipse(c, CGRect(x: gx - 17, y: gy - 3, width: 34, height: 15), fill: colour(0.06, 0.06, 0.08))
                 ellipse(c, CGRect(x: gx - 9, y: gy + 3, width: 10, height: 4), fill: colour(0.3, 0.3, 0.45, 0.8), stroke: nil)
+            case .fish:
+                // Silver fish leaping from rings on the water.
+                for (x, y) in [(-9.0, 6.0), (6.0, 10.0)] {
+                    ellipse(c, CGRect(x: gx + x - 6, y: gy + y - 2, width: 12, height: 4), fill: nil, stroke: colour(0.85, 0.92, 0.98))
+                    ellipse(c, CGRect(x: gx + x - 3, y: gy + y + 3, width: 7, height: 3.4), fill: colour(0.78, 0.82, 0.86))
+                }
             }
         }
         return DrawnImage(image: image, size: siteCanvas,

@@ -36,8 +36,8 @@ private final class Store: Sendable {
 
 /// What this batch draws, on what canvas, and the drawing of it.
 enum IronOldBuildingsArt {
-    /// The buildings this batch draws: those of the Stone and Bronze ages.
-    static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .stockPen, .barracks, .watchTower, .palisade]
+    /// The buildings this batch draws: those of the Stone and Bronze ages, the boat house among them.
+    static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .stockPen, .barracks, .watchTower, .palisade, .boatHouse]
 
     /// The building and pose a key names, if it is one of this batch's: a
     /// building of the Stone or Bronze age in the Iron age's look, complete or
@@ -76,6 +76,7 @@ extension IronOldBuildingsPainter {
         case .barracks: barracks(complete: complete)
         case .watchTower: watchTower(complete: complete)
         case .palisade: palisade(complete: complete)
+        case .boatHouse: boatHouse(complete: complete)
         // The Iron age's own buildings are drawn by their own batch.
         case .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: break
         }

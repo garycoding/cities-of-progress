@@ -118,13 +118,14 @@ func reportHowEqualsPlay() {
     #expect(reopened.dropped.isEmpty)
 }
 
-/// Two hard computer players on seed 2: one reaches the Iron age, and the match
+/// Two hard computer players on seed 5: one reaches the Iron age, and the match
 /// ends with a winner (plan step 4 of the Iron age). Seed 3 served until
-/// engineers went on to the next building on their own (2026-11-19), and seed 6
+/// engineers went on to the next building on their own (2026-11-19), seed 6
 /// until five copper, tin and iron deposits were put near each start
+/// (2026-11-21), and seed 2 until the water was given fish and rocks
 /// (2026-11-21); most matches on these maps end before the Iron age.
 @Test func twoHardComputerPlayersReachTheIronAgeAndFinish() {
-    var host = Host(setup: computerMatch(seed: 2, size: 64, difficulties: [.hard, .hard]))
+    var host = Host(setup: computerMatch(seed: 5, size: 64, difficulties: [.hard, .hard]))
     var reached = false
     while host.outcome == nil && host.tick < matchLimit {
         host.advance()

@@ -58,11 +58,14 @@ public enum SiteKind: Int, CaseIterable, Codable, Sendable, Hashable {
     case stone, copper, tin, gold, iron
     /// An oil field, pumped from the Industrial age.
     case oilField
+    /// One tile of a shoal of fish in the water, 2 × 2 tiles to a shoal
+    /// (ruled 2026-11-21); only boats gather it, and they sail over it.
+    case fish
 
     /// A player cannot see or use a site before reaching this age (requirement 19).
     public var firstAge: Age {
         switch self {
-        case .tree, .prey, .stone: .stone
+        case .tree, .prey, .stone, .fish: .stone
         case .copper, .tin, .gold: .bronze
         case .iron: .iron
         case .oilField: .industrial
@@ -72,14 +75,14 @@ public enum SiteKind: Int, CaseIterable, Codable, Sendable, Hashable {
     /// Whether the site occupies its tile, so that nothing walks or is built
     /// there whilst it remains. Prey and oil fields do not; trees, stone and
     /// metal deposits do (`Placement`).
-    public var blocksTile: Bool { self != .prey && self != .oilField }
+    public var blocksTile: Bool { self != .prey && self != .oilField && self != .fish }
 
     /// What gathering at the site yields. Copper and tin each yield bronze, but
     /// only whilst the player mines both (requirement 18).
     public var yield: Resource {
         switch self {
         case .tree: .wood
-        case .prey: .food
+        case .prey, .fish: .food
         case .stone: .stone
         case .copper, .tin: .bronze
         case .gold: .gold
@@ -87,6 +90,11 @@ public enum SiteKind: Int, CaseIterable, Codable, Sendable, Hashable {
         case .oilField: .oil
         }
     }
+}
+
+extension Terrain {
+    /// Whether the tile is water, on which only boats move (ruled 2026-11-21).
+    public var isWater: Bool { self == .shallowWater || self == .deepWater }
 }
 
 /// A resource site and what remains in it.

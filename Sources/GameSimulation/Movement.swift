@@ -195,7 +195,8 @@ extension Simulation {
     /// ally's depot too), taken when it needs at most four-fifths of the time
     /// on foot, counted in straight lines.
     func railTrip(_ i: Int, _ goal: Goal) -> RailTrip? {
-        guard let railway = catalogue.railway, entities[i].isPerson, let kind = entities[i].unitKind else { return nil }
+        guard let railway = catalogue.railway, entities[i].isPerson, !entities[i].isBoat,
+              let kind = entities[i].unitKind else { return nil }
         let owner = entities[i].owner
         let team = teamOf(owner)
         var own: [Int] = [], alighting: [Int] = []
@@ -296,15 +297,16 @@ extension Simulation {
         route.plannedFor = goal.anchor
         route.plannedAt = tick
         route.stuck = entities[i].route.stuck
-        if !entities[i].route.forceSearch && clearWay(from, goal.nearestPoint(to: from), goal: goal) {
+        let afloat = entities[i].isBoat
+        if !entities[i].route.forceSearch && clearWay(from, goal.nearestPoint(to: from), goal: goal, afloat: afloat) {
             route.direct = true
             entities[i].route = route
             return true
         }
         guard searchesLeft > (keepingRoute ? searchBudget / 2 : 0) else { return keepingRoute }
         searchesLeft -= 1
-        let (tiles, complete) = findPath(from: from.tile, to: goal)
-        route.waypoints = smoothed(from: from, tiles).reversed()
+        let (tiles, complete) = findPath(from: from.tile, to: goal, afloat: afloat)
+        route.waypoints = smoothed(from: from, tiles, afloat: afloat).reversed()
         route.partial = !complete
         entities[i].route = route
         return true
@@ -318,7 +320,7 @@ extension Simulation {
         let d = (dx * dx + dy * dy).squareRoot()
         let reached = d <= speed
         let to = reached ? target : MapPosition(x: from.x + dx * speed / d, y: from.y + dy * speed / d)
-        guard clearWay(from, to, goal: nil) else {
+        guard clearWay(from, to, goal: nil, afloat: entities[i].isBoat) else {
             entities[i].route.planned = false
             entities[i].route.forceSearch = true
             entities[i].route.stuck += 1
@@ -341,7 +343,7 @@ extension Simulation {
     /// goal's own tiles). Where it passes exactly through a corner, both tiles
     /// beside the corner must be open, so that nothing slips between two blocked
     /// tiles that touch at a corner. The starting tile is not checked.
-    func clearWay(_ a: MapPosition, _ b: MapPosition, goal: Goal?) -> Bool {
+    func clearWay(_ a: MapPosition, _ b: MapPosition, goal: Goal?, afloat: Bool = false) -> Bool {
         var x = Int(a.x.rounded(.down)), y = Int(a.y.rounded(.down))
         let dx = b.x - a.x, dy = b.y - a.y
         let stepX = dx > 0 ? 1 : (dx < 0 ? -1 : 0), stepY = dy > 0 ? 1 : (dy < 0 ? -1 : 0)
@@ -349,7 +351,7 @@ extension Simulation {
         let deltaY = stepY != 0 ? abs(1 / dy) : Double.infinity
         var nextX = stepX > 0 ? (Double(x + 1) - a.x) / dx : (stepX < 0 ? (Double(x) - a.x) / dx : Double.infinity)
         var nextY = stepY > 0 ? (Double(y + 1) - a.y) / dy : (stepY < 0 ? (Double(y) - a.y) / dy : Double.infinity)
-        func passable(_ x: Int, _ y: Int) -> Bool { open(x, y) || (goal?.covers(x, y) ?? false) }
+        func passable(_ x: Int, _ y: Int) -> Bool { open(x, y, afloat: afloat) || (goal?.covers(x, y) ?? false) }
         while true {
             let t = min(nextX, nextY)
             if t > 1 { return true }
@@ -371,7 +373,7 @@ extension Simulation {
     /// A* over tiles, eight ways, never cutting a blocked corner. Returns the tiles
     /// after the start to the first tile the goal accepts, or, when the goal
     /// cannot be reached, to the tile nearest it.
-    mutating func findPath(from start: GridPoint, to goal: Goal) -> (tiles: [GridPoint], complete: Bool) {
+    mutating func findPath(from start: GridPoint, to goal: Goal, afloat: Bool = false) -> (tiles: [GridPoint], complete: Bool) {
         guard inMap(start) else { return ([], false) }
         search.begin()
         let generation = search.generation
@@ -391,7 +393,7 @@ extension Simulation {
             if search.closed[n] == generation { continue }
             search.closed[n] = generation
             let x = n % w, y = n / w
-            if goal.accepts(x, y) && (n == s || !blocked[n]) { found = n; break }
+            if goal.accepts(x, y) && (n == s || open(x, y, afloat: afloat)) { found = n; break }
             let estimate = goal.heuristic(x, y)
             if estimate < bestEstimate || (estimate == bestEstimate && search.cost[n] < search.cost[best]) {
                 best = n
@@ -404,8 +406,8 @@ extension Simulation {
                 let nx = x + step.dx, ny = y + step.dy
                 guard nx >= 0, ny >= 0, nx < w, ny < height else { continue }
                 let m = ny * w + nx
-                if blocked[m] || search.closed[m] == generation { continue }
-                if step.dx != 0 && step.dy != 0 && (blocked[y * w + nx] || blocked[ny * w + x]) { continue }
+                if !open(nx, ny, afloat: afloat) || search.closed[m] == generation { continue }
+                if step.dx != 0 && step.dy != 0 && (!open(nx, y, afloat: afloat) || !open(x, ny, afloat: afloat)) { continue }
                 let ng = g + step.cost
                 if search.opened[m] != generation || ng < search.cost[m] {
                     search.opened[m] = generation
@@ -428,14 +430,14 @@ extension Simulation {
     }
 
     /// Drop the waypoints that a straight way can skip.
-    func smoothed(from start: MapPosition, _ tiles: [GridPoint]) -> [GridPoint] {
+    func smoothed(from start: MapPosition, _ tiles: [GridPoint], afloat: Bool = false) -> [GridPoint] {
         guard tiles.count > 1 else { return tiles }
         var out: [GridPoint] = []
         var anchor = start
         var k = 0
         while k < tiles.count {
             var j = k
-            while j + 1 < tiles.count && clearWay(anchor, tiles[j + 1].centre, goal: nil) { j += 1 }
+            while j + 1 < tiles.count && clearWay(anchor, tiles[j + 1].centre, goal: nil, afloat: afloat) { j += 1 }
             out.append(tiles[j])
             anchor = tiles[j].centre
             k = j + 1

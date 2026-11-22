@@ -17,16 +17,18 @@ extension TerrainSprites {
     /// A tree: taller.
     static let treeCanvas = Canvas(minX: -36, minY: -104, width: 72, height: 124, pixelsPerUnit: 2)
 
-    /// A site in SVG. Iron and oil fields belong to later batches.
-    static func drawSite(_ kind: SiteKind, _ svg: inout SVG) {
+    /// A site in SVG. Iron and oil fields belong to later batches, and the
+    /// fish to the boats' (`StoneBoatSprites`). Without `shadow`, a rock is
+    /// drawn without its shadow on the ground, to rise from the water.
+    static func drawSite(_ kind: SiteKind, _ svg: inout SVG, shadow: Bool = true) {
         switch kind {
         case .tree: drawTree(&svg)
         case .prey: drawDeer(&svg)
-        case .stone: drawStone(&svg)
-        case .copper: drawCopper(&svg)
-        case .tin: drawTin(&svg)
-        case .gold: drawGold(&svg)
-        case .iron, .oilField: break
+        case .stone: drawStone(&svg, shadow: shadow)
+        case .copper: drawCopper(&svg, shadow: shadow)
+        case .tin: drawTin(&svg, shadow: shadow)
+        case .gold: drawGold(&svg, shadow: shadow)
+        case .iron, .oilField, .fish: break
         }
     }
 
@@ -223,8 +225,8 @@ extension TerrainSprites {
 
     /// Stone to quarry: a pile of pale boulders, taller than any deposit, one
     /// marked by the wedges that split it, with a broken piece at its foot.
-    private static func drawStone(_ svg: inout SVG) {
-        groundShadow(&svg, at: P(0, 4), rx: 27, ry: 8.5)
+    private static func drawStone(_ svg: inout SVG, shadow: Bool) {
+        if shadow { groundShadow(&svg, at: P(0, 4), rx: 27, ry: 8.5) }
         let faces = TerrainFaces(top: TerrainInk.stoneTop, lit: TerrainInk.stoneLit, shade: TerrainInk.stoneShade)
         // The great boulder behind.
         rock(&svg, TerrainRock(
@@ -260,8 +262,8 @@ extension TerrainSprites {
     /// The outcrop: plain bedrock, low, dark and rounded, with no edge split or
     /// squared and nothing showing in it, so that it reads neither as stone to
     /// quarry nor as ore (requirement 19).
-    static func drawOutcrop(_ svg: inout SVG) {
-        groundShadow(&svg, at: P(0, 3), rx: 28, ry: 8)
+    static func drawOutcrop(_ svg: inout SVG, shadow: Bool = true) {
+        if shadow { groundShadow(&svg, at: P(0, 3), rx: 28, ry: 8) }
         let faces = TerrainFaces(top: TerrainInk.outcropTop, lit: TerrainInk.outcropLit, shade: TerrainInk.outcropShade)
         rock(&svg, TerrainRock(
             outline: [P(-26, 4), P(-27, -1), P(-21, -6), P(-9, -10), P(5, -10), P(17, -7), P(25, -2), P(24, 4), P(13, 9),
@@ -282,8 +284,8 @@ extension TerrainSprites {
     }
 
     /// Copper: a mound of green ore, its lumps the colour of the metal.
-    private static func drawCopper(_ svg: inout SVG) {
-        groundShadow(&svg, at: P(-1, 4), rx: 27, ry: 8)
+    private static func drawCopper(_ svg: inout SVG, shadow: Bool) {
+        if shadow { groundShadow(&svg, at: P(-1, 4), rx: 27, ry: 8) }
         let faces = TerrainFaces(top: TerrainInk.copperTop, lit: TerrainInk.copperLit, shade: TerrainInk.copperShade)
         rock(&svg, TerrainRock(
             outline: [P(-21, 6), P(-24, -4), P(-18, -15), P(-7, -22), P(5, -23), P(15, -16), P(20, -5), P(17, 5), P(5, 10),
@@ -328,8 +330,8 @@ extension TerrainSprites {
     }
 
     /// Tin: a crag of blue-grey rock with clusters of pale crystals.
-    private static func drawTin(_ svg: inout SVG) {
-        groundShadow(&svg, at: P(0, 4), rx: 26, ry: 8)
+    private static func drawTin(_ svg: inout SVG, shadow: Bool) {
+        if shadow { groundShadow(&svg, at: P(0, 4), rx: 26, ry: 8) }
         let faces = TerrainFaces(top: TerrainInk.tinTop, lit: TerrainInk.tinLit, shade: TerrainInk.tinShade)
         rock(&svg, TerrainRock(
             outline: [P(-19, 7), P(-23, -2), P(-19, -12), P(-10, -17), P(-3, -15), P(3, -21), P(12, -19), P(19, -10),
@@ -349,8 +351,8 @@ extension TerrainSprites {
     }
 
     /// Gold: a dark boulder seamed with yellow, with nuggets and sparkles.
-    private static func drawGold(_ svg: inout SVG) {
-        groundShadow(&svg, at: P(0, 4), rx: 27, ry: 8)
+    private static func drawGold(_ svg: inout SVG, shadow: Bool) {
+        if shadow { groundShadow(&svg, at: P(0, 4), rx: 27, ry: 8) }
         let faces = TerrainFaces(top: TerrainInk.goldTop, lit: TerrainInk.goldLit, shade: TerrainInk.goldShade)
         rock(&svg, TerrainRock(
             outline: [P(-22, 6), P(-23, -5), P(-15, -16), P(-3, -21), P(10, -19), P(19, -9), P(21, 2), P(12, 9), P(-6, 11)],

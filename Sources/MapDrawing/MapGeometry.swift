@@ -101,6 +101,7 @@ enum Stature {
         case .railwayDepot: 28
         case .oilWell: 34
         case .bridge: 6
+        case .boatHouse: 30
         }
     }
 
@@ -111,6 +112,7 @@ enum Stature {
         case .prey: 22
         case .stone, .copper, .tin, .gold, .iron: 26
         case .oilField: 8
+        case .fish: 6
         }
     }
 }

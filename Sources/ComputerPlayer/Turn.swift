@@ -38,6 +38,7 @@ final class Turn {
     var warfighters: [EntityView] = []
     var founders: [EntityView] = []
     var merchants: [EntityView] = []
+    var boats: [EntityView] = []
     var buildings: [EntityView] = []
     /// People in training at its buildings, by `UnitKind.rawValue`, with those
     /// queued in this action. A queue is counted as the kind it is training.
@@ -113,6 +114,7 @@ final class Turn {
                         case .scholar: scholars.append(entity)
                         case .founder: founders.append(entity)
                         case .merchant: merchants.append(entity)
+                        case .boat: boats.append(entity)
                         default: if kind.isWarfighter { warfighters.append(entity) }
                         }
                     case .building:
@@ -198,6 +200,8 @@ final class Turn {
         employScholars()
         employEngineers()
         employMerchants()
+        trainBoats()
+        sendBoats()
     }
 
     // MARK: Spending and ordering

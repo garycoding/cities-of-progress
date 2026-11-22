@@ -76,8 +76,11 @@ enum OrderCheck {
             case .reseed(let farm):
                 if building(farm)?.entity.remaining != 0 { problems.append("reseed: \(farm) is not a farm of its own that has run dry") }
             case .gather(let units, let site):
-                command(units, "gather") { $0 == .worker }
-                if !view.sites.contains(where: { $0.id == site && $0.remaining > 0 }) {
+                // Boats gather in the water, workers on land (ruled 2026-11-21).
+                let known = view.sites.first { $0.id == site && $0.remaining > 0 }
+                let afloat = known.map { view.terrain[$0.tile.y * view.mapWidth + $0.tile.x].isWater } ?? false
+                command(units, "gather") { afloat ? $0 == .boat : $0 == .worker }
+                if known == nil {
                     problems.append("gather: site \(site.rawValue) is not a known site with something left")
                 }
             case .work(let units, let at):
