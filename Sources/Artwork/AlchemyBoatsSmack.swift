@@ -738,8 +738,10 @@ enum AlchemySmack {
         // The fish caught in the mesh, coming up with it and flapping.
         for k in 0..<2 {
             let fq = (Double(frame) / 6 + Double(k) / 2).truncatingRemainder(dividingBy: 1)
-            let fishAt = head(fq * 0.92) + (foot(fq * 0.92) - head(fq * 0.92)) * (0.4 + 0.2 * Double(k))
-            let shown = min(1, fq / 0.25) * min(1, (1 - fq) / 0.15)
+            // It reaches the gunwale on its last frame, where it passes into the boat, and fades over two frames at either end.
+            let along = min(1, fq * 1.2)
+            let fishAt = head(along) + (foot(along) - head(along)) * (0.4 + 0.2 * Double(k)) * (1 - along)
+            let shown = min(1, fq / 0.3) * min(1, (1 - fq) / 0.34)
             guard shown > 0.02 else { continue }
             let p = space.at(fishAt)
             let flap = 30 * sin(turn(frame) * 4 + Double(k) * 2)
@@ -762,7 +764,8 @@ enum AlchemySmack {
         d.svg.line(rope, stroke: .colour(SmackInk.rope), width: 0.6)
         for k in 0..<4 {
             let q = ((Double(k) + Double(frame) * 2 / 3) / 4).truncatingRemainder(dividingBy: 1)
-            let fade = min(1, q / 0.2) * min(1, (1 - q) / 0.1)
+            // Faded over two frames at either end, so that none appears or vanishes at once.
+            let fade = min(1, q / 0.3) * min(1, (1 - q) / 0.34)
             guard fade > 0.02 else { continue }
             let at = head(q)
             d.svg.ellipse(space.at(at), 2, 1.4, fill: .colour(SmackInk.cork), stroke: line, width: 0.6,
