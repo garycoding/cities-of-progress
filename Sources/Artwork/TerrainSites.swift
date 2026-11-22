@@ -262,8 +262,8 @@ extension TerrainSprites {
     /// The outcrop: plain bedrock, low, dark and rounded, with no edge split or
     /// squared and nothing showing in it, so that it reads neither as stone to
     /// quarry nor as ore (requirement 19).
-    static func drawOutcrop(_ svg: inout SVG) {
-        groundShadow(&svg, at: P(0, 3), rx: 28, ry: 8)
+    static func drawOutcrop(_ svg: inout SVG, shadow: Bool = true) {
+        if shadow { groundShadow(&svg, at: P(0, 3), rx: 28, ry: 8) }
         let faces = TerrainFaces(top: TerrainInk.outcropTop, lit: TerrainInk.outcropLit, shade: TerrainInk.outcropShade)
         rock(&svg, TerrainRock(
             outline: [P(-26, 4), P(-27, -1), P(-21, -6), P(-9, -10), P(5, -10), P(17, -7), P(25, -2), P(24, 4), P(13, 9),

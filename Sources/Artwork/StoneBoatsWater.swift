@@ -188,13 +188,25 @@ enum StoneBoatsWater {
         return rendered?.sprite(anchor: canvas.anchor)
     }
 
+    /// The outcrop rising from the water: a deposit in the water that the
+    /// player's age does not yet reveal, plain bedrock at a waterline.
+    static func outcropAfloat() -> SpriteImage? {
+        let canvas = TerrainSprites.siteCanvas
+        let rendered = Raster.render(on: canvas) { svg in drawAfloat(&svg) { TerrainSprites.drawOutcrop(&$0, shadow: false) } }
+        return rendered?.sprite(anchor: canvas.anchor)
+    }
+
     static func drawAfloat(_ kind: SiteKind, _ svg: inout SVG) {
+        drawAfloat(&svg) { svg in
+            if kind == .iron { IronNewBuildingsDeposit.draw(&svg, shadow: false) } else { TerrainSprites.drawSite(kind, &svg, shadow: false) }
+        }
+    }
+
+    /// A rock, as it stands on land without its shadow, sunk at the waterline.
+    static func drawAfloat(_ svg: inout SVG, _ drawRock: (inout SVG) -> Void) {
         let (c, rx, ry) = waterline
-        /// The rock as it stands on land, without its shadow, sunk.
         func rock(_ svg: inout SVG) {
-            svg.group(at: P(0, sink)) { svg in
-                if kind == .iron { IronNewBuildingsDeposit.draw(&svg, shadow: false) } else { TerrainSprites.drawSite(kind, &svg, shadow: false) }
-            }
+            svg.group(at: P(0, sink)) { svg in drawRock(&svg) }
         }
         // The front of the waterline, from the left round the side nearest the viewer to the right.
         let front = stride(from: 180.0, through: 0, by: -6).map { a in P(c.x + rx * cos(a * .pi / 180), c.y + ry * sin(a * .pi / 180)) }

@@ -59,6 +59,7 @@ final class SpriteCache {
     private var sites: [SiteKey: ResolvedSprite] = [:]
     private var sitePlaceholders: [SiteKind: ResolvedSprite] = [:]
     private var outcrop: ResolvedSprite?
+    private var outcropAfloat: ResolvedSprite?
     private var terrainTextures: [TerrainKey: (texture: SKTexture, size: CGSize)] = [:]
     private var variantCounts: [Terrain: Int] = [:]
     private var footprints: [BuildingKind: GridPoint] = [:]
@@ -153,7 +154,14 @@ final class SpriteCache {
         return sprite
     }
 
-    func spriteForOutcrop() -> ResolvedSprite {
+    /// The outcrop on land, or rising from the water (falling back to the land picture).
+    func spriteForOutcrop(afloat: Bool = false) -> ResolvedSprite {
+        if afloat {
+            if let known = outcropAfloat { return known }
+            let sprite = supplied(SpriteKey(.outcrop, .afloat)) ?? spriteForOutcrop()
+            outcropAfloat = sprite
+            return sprite
+        }
         if let known = outcrop { return known }
         let sprite = supplied(SpriteKey(.outcrop, .complete)) ?? Self.placeholder(Placeholders.outcrop())
         outcrop = sprite

@@ -17,7 +17,7 @@ import Testing
 
     @Test func theBatchIsTheDugoutTheFishAndTheRocksAfloat() {
         #expect(source.poses == [SpriteKey(Self.boat, .standing), SpriteKey(Self.boat, .walking), SpriteKey(Self.boat, .working)])
-        #expect(source.keys.count == (3 + 1) * SpriteKey.framesPerPose + 5)
+        #expect(source.keys.count == (3 + 1) * SpriteKey.framesPerPose + 5 + 1)  // the five rocks and the outcrop afloat
         #expect(StoneBoatSprites.rocks == [.stone, .copper, .tin, .gold, .iron])
         #expect(source.drawsViews(of: Self.boat))
         #expect(!source.drawsViews(of: .site(.fish)))
@@ -88,6 +88,19 @@ import Testing
                 #expect(BoatPixels(land.base) != pixels, "\(kind)")
             }
         }
+    }
+
+    /// A deposit in the water that the player's age does not yet reveal is
+    /// plain bedrock at a waterline, without the land outcrop's shadow.
+    @Test func theOutcropRisesFromTheWater() throws {
+        let sprite = try #require(source.sprite(SpriteKey(.outcrop, .afloat)))
+        #expect(sprite.teamMask == nil)
+        #expect(sprite.anchor == TerrainSprites.siteCanvas.anchor)
+        let pixels = BoatPixels(sprite.base)
+        #expect(pixels.clearAtEdges)
+        let land = try #require(GameSprites().sprite(SpriteKey(.outcrop, .complete)))
+        #expect(BoatPixels(land.base) != pixels)
+        #expect(source.sprite(SpriteKey(.outcrop, .afloat, frame: 1)) == nil)
     }
 
     @Test func theFishLeaps() throws {

@@ -378,8 +378,8 @@ final class OutcropNode: SKSpriteNode {
     var generation = 0
     private var visibility: TileVisibility?
 
-    func place(at tile: GridPoint, cache: SpriteCache) {
-        let sprite = cache.spriteForOutcrop()
+    func place(at tile: GridPoint, afloat: Bool = false, cache: SpriteCache) {
+        let sprite = cache.spriteForOutcrop(afloat: afloat)
         texture = sprite.texture
         size = sprite.size
         anchorPoint = sprite.anchor

@@ -228,7 +228,7 @@ public final class MapScene: SKScene {
             let node: OutcropNode
             if let existing = outcropNodes[tile] { node = existing } else {
                 node = OutcropNode()
-                node.place(at: tile, cache: cache)
+                node.place(at: tile, afloat: view.terrain(at: tile).isWater, cache: cache)
                 world.addChild(node)
                 outcropNodes[tile] = node
             }

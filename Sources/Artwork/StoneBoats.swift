@@ -48,7 +48,7 @@ public final class StoneBoatSprites: ViewedSpriteSource {
         let frames = 0..<SpriteKey.framesPerPose
         return poses.flatMap { pose in frames.map { SpriteKey(pose.subject, pose.pose, frame: $0) } }
             + frames.map { SpriteKey(.site(.fish), .complete, frame: $0) }
-            + Self.rocks.map { SpriteKey(.site($0), .afloat) }
+            + Self.rocks.map { SpriteKey(.site($0), .afloat) } + [SpriteKey(.outcrop, .afloat)]
     }
 
     /// The dugout is drawn in all five views (ruled 2026-11-21).
@@ -70,6 +70,9 @@ public final class StoneBoatSprites: ViewedSpriteSource {
         case .site(.fish):
             guard key.pose == .complete, key.view == .side else { return nil }
             return keep(key, StoneBoatsWater.fish(frame: key.frame))
+        case .outcrop:
+            guard key.pose == .afloat, key.frame == 0, key.view == .side else { return nil }
+            return keep(key, StoneBoatsWater.outcropAfloat())
         case .site(let kind):
             guard key.pose == .afloat, key.frame == 0, key.view == .side, Self.rocks.contains(kind) else { return nil }
             return keep(key, StoneBoatsWater.afloat(kind))

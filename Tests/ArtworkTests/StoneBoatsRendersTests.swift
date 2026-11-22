@@ -186,7 +186,7 @@ struct StoneBoatsRenders {
 
     /// The five rocks afloat beside the same rocks on land, at game size and enlarged.
     @Test func rocksAfloat() throws {
-        let width = 1500, height = 560
+        let width = 1700, height = 560
         let context = Raster.bitmap(width: width, height: height)!
         let sprites = GameSprites()
         try Self.lay({ x, y in x + y < 0 ? .grass : .shallowWater }, reach: 14, origin: CGPoint(x: Double(width) / 2, y: Double(height) / 2 + 40),
@@ -199,6 +199,10 @@ struct StoneBoatsRenders {
             Preview.place(land.base, anchor: land.anchor, at: CGPoint(x: 100 + Double(i) * 290, y: 430), in: context)
             Preview.label("\(kind)", in: context, at: CGPoint(x: 120 + Double(i) * 290, y: 20), size: 18)
         }
+        // The outcrop, a deposit not yet revealed, rising from the water between the rows.
+        let outcrop = try #require(sprites.sprite(SpriteKey(.outcrop, .afloat)))
+        Preview.place(outcrop.base, anchor: outcrop.anchor, at: CGPoint(x: 1600, y: 300), in: context)
+        Preview.label("outcrop", in: context, at: CGPoint(x: 1560, y: 20), size: 18)
         Preview.label("Rocks rising from the water (afloat), and on land above them", in: context,
                       at: CGPoint(x: 24, y: Double(height) - 40), size: 22)
         try write(context.makeImage()!, "rocks-afloat")
