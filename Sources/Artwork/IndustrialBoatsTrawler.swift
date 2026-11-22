@@ -193,7 +193,7 @@ enum IndustrialTrawler {
         let above = [P(-400, left.y)] + nearRim + [P(400, right.y), P(400, -400), P(-400, -400)]
         d.svg.raw("<defs><clipPath id=\"trawler-above\"><polygon points=\"\(StoneDugout.polygon(above))\"/></clipPath></defs>")
         d.svg.raw("<g clip-path=\"url(#trawler-above)\">")
-        var parts: [(depth: Double, draw: (inout Drawing) -> Void)] = [
+        let parts: [(depth: Double, draw: (inout Drawing) -> Void)] = [
             (space.depth(-15, 0), { wheelhouse(&$0, space) }),
             (space.depth(-33, 0), { funnel(&$0, space) }),
             (space.depth(28, 0), { foremast(&$0, space, pose, frame) }),
@@ -203,8 +203,9 @@ enum IndustrialTrawler {
             (space.depth(18, halfBeam(18)), { gallows(&$0, space, at: 18, pose: pose, frame: frame, board: pose != .working) }),
             (space.depth(-26, halfBeam(-26)), { gallows(&$0, space, at: -26, pose: pose, frame: frame, board: true) }),
         ]
-        parts.sort { $0.depth < $1.depth }
-        for part in parts { part.draw(&d) }
+        // Parts at the same depth keep the order listed (from the side, the masts, the winch and the crewman all stand on the middle line).
+        let order = parts.indices.sorted { parts[$0].depth == parts[$1].depth ? $0 < $1 : parts[$0].depth < parts[$1].depth }
+        for i in order { parts[i].draw(&d) }
         d.svg.raw("</g>")
         stays(&d, space)
 
