@@ -12,8 +12,8 @@ import Testing
     /// One source shared by the tests that only look at the sprites.
     private static let source = IndustrialOldBuildingSprites()
 
-    /// The buildings of the Stone, Bronze, Iron and Alchemy ages: the batch's kinds.
-    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .alchemy && $0.kind != .bridge && $0.kind != .boatHouse }.map(\.kind)
+    /// The buildings of the Stone, Bronze, Iron and Alchemy ages, the boat house among them: the batch's kinds.
+    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .alchemy && $0.kind != .bridge }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Industrial age's
     /// look, complete and under construction, at frame 0.
@@ -23,7 +23,7 @@ import Testing
 
     @Test func theBatchIsTheBuildingsOfTheEarlierAges() {
         #expect(Set(Self.kinds) == Set(IndustrialOldBuildingsArt.kinds))
-        #expect(Self.batch.count == 26)
+        #expect(Self.batch.count == 28)
         #expect(!Self.kinds.contains(.factory) && !Self.kinds.contains(.railwayDepot) && !Self.kinds.contains(.oilWell))
     }
 
@@ -97,12 +97,21 @@ import Testing
         }
     }
 
-    /// Each building keeps the canvas, and so the size and the anchor, of its Alchemy look.
+    /// Each building keeps the canvas, and so the size and the anchor, of its
+    /// Alchemy look; the boat house keeps the canvas of its Stone look, the
+    /// one it has in every age.
     @Test func eachBuildingKeepsItsAlchemyCanvas() throws {
         let alchemyOld = AlchemyOldBuildingSprites(), alchemyNew = AlchemyNewBuildingSprites()
+        let stone = StoneBuildingSprites()
         for key in Self.batch {
             guard case .building(let kind, _) = key.subject else { continue }
             let industrial = try #require(Self.source.sprite(key))
+            if kind == .boatHouse {
+                let first = try #require(stone.sprite(SpriteKey(.building(kind, .stone), key.pose)))
+                #expect(industrial.base.width == first.base.width && industrial.base.height == first.base.height, "\(key)")
+                #expect(industrial.anchor == first.anchor, "\(key)")
+                continue
+            }
             let alchemyKey = SpriteKey(.building(kind, .alchemy), key.pose)
             let alchemy = try #require(alchemyOld.sprite(alchemyKey) ?? alchemyNew.sprite(alchemyKey), "\(kind)")
             #expect(industrial.base.width == alchemy.base.width && industrial.base.height == alchemy.base.height, "\(key)")
