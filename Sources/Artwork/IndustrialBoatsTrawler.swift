@@ -632,7 +632,7 @@ enum IndustrialTrawler {
         let (count, aft, rise, size, grow, strength): (Int, Double, Double, Double, Double, Double) = switch pose {
         case .walking: (8, 46, 22, 3.6, 7.6, 1)
         case .working: (5, 14, 30, 2.4, 4.6, 0.8)
-        default: (4, 6, 32, 1.8, 3.4, 0.6)
+        default: (4, 6, 32, 2.2, 3.6, 0.8)
         }
         var puffs: [(age: Double, at: P, r: Double)] = []
         for k in 0..<count {
