@@ -6,7 +6,8 @@ import GameCore
 import Synchronization
 
 /// The buildings of the earlier ages in the look of the Industrial age,
-/// complete and under construction: red brick with dressed-stone trim, slate
+/// complete and under construction (the boat house among them, ruled
+/// 2026-11-21): red brick with dressed-stone trim, slate
 /// roofs with chimney pots, sash windows, cast-iron columns and railings, and
 /// gas lamps, in the style of docs/art-style.md. A building takes the look of
 /// its owner's age (`SpriteSubject.of`), so these replace the Alchemy looks
@@ -39,7 +40,7 @@ private final class Store: Sendable {
 enum IndustrialOldBuildingsArt {
     /// The buildings this batch draws: those of the Stone, Bronze, Iron and Alchemy ages.
     static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .stockPen, .barracks, .watchTower, .palisade,
-                                        .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop]
+                                        .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .boatHouse]
 
     /// The buildings drawn with the kit of the larger works (`IndustrialOldBuildingsLatePainter`).
     static let late: [BuildingKind] = [.castle, .alchemistsWorkshop]
@@ -55,10 +56,15 @@ enum IndustrialOldBuildingsArt {
     }
 
     /// The canvas of the Alchemy look of the same building, so that a
-    /// building keeps its size and anchor from one age to the next.
+    /// building keeps its size and anchor from one age to the next. The boat
+    /// house keeps the canvas of its Stone look.
     static func canvas(_ kind: BuildingKind) -> Canvas {
-        late.contains(kind) ? AlchemyNewBuildingsArt.canvas(kind) : AlchemyOldBuildingsArt.canvas(kind)
+        if kind == .boatHouse { return boatHouseCanvas }
+        return late.contains(kind) ? AlchemyNewBuildingsArt.canvas(kind) : AlchemyOldBuildingsArt.canvas(kind)
     }
+
+    /// The boat house's canvas, the Stone age's (`StoneBuildingsPiece.canvas`).
+    static let boatHouseCanvas = Canvas(minX: -68, minY: -108, width: 136, height: 144, pixelsPerUnit: 2)
 
     /// A building drawn at `pixelsPerUnit` (two for the game): its picture and its mask, grained alike.
     static func draw(_ kind: BuildingKind, complete: Bool, pixelsPerUnit: Double = 2) -> Rendered? {
@@ -97,8 +103,9 @@ extension IndustrialOldBuildingsPainter {
         case .stable: stable(complete: complete)
         case .siegeWorkshop: siegeWorkshop(complete: complete)
         case .stoneWall: stoneWall(complete: complete)
+        case .boatHouse: boatHouse(complete: complete)
         // Drawn with the kit of the larger works, or by another batch.
-        case .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge, .boatHouse: break
+        case .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: break
         }
     }
 }
