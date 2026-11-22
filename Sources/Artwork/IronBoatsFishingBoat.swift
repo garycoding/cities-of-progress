@@ -83,7 +83,8 @@ enum IronFishingBoat {
 
     /// The oars' sweep in degrees (positive with the blades aft), their dip (positive with the blades down), and how square the blades are, in a frame.
     static func oarAngles(_ pose: SpritePose, _ frame: Int) -> (sweep: Double, dip: Double, square: Double) {
-        guard pose == .walking else { return (52, 8.5 + 0.6 * sin(turn(frame)), 0) }
+        // At rest the oars trail aft, their blades lying flat on the water and rocking on it.
+        guard pose == .walking else { return (52, 22.5 + 0.8 * sin(turn(frame)), 0) }
         let s = stroke(frame)
         let sweep = 2.5 - 27.5 * cos(s)
         let dip = 19 + 12 * sin(s)

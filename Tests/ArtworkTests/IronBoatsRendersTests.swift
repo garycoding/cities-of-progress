@@ -56,10 +56,10 @@ struct IronBoatsRenders {
         }
         let house = try #require(source.sprite(SpriteKey(.building(.house, .iron), .complete)))
         Preview.place(Preview.tinted(base: house.base, mask: house.teamMask, colour: colour), anchor: house.anchor,
-                      at: CGPoint(x: 1300, y: 720), in: context)
+                      at: CGPoint(x: 1250, y: 700), in: context)
         let stone = try #require(StoneBuildingSprites().sprite(SpriteKey(.building(.boatHouse, .stone), .complete)))
         Preview.place(Preview.tinted(base: stone.base, mask: stone.teamMask, colour: colour), anchor: stone.anchor,
-                      at: CGPoint(x: 1490, y: 720), in: context)
+                      at: CGPoint(x: 1500, y: 750), in: context)
         Preview.label("at game size; above, the Iron house and the Stone boat house", in: context, at: CGPoint(x: 1150, y: 40), size: 15)
         Preview.label("The Iron age's boat house, in Sumer's colour", in: context, at: CGPoint(x: 28, y: Double(height) - 48), size: 26)
         try write(context.makeImage()!, "boat-house")
