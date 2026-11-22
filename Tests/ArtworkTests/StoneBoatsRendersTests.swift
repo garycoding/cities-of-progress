@@ -94,6 +94,90 @@ struct StoneBoatsRenders {
         try write(context.makeImage()!, "boat-house")
     }
 
+    /// The boat house seen from the side and from behind, complete and under
+    /// construction, enlarged on its trodden ground, and each at game size.
+    @Test func boatHouseBack() throws {
+        let width = 1500, height = 1160
+        let context = Raster.bitmap(width: width, height: height)!
+        context.draw(Preview.ground(width: width, height: height, tile: 256), in: CGRect(x: 0, y: 0, width: width, height: height))
+        let source = StoneBuildingSprites()
+        for (row, complete) in [true, false].enumerated() {
+            for (column, back) in [false, true].enumerated() {
+                let view: SpriteView = back ? .back : .side
+                let key = SpriteKey(.building(.boatHouse, .stone), complete ? .complete : .underConstruction, view: view)
+                let piece = try #require(StoneBuildingsPiece(key))
+                let large = piece.canvas.scaled(to: 3.4)
+                let drawn = try #require(Raster.render(on: large) { svg in
+                    var sketch = StoneBuildingsSketch(layer: svg.layer)
+                    if back { sketch.boatHouseBack(complete: complete) } else { sketch.boatHouse(complete: complete) }
+                    svg = sketch.svg
+                })
+                let y = Double(height) - 140 - Double(row) * 520
+                Preview.place(Preview.tinted(base: drawn.base, mask: drawn.mask, colour: colour), anchor: large.anchor,
+                              at: CGPoint(x: 260 + Double(column) * 500, y: y - 330), in: context)
+                Preview.label("\(view.rawValue), \(complete ? "complete" : "under construction")", in: context,
+                              at: CGPoint(x: 120 + Double(column) * 500, y: y - 440), size: 20)
+                let sprite = try #require(source.sprite(key))
+                Preview.place(Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour), anchor: sprite.anchor,
+                              at: CGPoint(x: 1160 + Double(column) * 190, y: y - 260), in: context)
+            }
+        }
+        Preview.label("at game size", in: context, at: CGPoint(x: 1180, y: 60), size: 16)
+        Preview.label("The Stone age's boat house from the side (water to the lower right) and from behind (water to the upper right)",
+                      in: context, at: CGPoint(x: 28, y: Double(height) - 44), size: 20)
+        try write(context.makeImage()!, "boat-house-back")
+    }
+
+    /// A lake at play size with a boat house on each of its four sides, each
+    /// facing the water as the game draws it: the edge from
+    /// `Placement.waterEdge`, the view and the mirror from
+    /// `FootprintEdge.boatHouseView`, the sprite from `GameSprites`; complete,
+    /// and under construction.
+    @Test func boatHouseFacings() throws {
+        let sprites = GameSprites()
+        let (mapWidth, mapHeight) = (18, 18)
+        func terrain(_ x: Int, _ y: Int) -> Terrain {
+            guard (6...11).contains(x), (6...11).contains(y) else { return .grass }
+            return (8...9).contains(x) && (8...9).contains(y) ? .deepWater : .shallowWater
+        }
+        let grid = (0..<mapHeight).flatMap { y in (0..<mapWidth).map { x in terrain(x, y) } }
+        // One footprint at the middle of each side of the lake, each touching the water along one edge.
+        let origins = [GridPoint(4, 8), GridPoint(8, 4), GridPoint(8, 12), GridPoint(12, 8)]
+        let edges = origins.map { Placement.waterEdge(.boatHouse, at: $0, width: mapWidth, height: mapHeight, terrain: grid) }
+        try #require(Set(edges) == Set(FootprintEdge.allCases), "\(edges)")
+        let width = 1500, height = 1000
+        let origin = CGPoint(x: Double(width) / 2, y: Double(height) / 2 + 18 * 32)
+        let background = Raster.bitmap(width: width, height: height)!
+        try Self.lay(terrain, reach: 26, origin: origin, scale: 1, in: background)
+        let ground = background.makeImage()!
+        for complete in [true, false] {
+            let context = Raster.bitmap(width: width, height: height)!
+            context.draw(ground, in: CGRect(x: 0, y: 0, width: width, height: height))
+            let placed = zip(origins, edges).map { (origin: $0, edge: $1) }
+                .sorted { $0.origin.x + $0.origin.y < $1.origin.x + $1.origin.y }
+            for (tile, edge) in placed {
+                let (view, mirrored) = edge.boatHouseView
+                let key = SpriteKey(.building(.boatHouse, .stone), complete ? .complete : .underConstruction, view: view)
+                let sprite = try #require(sprites.sprite(key), "\(key)")
+                let image = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
+                let centre = Placement.centre(.boatHouse, origin: tile)
+                let at = Self.screen(centre.x, centre.y, origin: origin, scale: 1)
+                context.saveGState()
+                if mirrored {
+                    context.translateBy(x: at.x * 2, y: 0)
+                    context.scaleBy(x: -1, y: 1)
+                }
+                Preview.place(image, anchor: sprite.anchor, at: at, in: context)
+                context.restoreGState()
+                let name = "\(edge): \(view.rawValue)\(mirrored ? ", mirrored" : "")"
+                Preview.label(name, in: context, at: CGPoint(x: at.x - 70, y: at.y - 60), size: 15, colour: .white)
+            }
+            Preview.label("At play size: a boat house on each side of a lake, \(complete ? "complete" : "under construction"), each facing the water",
+                          in: context, at: CGPoint(x: 24, y: Double(height) - 40), size: 22, colour: .white)
+            try write(context.makeImage()!, complete ? "boat-house-facings" : "boat-house-facings-under-construction")
+        }
+    }
+
     // MARK: The dugout
 
     /// Each of the dugout's poses in each view, its 12 frames enlarged in
