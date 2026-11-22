@@ -17,6 +17,12 @@ import Testing
         [SpriteKey(.building(stats.kind, .bronze), .complete), SpriteKey(.building(stats.kind, .bronze), .underConstruction)]
     }
 
+    /// The keys of the back view: the boat house's alone, complete and under
+    /// construction (ruled 2026-11-22), for the edges toward -y and -x.
+    private static let back: [SpriteKey] = [SpritePose.complete, .underConstruction].map {
+        SpriteKey(.building(.boatHouse, .bronze), $0, view: .back)
+    }
+
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
         #expect(Self.batch.count == 16)
         var keys = SpriteKey.required(through: .ai)
@@ -47,7 +53,7 @@ import Testing
     }
 
     @Test func everySpriteCarriesTeamColour() throws {
-        for key in Self.batch {
+        for key in Self.batch + Self.back {
             let sprite = try #require(Self.source.sprite(key), "\(key)")
             let mask = try #require(sprite.teamMask, "no mask for \(key)")
             #expect(mask.width == sprite.base.width && mask.height == sprite.base.height)
@@ -61,9 +67,10 @@ import Testing
 
     /// The anchor is the centre of the footprint's diamond: the diamond placed by
     /// the anchor is what the drawing covers, reaching its left, bottom and right
-    /// corners and overhanging none of them.
+    /// corners and overhanging none of them; the boat house's jetty alone runs
+    /// on beyond it over the water, to the right.
     @Test func theAnchorIsTheCentreOfTheFootprintsDiamond() throws {
-        for key in Self.batch {
+        for key in Self.batch + Self.back {
             guard case .building(let kind, _) = key.subject else { continue }
             let sprite = try #require(Self.source.sprite(key))
             let footprint = Catalogue.standard.stats(kind).footprint
@@ -78,19 +85,64 @@ import Testing
                     "\(key) reaches the edge of its picture")
             let tolerance = 5.0
             #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
-            #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
-            #expect(abs(Double(drawn.maxY + 1) - (centreY + halfHeight)) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+            if kind == .boatHouse {
+                // The boat house's jetty reaches out beyond the diamond toward the water, to the right.
+                #expect(Double(drawn.maxX + 1) >= centreX + halfWidth - tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+                #expect(Double(drawn.maxY + 1) >= centreY + halfHeight - tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+            } else {
+                #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+                #expect(abs(Double(drawn.maxY + 1) - (centreY + halfHeight)) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+            }
         }
     }
 
     @Test func theSameKeyGivesTheSamePixels() throws {
         let first = BronzeBuildingSprites(), second = BronzeBuildingSprites()
-        for key in Self.batch {
+        for key in Self.batch + Self.back {
             let a = try #require(first.sprite(key)), b = try #require(second.sprite(key))
             #expect(BronzeBuildingsPixels(a.base).bytes == BronzeBuildingsPixels(b.base).bytes, "\(key)")
             let maskA = try #require(a.teamMask), maskB = try #require(b.teamMask)
             #expect(BronzeBuildingsPixels(maskA).bytes == BronzeBuildingsPixels(maskB).bytes, "\(key)")
             #expect(a.anchor == b.anchor)
+        }
+    }
+
+    /// The boat house's back view is the same building on the same canvas: the
+    /// side's size and anchor, a team-colour mask where the side has one, and
+    /// a picture of its own.
+    @Test func theBoatHousesBackViewMatchesItsSideInSizeAndAnchor() throws {
+        for key in Self.back {
+            let back = try #require(Self.source.sprite(key), "\(key)")
+            let side = try #require(Self.source.sprite(key.seen(.side)), "\(key)")
+            #expect(back.base.width == side.base.width && back.base.height == side.base.height, "\(key)")
+            #expect(back.anchor == side.anchor, "\(key)")
+            #expect((back.teamMask != nil) == (side.teamMask != nil), "\(key)")
+            #expect(BronzeBuildingsPixels(back.base).bytes != BronzeBuildingsPixels(side.base).bytes, "\(key)")
+            if let backMask = back.teamMask, let sideMask = side.teamMask {
+                #expect(BronzeBuildingsPixels(backMask).bytes != BronzeBuildingsPixels(sideMask).bytes, "\(key)")
+            }
+        }
+    }
+
+    /// Only the boat house gains a view, and only the back: every other
+    /// building, and the boat house in every other view, gives nothing.
+    @Test func nothingElseGainsAView() {
+        for key in Self.batch {
+            for view in SpriteView.allCases where view != .side {
+                let seen = key.seen(view)
+                #expect((Self.source.sprite(seen) != nil) == Self.back.contains(seen), "\(seen)")
+            }
+            #expect(Self.source.drawsViews(of: key.subject) == (key.subject == .building(.boatHouse, .bronze)), "\(key)")
+        }
+    }
+
+    /// The combined source asks this batch for the boat house's back view, and
+    /// gives its picture, not the side's.
+    @Test func theGameDrawsTheBoatHousesBackFromHere() throws {
+        let all = GameSprites()
+        for key in Self.back {
+            let own = try #require(Self.source.sprite(key)), drawn = try #require(all.sprite(key))
+            #expect(BronzeBuildingsPixels(own.base).bytes == BronzeBuildingsPixels(drawn.base).bytes, "\(key)")
         }
     }
 
