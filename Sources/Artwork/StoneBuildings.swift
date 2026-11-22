@@ -6,12 +6,13 @@ import GameCore
 import Synchronization
 
 // The buildings of the Stone age, in the Stone-age look (docs/art-style.md):
-// the town centre, the house and the storage pit, each complete and under
-// construction. This file holds the batch's source and the drawing kit the
-// three buildings share; each building is drawn in a file of its own.
+// the town centre, the house, the storage pit and the boat house, each complete
+// and under construction. This file holds the batch's source and the drawing
+// kit the buildings share; each building is drawn in a file of its own.
 
 /// The sprites of the Stone age's buildings: `SpriteSubject.building(kind,
-/// .stone)` for the town centre, the house and the storage pit, in the poses
+/// .stone)` for the town centre, the house, the storage pit and the boat house
+/// (ruled 2026-11-21), in the poses
 /// `complete` and `underConstruction`, at frame 0 (buildings do not move).
 /// Every other key gives nil. A picture is drawn the first time it is asked for
 /// and kept, so that a caller that asks on every redraw pays for a look-up.
@@ -43,7 +44,7 @@ struct StoneBuildingsPiece: Hashable, Sendable {
     var complete: Bool
 
     /// The kinds this batch draws.
-    static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit]
+    static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .boatHouse]
 
     init(kind: BuildingKind, complete: Bool) {
         self.kind = kind
@@ -82,6 +83,7 @@ struct StoneBuildingsPiece: Hashable, Sendable {
             switch kind {
             case .townCentre: sketch.townCentre(complete: complete)
             case .storagePit: sketch.storagePit(complete: complete)
+            case .boatHouse: sketch.boatHouse(complete: complete)
             default: sketch.house(complete: complete)
             }
             svg = sketch.svg

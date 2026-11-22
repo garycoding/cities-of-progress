@@ -12,7 +12,7 @@ struct DrawContext {
     var players: [PlayerID: PlayerSummary]
     var me: PlayerID
     var myTeam: TeamID?
-    /// 0 or 1: the frame of limited animation now.
+    /// The frame of animation now, 0 to 11.
     var frame: Int
     /// The finished bridge pieces by tile, on whose decks people ride (ruled 2026-11-21).
     var decks: [GridPoint: BridgePlace] = [:]
@@ -334,20 +334,33 @@ final class EntityNode: SKNode {
 }
 
 /// A resource site: a sprite on its tile, hidden on a tile never seen and
-/// darkened on one not in sight.
+/// darkened on one not in sight. A site on a water tile shows its `afloat`
+/// picture, and a site that moves (the fish) shows the frame of its cycle
+/// for its tile, offset from its neighbours' (`frameOffset`).
 @MainActor
 final class SiteNode: SKSpriteNode {
     var generation = 0
     private var kind: SiteKind?
     private var visibility: TileVisibility?
 
-    func apply(_ site: ResourceSite, visibility: TileVisibility, cache: SpriteCache) {
-        if kind != site.kind {
-            kind = site.kind
-            let sprite = cache.sprite(forSite: site.kind)
+    /// How many frames a site's cycle runs ahead on its tile, so that
+    /// neighbouring tiles do not move in unison: the four tiles of any square
+    /// of two by two each take a different offset.
+    nonisolated static func frameOffset(_ tile: GridPoint) -> Int {
+        let n = 5 * tile.x + 3 * tile.y
+        return ((n % SpriteKey.framesPerPose) + SpriteKey.framesPerPose) % SpriteKey.framesPerPose
+    }
+
+    func apply(_ site: ResourceSite, afloat: Bool, frame: Int, visibility: TileVisibility, cache: SpriteCache) {
+        let shown = (frame + Self.frameOffset(site.tile)) % SpriteKey.framesPerPose
+        let sprite = cache.sprite(forSite: site.kind, afloat: afloat, frame: shown)
+        if texture !== sprite.texture {
             texture = sprite.texture
             size = sprite.size
             anchorPoint = sprite.anchor
+        }
+        if kind != site.kind {
+            kind = site.kind
             let s = Projection.screen(site.tile.centre)
             position = CGPoint(x: s.x, y: s.y)
             zPosition = Projection.depth(site.tile.centre)

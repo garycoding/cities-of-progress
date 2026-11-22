@@ -56,7 +56,7 @@ public final class TerrainSprites: SpriteSource {
         guard key.pose == .complete, key.frame == 0 else { return false }
         switch key.subject {
         case .terrain(_, let variant): return (0..<variantCount).contains(variant)
-        case .site(let kind): return kind.firstAge <= .bronze && kind != .fish  // fish: drawn with the boats' art
+        case .site(let kind): return kind.firstAge <= .bronze && kind != .fish  // the fish: drawn by `StoneBoatSprites`
         case .outcrop: return true
         case .unit, .building: return false
         }

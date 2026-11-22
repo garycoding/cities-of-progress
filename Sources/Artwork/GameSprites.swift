@@ -18,6 +18,7 @@ public final class GameSprites: SpriteSource {
             CartoonSprites(catalogue: catalogue),
             TerrainSprites(),
             StoneBuildingSprites(),
+            StoneBoatSprites(catalogue: catalogue),
             BronzeBuildingSprites(),
             BronzePeopleSprites(catalogue: catalogue),
             IronOldBuildingSprites(),
