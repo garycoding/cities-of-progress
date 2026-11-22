@@ -100,6 +100,15 @@ extension StoneBuildingsSketch {
             pole(spot(x, y, -1), spot(x, y, h - 1), width: 2.6, colour: Ink.wood)
         }
         mooringPost(at: spot(sx1 - 0.03, sy1 + 0.02))
+        // From behind the shed hides its stage; a line from the post's coil
+        // runs on to a stake at the water's edge, beyond the eaves.
+        let coil = spot(sx1 - 0.03, sy1 + 0.02) - P(-2.2, 10.2)
+        let stake = StoneBuildingsSketch.at(0.44, -0.97)
+        pole(stake + P(0, 1), stake - P(0, 7), width: 2.2, colour: Ink.wood, line: 0.9)
+        var line = StoneBuildingsOutline()
+        line.move(coil)
+        line.quad((coil + stake) * 0.5 + P(0, 4), stake - P(0, 5.5))
+        stroke(line, width: 1, colour: StoneBuildingsInk.straw)
     }
 
     /// The deck's two faces toward the viewer: the long one painted in the
