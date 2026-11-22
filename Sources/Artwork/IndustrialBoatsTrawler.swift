@@ -629,7 +629,7 @@ enum IndustrialTrawler {
         let p = share(frame)
         let mouth = V(-35, -76, 0)
         let (count, aft, rise, size, grow, strength): (Int, Double, Double, Double, Double, Double) = switch pose {
-        case .walking: (7, 44, 20, 3, 6.6, 0.95)
+        case .walking: (8, 46, 22, 3.6, 7.6, 1)
         case .working: (5, 14, 30, 2.4, 4.6, 0.8)
         default: (4, 6, 32, 1.8, 3.4, 0.6)
         }
@@ -642,18 +642,18 @@ enum IndustrialTrawler {
         }
         for puff in puffs.sorted(by: { $0.age > $1.age }) {
             let fade = strength * pow(1 - puff.age, 1.1) * min(1, puff.age * 6 + 0.25)
-            billow(&d.svg, at: puff.at, radius: puff.r, opacity: fade)
+            billow(&d.svg, at: puff.at, radius: puff.r, opacity: fade, young: puff.age < 0.3)
         }
     }
 
-    /// A puff of coal smoke: three rounds run together, soot grey, lit on
-    /// their upper left, the line loose and faint about them.
-    static func billow(_ svg: inout SVG, at c: P, radius r: Double, opacity: Double) {
+    /// A puff of coal smoke: three rounds run together, soot grey (darker while
+    /// `young`, near the funnel), lit on their upper left, the line loose and faint about them.
+    static func billow(_ svg: inout SVG, at c: P, radius r: Double, opacity: Double, young: Bool) {
         guard opacity > 0.01 else { return }
         let rounds = [(P(0, 0), r), (P(r * 0.75, r * 0.25), r * 0.72), (P(-r * 0.55, r * 0.35), r * 0.6)]
         svg.raw("<g opacity=\"\(num(opacity))\">")
         for (o, q) in rounds { svg.circle(c + o, q + 0.7, fill: .colour(Ink.line), opacity: 0.45) }
-        for (o, q) in rounds { svg.circle(c + o, q, fill: .colour(IndustrialOldBuildingsInk.smoke)) }
+        for (o, q) in rounds { svg.circle(c + o, q, fill: .colour(young ? IndustrialOldBuildingsInk.smokeDark : IndustrialOldBuildingsInk.smoke)) }
         for (o, q) in rounds { svg.circle(c + o + P(-q * 0.3, -q * 0.3), q * 0.5, fill: .colour(IndustrialOldBuildingsInk.smokeLight), opacity: 0.6) }
         svg.raw("</g>")
     }
