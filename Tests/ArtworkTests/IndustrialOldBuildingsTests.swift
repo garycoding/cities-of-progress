@@ -98,8 +98,7 @@ import Testing
     }
 
     /// Each building keeps the canvas, and so the size and the anchor, of its
-    /// Alchemy look; the boat house keeps the canvas of its Stone look, the
-    /// one it has in every age.
+    /// Alchemy look; the boat house keeps the canvas of its Stone look.
     @Test func eachBuildingKeepsItsAlchemyCanvas() throws {
         let alchemyOld = AlchemyOldBuildingSprites(), alchemyNew = AlchemyNewBuildingSprites()
         let stone = StoneBuildingSprites()

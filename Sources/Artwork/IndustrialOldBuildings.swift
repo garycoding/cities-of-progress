@@ -57,8 +57,7 @@ enum IndustrialOldBuildingsArt {
 
     /// The canvas of the Alchemy look of the same building, so that a
     /// building keeps its size and anchor from one age to the next. The boat
-    /// house keeps the canvas of its Stone look (ruled 2026-11-21: one canvas
-    /// for the boat house in every age).
+    /// house keeps the canvas of its Stone look.
     static func canvas(_ kind: BuildingKind) -> Canvas {
         if kind == .boatHouse { return boatHouseCanvas }
         return late.contains(kind) ? AlchemyNewBuildingsArt.canvas(kind) : AlchemyOldBuildingsArt.canvas(kind)
