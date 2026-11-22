@@ -12,8 +12,8 @@ import Testing
     /// One source shared by the tests that only look at the sprites.
     private static let source = IronOldBuildingSprites()
 
-    /// The buildings of the Stone and Bronze ages: the batch's kinds.
-    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .bronze && $0.kind != .bridge && $0.kind != .boatHouse }.map(\.kind)
+    /// The buildings of the Stone and Bronze ages, the boat house among them: the batch's kinds.
+    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .bronze && $0.kind != .bridge }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Iron age's look,
     /// complete and under construction, at frame 0.
@@ -22,7 +22,7 @@ import Testing
     }
 
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
-        #expect(Self.batch.count == 14)
+        #expect(Self.batch.count == 16)
         var keys = SpriteKey.required(through: .ai)
         for kind in BuildingKind.allCases {
             for age in Age.allCases {
@@ -98,6 +98,13 @@ import Testing
         for key in Self.batch {
             guard case .building(let kind, _) = key.subject else { continue }
             let iron = try #require(Self.source.sprite(key))
+            // The Bronze look of the boat house is drawn in its own step: its canvas stands for it until then.
+            if kind == .boatHouse, bronze.sprite(SpriteKey(.building(kind, .bronze), key.pose)) == nil {
+                let canvas = BronzeBuildingsArt.canvas(kind)
+                #expect(iron.base.width == canvas.pixelWidth && iron.base.height == canvas.pixelHeight, "\(key)")
+                #expect(iron.anchor == canvas.anchor, "\(key)")
+                continue
+            }
             let old = try #require(bronze.sprite(SpriteKey(.building(kind, .bronze), key.pose)))
             #expect(iron.base.width == old.base.width && iron.base.height == old.base.height, "\(key)")
             #expect(iron.anchor == old.anchor, "\(key)")
