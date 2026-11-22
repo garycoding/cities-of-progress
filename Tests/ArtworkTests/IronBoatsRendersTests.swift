@@ -65,6 +65,82 @@ struct IronBoatsRenders {
         try write(context.makeImage()!, "boat-house")
     }
 
+    /// The boat house's two views enlarged, complete and under construction:
+    /// the side, its slip toward +x (the lower right), and beside it the back,
+    /// the same building turned so that its slip runs toward −y (the upper
+    /// right) and its landward gable faces the viewer.
+    @Test func boatHouseViews() throws {
+        let large = IronOldBuildingsArt.canvas(.boatHouse).scaled(to: 4.4)
+        let cellW = large.pixelWidth, cellH = large.pixelHeight, label = 40, top = 70
+        let width = cellW * 2, height = (cellH + label) * 2 + top
+        let context = Raster.bitmap(width: width, height: height)!
+        context.draw(Preview.ground(width: width, height: height, tile: 256), in: CGRect(x: 0, y: 0, width: width, height: height))
+        for (row, complete) in [true, false].enumerated() {
+            for (column, view) in [SpriteView.side, .back].enumerated() {
+                let drawn = try #require(Raster.render(on: large) { svg in
+                    var painter = IronOldBuildingsPainter(layer: svg.layer)
+                    painter.boatHouse(complete: complete, view: view)
+                    svg = painter.svg
+                })
+                let x = Double(column * cellW), y = Double(height - top - (row + 1) * (cellH + label))
+                context.draw(Preview.tinted(base: drawn.base, mask: drawn.mask, colour: colour),
+                             in: CGRect(x: x, y: y + Double(label), width: Double(cellW), height: Double(cellH)))
+                let name = view == .side ? "side: the water toward +x, the lower right" : "back: the water toward −y, the upper right"
+                Preview.label("\(name), \(complete ? "complete" : "under construction")", in: context, at: CGPoint(x: x + 16, y: y + 8), size: 20)
+            }
+        }
+        Preview.label("The Iron age's boat house in its two views, in Sumer's colour", in: context,
+                      at: CGPoint(x: 24, y: Double(height) - 48), size: 26)
+        try write(context.makeImage()!, "boat-house-views")
+    }
+
+    /// A lake at play size with a boat house on each of its four edges, each
+    /// drawn as the game draws it (`FootprintEdge.boatHouseView`): the side,
+    /// the side mirrored, the back and the back mirrored, so that each faces
+    /// the water. Once complete and once under construction.
+    @Test func boatHousesRoundALake() throws {
+        let sprites = GameSprites()
+        let size = 14, width = 1300, height = 860
+        let origin = CGPoint(x: 650, y: 420 + 7 * 64)
+        func terrain(_ x: Int, _ y: Int) -> Terrain {
+            if (5...8).contains(x) && (5...8).contains(y) { return .deepWater }
+            if (4...9).contains(x) && (4...9).contains(y) { return .shallowWater }
+            if (3...10).contains(x) && (3...10).contains(y) { return .sand }
+            return .grass
+        }
+        var cells: [Terrain] = []
+        for y in 0..<size { for x in 0..<size { cells.append(terrain(x, y)) } }
+        let ground = Raster.bitmap(width: width, height: height)!
+        try StoneBoatsRenders.lay(terrain, reach: 24, origin: origin, scale: 1, in: ground)
+        let background = ground.makeImage()!
+        // Each boat house has the lake along one edge of its footprint and dry land along the others.
+        let houses: [(GridPoint, FootprintEdge)] = [(GridPoint(2, 6), .plusX), (GridPoint(6, 2), .plusY),
+                                                    (GridPoint(6, 10), .minusY), (GridPoint(10, 6), .minusX)]
+        for complete in [true, false] {
+            let context = Raster.bitmap(width: width, height: height)!
+            context.draw(background, in: CGRect(x: 0, y: 0, width: width, height: height))
+            for (tile, edge) in houses.sorted(by: { $0.0.x + $0.0.y < $1.0.x + $1.0.y }) {
+                #expect(Placement.waterEdge(.boatHouse, at: tile, width: size, height: size, terrain: cells) == edge, "\(tile)")
+                let (view, mirrored) = edge.boatHouseView
+                let key = SpriteKey(.building(.boatHouse, .iron), complete ? .complete : .underConstruction, view: view)
+                let sprite = try #require(sprites.sprite(key), "\(key)")
+                let image = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
+                let centre = Placement.centre(.boatHouse, origin: tile)
+                let at = StoneBoatsRenders.screen(centre.x, centre.y, origin: origin, scale: 1)
+                context.saveGState()
+                if mirrored {
+                    context.translateBy(x: at.x * 2, y: 0)
+                    context.scaleBy(x: -1, y: 1)
+                }
+                Preview.place(image, anchor: sprite.anchor, at: at, in: context)
+                context.restoreGState()
+            }
+            Preview.label("At play size: Iron boat houses \(complete ? "" : "under construction ")on the four edges of a lake, each facing the water",
+                          in: context, at: CGPoint(x: 24, y: Double(height) - 40), size: 22, colour: .white)
+            try write(context.makeImage()!, complete ? "boat-houses-round-a-lake" : "boat-houses-round-a-lake-under-construction")
+        }
+    }
+
     // MARK: The fishing boat
 
     /// Each of the boat's poses in each view, its 12 frames enlarged in rows of six, for looking at frame by frame.
@@ -146,9 +222,9 @@ struct IronBoatsRenders {
         try StoneBoatsRenders.lay(terrain, reach: 16, origin: origin, scale: 1, in: ground)
         let background = ground.makeImage()!
         struct Thing { var depth: Double; var key: SpriteKey; var at: (Double, Double); var mirrored: Bool; var offset: Bool }
-        // The slip runs out of the gable toward +y: the complete boat house stands with that edge on the water.
+        // The complete boat house has the water along its +y edge, so it is drawn as the game draws it there: the side view mirrored.
         var things: [Thing] = [Thing(depth: 6, key: SpriteKey(.building(.boatHouse, .iron), .underConstruction), at: (2, 3), mirrored: false, offset: false),
-                               Thing(depth: 11, key: SpriteKey(.building(.boatHouse, .iron), .complete), at: (2, 8), mirrored: false, offset: false)]
+                               Thing(depth: 11, key: SpriteKey(.building(.boatHouse, .iron), .complete), at: (2, 8), mirrored: true, offset: false)]
         for (x, y) in [(6, 1), (7, 1), (6, 2), (7, 2)] {
             things.append(Thing(depth: Double(x + y) + 1, key: SpriteKey(.site(.fish), .complete), at: (Double(x) + 0.5, Double(y) + 0.5),
                                 mirrored: false, offset: true))

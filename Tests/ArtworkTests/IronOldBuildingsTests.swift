@@ -21,6 +21,10 @@ import Testing
         [SpriteKey(.building(kind, .iron), .complete), SpriteKey(.building(kind, .iron), .underConstruction)]
     }
 
+    /// The boat house's back view (ruled 2026-11-22), complete and under construction: the only keys not in the side view.
+    private static let backs: [SpriteKey] = [SpriteKey(.building(.boatHouse, .iron), .complete, view: .back),
+                                             SpriteKey(.building(.boatHouse, .iron), .underConstruction, view: .back)]
+
     @Test func everyKeyOfTheBatchHasASpriteAndNoOtherKeyDoes() {
         #expect(Self.batch.count == 16)
         var keys = SpriteKey.required(through: .ai)
@@ -36,8 +40,42 @@ import Testing
             keys.append(SpriteKey(key.subject, .standing))
             keys.append(SpriteKey(key.subject, .working))
         }
+        // Every one of those keys in every other view as well.
+        keys += keys.flatMap { key in SpriteView.allCases.filter { $0 != .side }.map { SpriteKey(key.subject, key.pose, frame: key.frame, view: $0) } }
         let supplied = Set(keys.filter { Self.source.sprite($0) != nil })
-        #expect(supplied == Set(Self.batch))
+        #expect(supplied == Set(Self.batch + Self.backs))
+    }
+
+    /// The batch draws views of the Iron boat house alone, so that `GameSprites`
+    /// asks it for no other subject's views, and gives the back view from it.
+    @Test func onlyTheBoatHouseIsDrawnInViews() throws {
+        for kind in BuildingKind.allCases {
+            for age in Age.allCases {
+                let subject = SpriteSubject.building(kind, age)
+                #expect(Self.source.drawsViews(of: subject) == (subject == .building(.boatHouse, .iron)), "\(subject)")
+            }
+        }
+        #expect(!Self.source.drawsViews(of: .unit(.boat, .iron)))
+        let sprites = GameSprites()
+        for key in Self.backs {
+            let routed = try #require(sprites.sprite(key), "\(key)")
+            let own = try #require(Self.source.sprite(key))
+            #expect(IronOldBuildingsPixels(routed.base).bytes == IronOldBuildingsPixels(own.base).bytes, "\(key)")
+        }
+    }
+
+    /// The back view is the same building turned: drawn on the side view's
+    /// canvas, standing at its anchor, carrying team colour where the side
+    /// does, and a different picture.
+    @Test func theBackViewKeepsTheSidesCanvasAndDiffersFromIt() throws {
+        for back in Self.backs {
+            let side = try #require(Self.source.sprite(SpriteKey(back.subject, back.pose)))
+            let sprite = try #require(Self.source.sprite(back), "\(back)")
+            #expect(sprite.base.width == side.base.width && sprite.base.height == side.base.height, "\(back)")
+            #expect(sprite.anchor == side.anchor, "\(back)")
+            #expect((sprite.teamMask != nil) == (side.teamMask != nil), "\(back)")
+            #expect(IronOldBuildingsPixels(sprite.base).bytes != IronOldBuildingsPixels(side.base).bytes, "\(back)")
+        }
     }
 
     /// A building takes the look of its owner's age: once its owner is in the
@@ -56,7 +94,7 @@ import Testing
     }
 
     @Test func everySpriteCarriesTeamColour() throws {
-        for key in Self.batch {
+        for key in Self.batch + Self.backs {
             let sprite = try #require(Self.source.sprite(key), "\(key)")
             let mask = try #require(sprite.teamMask, "no mask for \(key)")
             #expect(mask.width == sprite.base.width && mask.height == sprite.base.height)
@@ -72,7 +110,7 @@ import Testing
     /// the anchor is what the drawing covers, reaching its left, bottom and right
     /// corners and overhanging none of them.
     @Test func theAnchorIsTheCentreOfTheFootprintsDiamond() throws {
-        for key in Self.batch {
+        for key in Self.batch + Self.backs {
             guard case .building(let kind, _) = key.subject else { continue }
             let sprite = try #require(Self.source.sprite(key))
             let footprint = Catalogue.standard.stats(kind).footprint
@@ -106,7 +144,7 @@ import Testing
 
     @Test func theSameKeyGivesTheSamePixels() throws {
         let first = IronOldBuildingSprites(), second = IronOldBuildingSprites()
-        for key in Self.batch {
+        for key in Self.batch + Self.backs {
             let a = try #require(first.sprite(key)), b = try #require(second.sprite(key))
             #expect(IronOldBuildingsPixels(a.base).bytes == IronOldBuildingsPixels(b.base).bytes, "\(key)")
             let maskA = try #require(a.teamMask), maskB = try #require(b.teamMask)
