@@ -12,8 +12,8 @@ import Testing
     /// One source shared by the tests that only look at the sprites.
     private static let source = AlchemyOldBuildingSprites()
 
-    /// The buildings of the Stone, Bronze and Iron ages: the batch's kinds.
-    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .iron && $0.kind != .bridge && $0.kind != .boatHouse }.map(\.kind)
+    /// The buildings of the Stone, Bronze and Iron ages, the boat house among them: the batch's kinds.
+    private static let kinds = Catalogue.standard.buildings.filter { $0.age <= .iron && $0.kind != .bridge }.map(\.kind)
 
     /// Every key of the batch: each of those buildings in the Alchemy age's
     /// look, complete and under construction, at frame 0.
@@ -23,7 +23,7 @@ import Testing
 
     @Test func theBatchIsTheBuildingsOfTheEarlierAges() {
         #expect(Set(Self.kinds) == Set(AlchemyOldBuildingsArt.kinds))
-        #expect(Self.batch.count == 22)
+        #expect(Self.batch.count == 24)
         #expect(!Self.kinds.contains(.castle) && !Self.kinds.contains(.alchemistsWorkshop))
     }
 
@@ -103,7 +103,14 @@ import Testing
             guard case .building(let kind, _) = key.subject else { continue }
             let alchemy = try #require(Self.source.sprite(key))
             let ironKey = SpriteKey(.building(kind, .iron), key.pose)
-            let iron = try #require(ironOld.sprite(ironKey) ?? ironNew.sprite(ironKey), "\(kind)")
+            guard let iron = ironOld.sprite(ironKey) ?? ironNew.sprite(ironKey) else {
+                // The boat house's Iron look is drawn in its own step; until then, the canvas it will be drawn on.
+                #expect(kind == .boatHouse, "\(kind) has no Iron look")
+                let canvas = IronOldBuildingsArt.canvas(kind)
+                #expect(alchemy.base.width == canvas.pixelWidth && alchemy.base.height == canvas.pixelHeight, "\(key)")
+                #expect(alchemy.anchor == canvas.anchor, "\(key)")
+                continue
+            }
             #expect(alchemy.base.width == iron.base.width && alchemy.base.height == iron.base.height, "\(key)")
             #expect(alchemy.anchor == iron.anchor, "\(key)")
         }
