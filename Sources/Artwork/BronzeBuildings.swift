@@ -9,8 +9,11 @@ import Synchronization
 /// construction: mud brick, plaster, timber, bronze fittings and painted bands,
 /// in the style of docs/art-style.md. A building takes the look of its owner's
 /// age (`SpriteSubject.of`), so a Stone-age town centre is drawn from here once
-/// its owner reaches the Bronze age. Every other key gives nil.
-public struct BronzeBuildingSprites: SpriteSource {
+/// its owner reaches the Bronze age. Every building is drawn in the side view;
+/// the boat house is drawn in the back view too, for the edges of its
+/// footprint toward -y and -x (`FootprintEdge.boatHouseView`). Every other key
+/// gives nil.
+public struct BronzeBuildingSprites: ViewedSpriteSource {
     private let store = Store()
 
     public init() {}
@@ -18,9 +21,13 @@ public struct BronzeBuildingSprites: SpriteSource {
     public func sprite(_ key: SpriteKey) -> SpriteImage? {
         guard let subject = BronzeBuildingsArt.subject(of: key) else { return nil }
         if let known = store.made.withLock({ $0[key] }) { return known }
-        guard let made = BronzeBuildingsArt.render(subject.kind, complete: subject.complete) else { return nil }
+        guard let made = BronzeBuildingsArt.render(subject.kind, complete: subject.complete, view: subject.view) else { return nil }
         store.made.withLock { $0[key] = made }
         return made
+    }
+
+    public func drawsViews(of subject: SpriteSubject) -> Bool {
+        subject == .building(.boatHouse, .bronze)
     }
 }
 
@@ -31,14 +38,16 @@ private final class Store: Sendable {
 
 /// What this batch draws, on what canvas, and the drawing of it.
 enum BronzeBuildingsArt {
-    /// The building and pose a key names, if it is one of this batch's: a
+    /// The building, pose and view a key names, if it is one of this batch's: a
     /// building of the standard catalogue in the Bronze age's look, complete or
-    /// under construction, at frame 0.
-    static func subject(of key: SpriteKey) -> (kind: BuildingKind, complete: Bool)? {
+    /// under construction, at frame 0, in the side view, or the boat house in
+    /// the back view.
+    static func subject(of key: SpriteKey) -> (kind: BuildingKind, complete: Bool, view: SpriteView)? {
         guard case .building(let kind, .bronze) = key.subject, key.frame == 0,
-              Catalogue.standard.buildings.contains(where: { $0.kind == kind }) else { return nil }
-        if key.pose == .complete { return (kind, true) }
-        if key.pose == .underConstruction { return (kind, false) }
+              Catalogue.standard.buildings.contains(where: { $0.kind == kind }),
+              key.view == .side || (key.view == .back && kind == .boatHouse) else { return nil }
+        if key.pose == .complete { return (kind, true, key.view) }
+        if key.pose == .underConstruction { return (kind, false, key.view) }
         return nil
     }
 
@@ -70,12 +79,17 @@ enum BronzeBuildingsArt {
         }
     }
 
-    /// A building drawn as a sprite: its picture and its team-colour mask, grained alike.
-    static func render(_ kind: BuildingKind, complete: Bool) -> SpriteImage? {
+    /// A building drawn as a sprite in a view: its picture and its team-colour
+    /// mask, grained alike. The back view is on the same canvas as the side.
+    static func render(_ kind: BuildingKind, complete: Bool, view: SpriteView = .side) -> SpriteImage? {
         let canvas = canvas(kind)
         let rendered = Raster.render(on: canvas) { svg in
             var painter = BronzeBuildingsPainter(layer: svg.layer)
-            painter.building(kind, complete: complete)
+            if view == .back && kind == .boatHouse {
+                painter.boatHouseFromBehind(complete: complete)
+            } else {
+                painter.building(kind, complete: complete)
+            }
             svg = painter.svg
         }
         return rendered?.sprite(anchor: canvas.anchor)
