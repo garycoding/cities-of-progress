@@ -189,14 +189,15 @@ extension BronzeBuildingsPainter {
     private mutating func vault() {
         typealias I = BronzeBuildingsInk
         let (x0, x1) = (ReedShed.x0, ReedShed.x1)
-        let band = arch(x0) + arch(x1).reversed()
+        // The vault seen whole: the outline about both end arches (the open end is drawn over it after).
+        let band = StoneDugout.outline(arch(x0) + arch(x1))
         colour(band, .colour(I.reed))
         // The near slope, in the sun.
         let lit = arch(x0, from: 0.62, to: 1) + arch(x1, from: 0.62, to: 1).reversed()
         colour(lit, .colour(ReedShed.reedLit))
         // The courses of the matting along the vault, the lower ones closer as the slope turns toward the viewer.
         var d = PathData()
-        for s in stride(from: 0.4, through: 0.97, by: 0.065) {
+        for s in stride(from: 0.5, through: 0.97, by: 0.06) {
             d.move(archPoint(x0 + 0.02, s)); d.line(archPoint(x1 - 0.02, s))
         }
         svg.path(d, stroke: .colour(I.reedShade), width: 0.6)
@@ -347,7 +348,7 @@ extension BronzeBuildingsPainter {
                 let mat = arch(xs[0]).map { $0 + P(0, 1.5) } + arch(xs[1]).map { $0 + P(0, 1.5) }.reversed()
                 colour(mat, .colour(I.reed))
                 var d = PathData()
-                for s in stride(from: 0.4, through: 0.97, by: 0.08) {
+                for s in stride(from: 0.5, through: 0.97, by: 0.08) {
                     d.move(archPoint(xs[0], s) + P(0, 1.5)); d.line(archPoint(xs[1], s) + P(0, 1.5))
                 }
                 svg.path(d, stroke: .colour(I.reedShade), width: 0.6)

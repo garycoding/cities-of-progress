@@ -65,9 +65,8 @@ enum BronzeBuildingsArt {
         case .barracks: 96
         case .watchTower: 120
         case .palisade: 58
-        case .boatHouse: 76
-        // Iron-age buildings are drawn by their own batch.
-        case .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge: 80
+        // Iron-age buildings are drawn by their own batch; the boat house fits in their height too.
+        case .farm, .stable, .siegeWorkshop, .stoneWall, .castle, .alchemistsWorkshop, .factory, .railwayDepot, .oilWell, .bridge, .boatHouse: 80
         }
     }
 

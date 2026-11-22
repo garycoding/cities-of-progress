@@ -80,12 +80,13 @@ enum BronzeReedBoat {
     }
 
     /// Where the hoop of the net is in each frame of the working pose (x from
-    /// the place the boatman stands, y and z in the hull's space): swung out
-    /// high, plunged, swept back under the water, lifted with the catch, and
-    /// swung in over the basket to tip it.
+    /// the place the boatman stands, y and z in the hull's space): swung out,
+    /// plunged, swept back under the water more slowly, lifted with the catch,
+    /// swung in over the basket to tip it, and out again; no step between two
+    /// frames is much more than twice another's, so that it moves smoothly.
     static let sweep: [V] = [
-        V(22, -80, 26), V(28, -54, 30), V(30, -24, 31), V(28, 0, 30), V(24, 10, 28), V(14, 13, 27),
-        V(4, 11, 26), V(-2, 4, 25), V(-4, -8, 24), V(2, -26, 32), V(12, -70, 30), V(22, -20, 2),
+        V(26, -44, 28), V(29, -22, 31), V(28, -2, 30), V(24, 9, 28), V(16, 13, 27), V(8, 11, 26),
+        V(2, 3, 25), V(2, -14, 27), V(8, -30, 22), V(16, -36, 12), V(21, -26, 3), V(24, -38, 16),
     ]
 
     /// The skeleton's state: the stance, the lean, the breath and the face.
@@ -104,9 +105,9 @@ enum BronzeReedBoat {
         case .working:
             let aim = sweep[frame]
             r.lean = 2 + max(0, aim.y + 20) * 0.25 + aim.x * 0.1
-            r.headTilt = aim.y > -25 ? 8 : 0
-            r.eyes = aim.y > -25 ? .down : .open
-            r.mouth = frame == 9 || frame == 10 ? .smile : .firm
+            r.headTilt = 8 * min(max((aim.y + 40) / 40, 0), 1)
+            r.eyes = aim.y > -20 ? .down : .open
+            r.mouth = frame == 7 || frame == 8 ? .smile : .firm
         default:
             r.lean = 1
             r.lift = 0.8 * sin(t)
@@ -300,8 +301,7 @@ enum BronzeReedBoat {
         d.svg.polygon(corners, fill: .none, stroke: .colour(Ink.line), width: 0.9)
     }
 
-    /// The basket for the catch: woven reed bound with terracotta, tails of fish
-    /// showing over its rim, one more once the net has been tipped into it.
+    /// The basket for the catch: woven reed bound with terracotta, tails of fish showing over its rim.
     static func basket(_ d: inout Drawing, _ space: Space, at foot: V, pose: SpritePose, frame: Int) {
         let base = space.at(foot), height = 7.0, r = 4.2
         let top = base - P(0, height)
@@ -317,8 +317,7 @@ enum BronzeReedBoat {
         }
         d.svg.ellipse(top, r, ry, fill: .colour(BronzeReedInk.dark), stroke: .colour(Ink.line), width: 0.9)
         // The fish in it, their tails up.
-        let count = pose == .working && frame >= 11 ? 3 : 2
-        for k in 0..<count {
+        for k in 0..<2 {
             let at = top + P(-1.8 + Double(k) * 1.9, -0.2)
             let tail = [at + P(0, 0.6), at + P(-1.1, -2.6), at + P(0, -1.8), at + P(1.1, -2.8)]
             d.svg.polygon(tail, fill: .colour(BronzeReedInk.fish), stroke: .colour(Ink.line), width: 0.6)
@@ -532,23 +531,23 @@ enum BronzeReedBoat {
                 }
             case .net:
                 // Where the hoop goes in and comes out, a splash; rings spreading from it while it is under.
-                let plunge = BronzeReedBoat.sweep[3] + V(seat, 0, 0), out = BronzeReedBoat.sweep[8] + V(seat, 0, 0)
-                if frame == 3 || frame == 4 {
-                    StoneBoatsWater.splash(&d.svg, at: space.at(plunge.x, 0, plunge.z), t: Double(frame - 3) / 2.2, size: 1.1)
+                let plunge = BronzeReedBoat.sweep[2] + V(seat, 0, 0), out = BronzeReedBoat.sweep[6] + V(seat, 0, 0)
+                if frame == 2 || frame == 3 {
+                    StoneBoatsWater.splash(&d.svg, at: space.at(plunge.x, 0, plunge.z), t: Double(frame - 2) / 2.2, size: 1.1)
                 }
-                if frame == 8 || frame == 9 {
-                    StoneBoatsWater.splash(&d.svg, at: space.at(out.x, 0, out.z), t: Double(frame - 8) / 2.4, size: 0.9)
+                if frame == 6 || frame == 7 {
+                    StoneBoatsWater.splash(&d.svg, at: space.at(out.x, 0, out.z), t: Double(frame - 6) / 2.4, size: 0.9)
                 }
                 // Rings spreading from where the hoop went in, and following it back under the water.
                 for lag in [0.0, 0.18] {
-                    let age = (p - 0.25 - lag + 2).truncatingRemainder(dividingBy: 1)
+                    let age = (p - 2.0 / 12 - lag + 2).truncatingRemainder(dividingBy: 1)
                     StoneBoatsWater.ring(&d.svg, at: space.at(plunge.x, 0, plunge.z), rx: 3 + 12 * age, opacity: 0.8 * pow(1 - age, 1.4),
                                          width: 1, depth: 0.42)
                 }
-                if (4...7).contains(frame) {
+                if (3...5).contains(frame) {
                     StoneBoatsWater.ring(&d.svg, at: space.at(end.x, 0, end.z), rx: 4, opacity: 0.7, width: 1, depth: 0.42)
                 }
-                if frame == 9 || frame == 10 { drops(&d, space, from: end + V(0, 9, 0), frame: frame) }
+                if frame == 7 || frame == 8 { drops(&d, space, from: end + V(0, 9, 0), frame: frame) }
             }
         }
 
@@ -608,7 +607,7 @@ enum BronzeReedBoat {
             return centre + along * (radius * cos(a)) + side * (radius * sin(a))
         }
         // The bag hangs from the hoop, pulled back by the water while it is swept.
-        let drag = frame >= 4 && frame <= 7 ? V(7, 3, 0) : V(0, 0, 0)
+        let drag = frame >= 3 && frame <= 5 ? V(7, 3, 0) : V(0, 0, 0)
         let bottom = centre + V(0, 9, 0) + drag
         shaft(&d, space, from: butt, to: hoop - along * radius, width: 1.5)
         let line = Paint.colour(Ink.line)
@@ -621,12 +620,12 @@ enum BronzeReedBoat {
             for run in parts.above { d.svg.line(run.map(space.at), stroke: line, width: 0.55, opacity: 0.9) }
         }
         // The fish: caught as the net comes up, falling into the basket as it is tipped.
-        if frame == 8 || frame == 9 || frame == 10 {
+        if (6...9).contains(frame) {
             let at = space.at(bottom + V(0, -3, 0))
-            fish(&d, at: at, degrees: frame == 9 ? -20 : 25, faint: frame == 8)
-        } else if frame == 11 {
-            let at = space.at(V(seat + 17, deck - 12, -1))
-            fish(&d, at: at, degrees: 80, faint: false)
+            fish(&d, at: at, degrees: frame % 2 == 0 ? 25 : -20, faint: frame == 6)
+        } else if frame == 10 || frame == 11 {
+            let at = space.at(V(seat + 17, deck - (frame == 10 ? 15 : 9), -1))
+            fish(&d, at: at, degrees: frame == 10 ? 70 : 85, faint: false)
         }
         let parts = split(rim)
         for run in parts.below { d.svg.line(run.map(space.at), stroke: .colour(BronzeReedInk.handle), width: 1.6, opacity: 0.35) }
