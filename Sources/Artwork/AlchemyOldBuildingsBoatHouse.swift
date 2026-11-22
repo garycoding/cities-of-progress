@@ -18,6 +18,15 @@ import Foundation
 // turned on a wooden centring, scaffolding with the pennant, and a smack's
 // keel and ribs on the stocks on the slipway. Its footprint is two tiles
 // square: x and y run from -1 to 1; the water may lie beside any edge.
+//
+// It is drawn in two views (ruled 2026-11-22): the side view above, its water
+// side toward +x, and the back view, the same building turned a quarter so
+// that its water side lies toward -y (the screen's upper right), running away
+// from the viewer. In the back view the landward gable faces the viewer on
+// the lower left, with its cart doors, a lantern and a loft window, and the
+// long wall shows on the lower right; the slipway, its bollards, the pennant,
+// the hoist and the weathervane show beyond the building. The drawing mirrors
+// the two views for the other two edges.
 
 /// The boat house's measurements, about the centre of its footprint: distances
 /// in tiles along the map's axes, heights in points.
@@ -33,12 +42,34 @@ private enum Boathouse {
     static var doorMiddle: Double { gableLength / 2 }
     /// The long wall's length.
     static var sideLength: Double { (x1 - x0) * 32 }
+
+    /// Where a place given in the side view's frame (`a` along x, toward the
+    /// water; `b` along y) lies on the map: the same place in the side view,
+    /// and in the back view the building turned a quarter, so that +x goes to
+    /// -y and +y to +x.
+    static func turn(_ a: Double, _ b: Double, back: Bool) -> (x: Double, y: Double) {
+        back ? (b, -a) : (a, b)
+    }
+
+    /// The walls' extent in the back view: the side view's turned.
+    static let backX0 = y0, backX1 = y1, backY0 = -x1, backY1 = -x0
+    /// The long wall's door, middle along the wall from its landward end, in
+    /// the back view: further along than in the side view, clear of the quoins
+    /// at the near corner, which is the landward one there.
+    static let backDoor = 10.5
 }
 
 extension AlchemyOldBuildingsPainter {
-    mutating func boatHouse(complete: Bool) {
+    /// The boat house, complete or under construction, in the side view
+    /// (its water toward +x) or the back view (its water toward -y).
+    mutating func boatHouse(complete: Bool, back: Bool = false) {
         cobbles(1, height: Boathouse.h0)
-        if complete { stoneBoathouse() } else { stoneBoathouseRising() }
+        switch (complete, back) {
+        case (true, false): stoneBoathouse()
+        case (false, false): stoneBoathouseRising()
+        case (true, true): stoneBoathouseFromBehind()
+        case (false, true): stoneBoathouseRisingFromBehind()
+        }
     }
 
     // MARK: The complete boat house
@@ -66,10 +97,7 @@ extension AlchemyOldBuildingsPainter {
             p.waterDoor(open: true)
             p.paintedBand(0, B.gableLength, e - h0 - 4.4, e - h0 - 2.4)
             // A lantern on a bracket beside the water door.
-            let lamp = p.uv(B.doorMiddle + B.doorWidth / 2 + 4.4, 13)
-            p.line([lamp + P(-1.6, -3.6), lamp + P(0, -3.6), lamp + P(0, -2.4)], width: 0.8)
-            p.shape([lamp + P(-1.4, -2.4), lamp + P(1.4, -2.4), lamp + P(1.1, 1.6), lamp + P(-1.1, 1.6)], .colour(I.giltLight), width: 0.6)
-            p.svg.circle(lamp + P(0, -0.2), 0.7, fill: .colour(I.gilt))
+            p.lantern(at: p.uv(B.doorMiddle + B.doorWidth / 2 + 4.4, 13), arm: -1)
         }
         // The roof, its gable to the water, the loft door and a round window in the gable.
         let ym = (y0 + y1) / 2
@@ -91,7 +119,7 @@ extension AlchemyOldBuildingsPainter {
         }
         finial(at: iso(x0 - 0.06, ym, B.ridge), size: 0.9)
         weathervane(at: iso(x1 + 0.06, ym, B.ridge), height: 17)
-        hoist(at: iso(x1, ym, e + 12.4))
+        hoist(at: iso(x1, ym, e + 12.4), toward: P(9, 4.5))
         slipway()
         bowInTheDoor()
         // The owner's pennant on a staff at the slipway's foot, beside the water.
@@ -104,6 +132,15 @@ extension AlchemyOldBuildingsPainter {
         creel(at: iso(-0.08, 0.86, h0), size: 0.9)
         rope(at: iso(0.18, 0.72, h0))
         barrel(at: iso(0.66, 0.62, h0), size: 0.8)
+    }
+
+    /// A lantern hanging at `lamp` on a wall drawn with `wall`, from a bracket
+    /// reaching to the left (`arm` -1) or to the right (1).
+    private mutating func lantern(at lamp: P, arm: Double) {
+        typealias I = AlchemyOldBuildingsInk
+        line([lamp + P(1.6 * arm, -3.6), lamp + P(0, -3.6), lamp + P(0, -2.4)], width: 0.8)
+        shape([lamp + P(-1.4, -2.4), lamp + P(1.4, -2.4), lamp + P(1.1, 1.6), lamp + P(-1.1, 1.6)], .colour(I.giltLight), width: 0.6)
+        svg.circle(lamp + P(0, -0.2), 0.7, fill: .colour(I.gilt))
     }
 
     /// A wall of the boat house drawn with `wall`, `length` long and `height`
@@ -172,10 +209,11 @@ extension AlchemyOldBuildingsPainter {
     }
 
     /// The hoist over the loft door at `p` on the screen: a beam of oak out
-    /// toward the water, a pulley at its end, and a rope down to a hook.
-    private mutating func hoist(at p: P) {
+    /// toward the water by `reach` on the screen, a pulley at its end, and a
+    /// rope down to a hook.
+    private mutating func hoist(at p: P, toward reach: P) {
         typealias I = AlchemyOldBuildingsInk
-        let tip = p + P(9, 4.5)
+        let tip = p + reach
         pole(p, tip, width: 2.2, colour: I.oak)
         svg.circle(tip + P(-0.6, 1.8), 1.6, fill: .colour(I.timberLight), stroke: .colour(I.line), width: 0.6)
         svg.circle(tip + P(-0.6, 1.8), 0.5, fill: .colour(I.ironDark))
@@ -190,24 +228,34 @@ extension AlchemyOldBuildingsPainter {
 
     /// The slipway: flagstones from the water door to the edge of the footprint,
     /// raised a little on the quay, two oak runners along it, and a bollard at
-    /// each side of its foot.
-    private mutating func slipway(runners: Bool = true, flags: Bool = true) {
+    /// each side of its foot; in the side view or, turned, in the back view.
+    private mutating func slipway(back: Bool = false, runners: Bool = true, flags: Bool = true) {
         typealias I = AlchemyOldBuildingsInk
         typealias B = Boathouse
         let (sx0, sx1, sy0, sy1, h) = (B.x1, B.slipX1, B.slipY0, B.slipY1, B.h0 + B.slip)
+        func at(_ a: Double, _ b: Double, _ z: Double) -> P {
+            let p = B.turn(a, b, back: back)
+            return iso(p.x, p.y, z)
+        }
         if flags {
-            block(sx0, sy0, sx1, sy1, B.h0, h, top: .colour(I.stoneTop), left: .colour(I.stone), right: .colour(I.stoneShade), width: 0.9)
+            let (p, q) = (B.turn(sx0, sy0, back: back), B.turn(sx1, sy1, back: back))
+            block(min(p.x, q.x), min(p.y, q.y), max(p.x, q.x), max(p.y, q.y), B.h0, h, top: .colour(I.stoneTop), left: .colour(I.stone),
+                  right: .colour(I.stoneShade), width: 0.9)
             var joints = PathData()
-            for x in stride(from: sx0 + 0.14, to: sx1 - 0.05, by: 0.14) { joints.move(iso(x, sy0, h)); joints.line(iso(x, sy1, h)) }
-            joints.move(iso(sx0, (sy0 + sy1) / 2, h)); joints.line(iso(sx1, (sy0 + sy1) / 2, h))
+            for x in stride(from: sx0 + 0.14, to: sx1 - 0.05, by: 0.14) { joints.move(at(x, sy0, h)); joints.line(at(x, sy1, h)) }
+            joints.move(at(sx0, (sy0 + sy1) / 2, h)); joints.line(at(sx1, (sy0 + sy1) / 2, h))
             svg.path(joints, stroke: .colour(I.line), width: 0.45, opacity: 0.45)
             // The water's wet on the stones toward the edge.
-            colour(level(sx1 - 0.2, sy0 + 0.02, sx1 - 0.02, sy1 - 0.02, h), .colour(I.glass), opacity: 0.45)
+            colour([at(sx1 - 0.2, sy0 + 0.02, h), at(sx1 - 0.02, sy0 + 0.02, h), at(sx1 - 0.02, sy1 - 0.02, h), at(sx1 - 0.2, sy1 - 0.02, h)],
+                   .colour(I.glass), opacity: 0.45)
         }
         if runners {
-            for y in [sy0 + 0.1, sy1 - 0.1] { beam(sx0 + 0.02, y, sx1 - 0.03, y, on: h, size: 1.6) }
+            for y in [sy0 + 0.1, sy1 - 0.1] {
+                let (p, q) = (B.turn(sx0 + 0.02, y, back: back), B.turn(sx1 - 0.03, y, back: back))
+                beam(p.x, p.y, q.x, q.y, on: h, size: 1.6)
+            }
         }
-        for y in [sy0 - 0.06, sy1 + 0.07] { bollard(at: iso(sx1 - 0.08, y, B.h0)) }
+        for y in [sy0 - 0.06, sy1 + 0.07] { bollard(at: at(sx1 - 0.08, y, B.h0)) }
     }
 
     /// A short bollard of stone capped in iron, a rope's turn about it.
@@ -357,12 +405,12 @@ extension AlchemyOldBuildingsPainter {
     /// The wooden centring the water door's arch is turned on, on a wall drawn
     /// with `wall`: a half circle of boards on two props, its first voussoirs
     /// laid up one side.
-    private mutating func centring() {
+    private mutating func centring(at u: Double = Boathouse.doorMiddle, opening: String = AlchemyOldBuildingsInk.dark) {
         typealias I = AlchemyOldBuildingsInk
-        let u = Boathouse.doorMiddle, w = Boathouse.doorWidth, h = Boathouse.doorHeight
+        let w = Boathouse.doorWidth, h = Boathouse.doorHeight
         let r = w / 2, spring = h - r
-        // The opening, dark between the jambs.
-        shape(panel(u - r, 0, u + r, 13.5), .colour(I.dark), width: 0.8)
+        // The opening between the jambs: dark from without, the light off the water from within.
+        shape(panel(u - r, 0, u + r, 13.5), .colour(opening), width: 0.8)
         // The props and the centring's boards.
         for du in [-r + 1.6, r - 1.6] { timber(uv(u + du, 0), uv(u + du, spring), width: 1.4, paint: I.timberLight) }
         timber(uv(u - r, spring), uv(u + r, spring), width: 1.5, paint: I.timberLight)
@@ -386,33 +434,175 @@ extension AlchemyOldBuildingsPainter {
     /// A smack's keel and ribs on the stocks over the slipway: the keel on
     /// three blocks, the stem and the stern post standing, and ribs curving up
     /// from the keel, the after ones not yet set.
-    private mutating func smackOnTheStocks() {
+    private mutating func smackOnTheStocks(back: Bool = false) {
         typealias I = AlchemyOldBuildingsInk
-        let y = (Boathouse.slipY0 + Boathouse.slipY1) / 2, h = Boathouse.h0 + 3.5
+        typealias B = Boathouse
+        let y = (B.slipY0 + B.slipY1) / 2, h = B.h0 + 3.5
         let xa = 0.42, xb = 0.86
-        for x in [0.48, 0.64, 0.8] {
-            block(x - 0.035, y - 0.06, x + 0.035, y + 0.06, Boathouse.h0, h - 0.5, top: .colour(I.timberLight), left: .colour(I.timber),
-                  right: .colour(I.timberDark), width: 0.6)
+        func at(_ a: Double, _ b: Double, _ z: Double) -> P {
+            let p = B.turn(a, b, back: back)
+            return iso(p.x, p.y, z)
+        }
+        // From the back, the stem is the farthest part: the stocks and ribs are drawn from it toward the viewer.
+        for x in back ? [0.8, 0.64, 0.48] : [0.48, 0.64, 0.8] {
+            let (p, q) = (B.turn(x - 0.035, y - 0.06, back: back), B.turn(x + 0.035, y + 0.06, back: back))
+            block(min(p.x, q.x), min(p.y, q.y), max(p.x, q.x), max(p.y, q.y), B.h0, h - 0.5, top: .colour(I.timberLight),
+                  left: .colour(I.timber), right: .colour(I.timberDark), width: 0.6)
         }
         // The ribs on the far side, then the keel, then those on the near side.
         let ribs = stride(from: xa + 0.07, through: xb - 0.12, by: 0.065).map { $0 }
-        for x in ribs { rib(x, y, h, side: -1) }
-        beam(xa, y, xb, y, on: h - 0.5, size: 2)
+        let order = back ? Array(ribs.enumerated().reversed()) : Array(ribs.enumerated())
+        for (_, x) in order { rib(x, y, h, side: -1, back: back) }
+        let (k0, k1) = (B.turn(xa, y, back: back), B.turn(xb, y, back: back))
+        beam(k0.x, k0.y, k1.x, k1.y, on: h - 0.5, size: 2)
         // The stern post and the stem.
-        pole(iso(xa, y, h), iso(xa - 0.03, y, h + 12), width: 1.8, colour: I.oak)
-        pole(iso(xb, y, h), iso(xb + 0.06, y, h + 14), width: 1.8, colour: I.oak)
-        for (i, x) in ribs.enumerated() where i % 2 == 0 || i > 2 { rib(x, y, h, side: 1) }
+        pole(at(xa, y, h), at(xa - 0.03, y, h + 12), width: 1.8, colour: I.oak)
+        pole(at(xb, y, h), at(xb + 0.06, y, h + 14), width: 1.8, colour: I.oak)
+        for (i, x) in order where i % 2 == 0 || i > 2 { rib(x, y, h, side: 1, back: back) }
         // A plank of the strake already fitted near the stem, painted in the owner's colour.
-        let near = [iso(xb - 0.28, y + 0.13, h + 8.4), iso(xb - 0.02, y + 0.04, h + 12.4), iso(xb - 0.02, y + 0.04, h + 10.4),
-                    iso(xb - 0.28, y + 0.13, h + 6.6)]
+        let near = [at(xb - 0.28, y + 0.13, h + 8.4), at(xb - 0.02, y + 0.04, h + 12.4), at(xb - 0.02, y + 0.04, h + 10.4),
+                    at(xb - 0.28, y + 0.13, h + 6.6)]
         shape(near, .team, width: 0.6)
     }
 
-    /// One rib of the smack on the stocks at `x`, curving up from the keel to the side `side` (-1 far, 1 near).
-    private mutating func rib(_ x: Double, _ y: Double, _ h: Double, side: Double) {
+    /// One rib of the smack on the stocks at `x`, curving up from the keel to
+    /// the side `side` (-1 far, 1 near), given in the side view's frame.
+    private mutating func rib(_ x: Double, _ y: Double, _ h: Double, side: Double, back: Bool = false) {
         typealias I = AlchemyOldBuildingsInk
-        let points = [iso(x, y, h), iso(x, y + side * 0.1, h + 3), iso(x, y + side * 0.14, h + 8), iso(x, y + side * 0.15, h + 12)]
+        let points = [(y, h), (y + side * 0.1, h + 3), (y + side * 0.14, h + 8), (y + side * 0.15, h + 12)].map { b, z in
+            let p = Boathouse.turn(x, b, back: back)
+            return iso(p.x, p.y, z)
+        }
         svg.line(points, stroke: .colour(I.line), width: 2.2)
         svg.line(points, stroke: .colour(side < 0 ? I.timberDark : I.timberLight), width: 1.1)
+    }
+
+    // MARK: The back view
+
+    /// The complete boat house from behind, its water toward -y: beyond it the
+    /// hoist over the loft door in the far gable, the slipway with its
+    /// runners and bollards running to the water, the pennant at its foot and
+    /// barrels of herring; toward the viewer the landward gable with its cart
+    /// doors, a lantern and a loft window under the finial, and the long wall
+    /// with its door, its window and the banner, nets drying on their rack,
+    /// creels, a coil of rope and the anchor before it.
+    private mutating func stoneBoathouseFromBehind() {
+        typealias I = AlchemyOldBuildingsInk
+        typealias B = Boathouse
+        let (x0, y0, x1, y1, h0, e) = (B.backX0, B.backY0, B.backX1, B.backY1, B.h0, B.eave)
+        let xm = (x0 + x1) / 2
+        // Beyond the building, toward the water: the hoist, the slipway, the pennant and the barrels.
+        hoist(at: iso(xm, y0, e + 12.4), toward: P(9, -4.5))
+        slipway(back: true)
+        pennant(at: iso(0.3, -0.92, h0), height: 34, length: 15)
+        barrel(at: iso(0.5, -0.88, h0), size: 0.8)
+        barrel(at: iso(0.7, -0.84, h0), size: 0.8)
+        barrel(at: iso(0.6, -0.92, h0) + P(0, -7.4), size: 0.72)
+        // The building's shadow on the quay, to the right.
+        shadow([iso(x1, y0, h0), iso(x1 + 0.3, y0 + 0.16, h0), iso(x1 + 0.3, y1 + 0.12, h0), iso(x1, y1, h0)])
+        block(x0, y0, x1, y1, h0, e, top: nil, left: .colour(I.stone), right: .colour(I.stoneShade))
+        // The landward gable, toward the viewer.
+        wall(.left, from: x0, y1, at: h0) { p in
+            p.boathouseWall(B.gableLength, e - h0, quoinAtStart: false)
+            p.cartDoors(at: B.gableLength / 2 - 1)
+            p.lantern(at: p.uv(4.6, 13), arm: 1)
+            p.paintedBand(0, B.gableLength, e - h0 - 4.4, e - h0 - 2.4)
+        }
+        // The long wall, as in the side view, its landward end now the near corner.
+        wall(.right, from: x1, y1, at: h0) { p in
+            p.boathouseWall(B.sideLength, e - h0, quoinAtStart: true)
+            p.door(B.backDoor, 0, w: 7, h: 12)
+            p.casement(17.5, 5, w: 9, h: 7, lights: 2, frame: I.stoneTop)
+            p.paintedBand(0, B.sideLength, e - h0 - 4.4, e - h0 - 2.4)
+            p.banner(31.5, top: e - h0 - 5.6, width: 6, length: 12)
+        }
+        // The roof, its landward gable toward the viewer with a loft window and a round window in it.
+        gableAlongY(x0, y0, x1, y1, eave: e, ridge: B.ridge, over: 0.06, gableWall: .colour(I.stone), finials: false) { p, w, rise in
+            var courses = PathData()
+            for v in stride(from: 3.6, to: rise - 2, by: 3.6) {
+                let inset = v / rise * w / 2
+                courses.move(p.uv(inset + 0.4, v)); courses.line(p.uv(w - inset - 0.4, v))
+            }
+            p.svg.path(courses, stroke: .colour(I.line), width: 0.45, opacity: 0.4)
+            p.casement(w / 2 - 3.5, 2.4, w: 7, h: 6.4, lights: 2, frame: I.stoneTop)
+            p.svg.circle(p.uv(w / 2, rise - 6.4), 2.3, fill: .colour(I.stoneTop), stroke: .colour(I.line), width: 0.6)
+            p.svg.circle(p.uv(w / 2, rise - 6.4), 1.5, fill: .colour(I.glass), stroke: .colour(I.line), width: 0.4)
+            p.svg.circle(p.uv(w / 2, rise - 6.4) + P(-0.4, -0.5), 0.5, fill: .colour(I.glassLight))
+        }
+        weathervane(at: iso(xm, y0 - 0.06, B.ridge), height: 17)
+        finial(at: iso(xm, y1 + 0.06, B.ridge), size: 0.9)
+        // Before the long wall: the anchor leaning on the corner by the water, a coil of rope, creels and the nets on their rack.
+        anchor(at: iso(x1 + 0.06, y0 + 0.08, h0))
+        rope(at: iso(0.72, -0.18, h0))
+        creel(at: iso(0.86, 0.06, h0), size: 0.9)
+        creel(at: iso(0.66, 0.24, h0))
+        netRack(from: (0.9, 0.46), to: (0.9, 0.92))
+    }
+
+    /// The landward gable's cart doors on a wall drawn with `wall`: two leaves
+    /// of teal plank under a round head of voussoirs, centred on `u`, each
+    /// hung on iron straps with a ring.
+    private mutating func cartDoors(at u: Double) {
+        typealias I = AlchemyOldBuildingsInk
+        let w = 12.0, h = 15.0, r = w / 2
+        arch(u, 0, width: w + 4, height: h + 2, .colour(I.stoneTop), line: 0.8)
+        voussoirs(u, spring: h - r, inner: r, outer: r + 2, count: 7)
+        arch(u, 0, width: w, height: h, .colour(I.teal), line: 0.9)
+        var planks = PathData()
+        for du in [-3.6, -1.8, 1.8, 3.6] { planks.move(uv(u + du, 0.3)); planks.line(uv(u + du, h - r * 0.4)) }
+        svg.path(planks, stroke: .colour(I.line), width: 0.4, opacity: 0.6)
+        line([uv(u, 0), uv(u, h)], width: 0.8)
+        for v in [h * 0.2, h * 0.58] {
+            shape(panel(u - r + 0.3, v - 0.45, u - 0.9, v + 0.45), .colour(I.iron), width: 0.4)
+            shape(panel(u + 0.9, v - 0.45, u + r - 0.3, v + 0.45), .colour(I.iron), width: 0.4)
+        }
+        for du in [-1.5, 1.5] { svg.circle(uv(u + du, h * 0.4), 0.8, fill: .none, stroke: .colour(I.ironDark), width: 0.45) }
+    }
+
+    /// The boat house being built, from behind: beyond the walls the slipway's
+    /// runners and bollards and a smack's keel and ribs on the stocks over
+    /// them; within, the water door's arch turned on its centring in the far
+    /// gable, the light off the water in its opening; the far long wall raised
+    /// higher toward the far corner; scaffolding along the near long wall
+    /// flying the pennant, and stone, slates and mortar to hand.
+    private mutating func stoneBoathouseRisingFromBehind() {
+        typealias I = AlchemyOldBuildingsInk
+        typealias B = Boathouse
+        let (x0, y0, x1, y1, h0) = (B.backX0, B.backY0, B.backX1, B.backY1, B.h0)
+        let top = 15.0, t = 0.08, xm = (x0 + x1) / 2
+        slates(-0.94, 0.62, -0.7, 0.9, from: h0, height: 6)
+        slipway(back: true, runners: true, flags: false)
+        smackOnTheStocks(back: true)
+        shadow([iso(x1, y0, h0), iso(x1 + 0.18, y0 + 0.1, h0), iso(x1 + 0.18, y1 + 0.06, h0), iso(x1, y1, h0)])
+        shell(x0, y0, x1, y1, from: h0, floor: h0, to: top, thickness: t, lit: .colour(I.rawStone),
+              shade: .colour(I.rawStoneShade), top: .colour(I.rawStoneTop), ground: .colour(I.pavingShade)) { p in
+            // The far long wall raised two courses higher toward the far corner, with a return along the far gable.
+            p.block(x0, y0, x0 + t, y1 - 0.36, top, top + 7.2, top: .colour(I.rawStoneTop), left: .colour(I.rawStone),
+                    right: .colour(I.rawStoneShade), width: 0.9)
+            p.block(x0 + t, y0, x0 + 0.2, y0 + t, top, top + 7.2, top: .colour(I.rawStoneTop), left: .colour(I.rawStone),
+                    right: .colour(I.rawStoneShade), width: 0.9)
+            p.wall(.left, from: x0 + t, y0 + t, at: h0) { q in q.centring(at: (xm - x0 - t) * 32, opening: I.glass) }
+            p.timbers(-0.5, 0.3, length: 0.5, on: h0)
+            p.basket(at: p.iso(0.1, 0.06, h0), size: 0.9)
+        }
+        wall(.left, from: x0, y1, at: h0) { p in
+            p.courses(0, B.gableLength, 0, top - h0, course: 3.6, brick: 8.4, opacity: 0.6)
+            p.shape(p.panel(9, 0, 21, 11), .colour(I.dark), width: 0.9)
+            p.shape(p.panel(8.4, 11, 21.6, 12.6), .colour(I.oak), width: 0.6)
+            p.paintedBand(0, B.gableLength, 1, 2.6)
+        }
+        wall(.right, from: x1, y1, at: h0) { p in
+            p.courses(0, B.sideLength, 0, top - h0, course: 3.6, brick: 8.4, opacity: 0.6)
+            p.shape(p.panel(B.backDoor - 3.5, 0, B.backDoor + 3.5, 11), .colour(I.dark), width: 0.9)
+            p.shape(p.panel(B.backDoor - 4.1, 11, B.backDoor + 4.1, 12.6), .colour(I.oak), width: 0.6)
+        }
+        blocks(0.5, -0.88, 0.8, -0.62, from: h0, courses: 1)
+        // Scaffolding along the near long wall, its tallest pole flying the owner's pennant.
+        scaffold([(x1 + 0.2, y1 - 0.04), (x1 + 0.2, 0.36), (x1 + 0.2, y0 + 0.06)], from: h0, height: 30, levels: [12, 24], boards: 12,
+                 inward: (-0.14, 0))
+        pennant(at: iso(x1 + 0.2, y1 - 0.04, h0 + 30), height: 11, length: 13)
+        basket(at: iso(0.84, -0.46, h0), size: 0.9)
+        ladder(foot: iso(0.82, -0.1, h0), iso(0.82, -0.24, h0), head: iso(x1 + 0.26, -0.1, h0 + 13), iso(x1 + 0.26, -0.24, h0 + 13), rungs: 4)
+        blocks(0.72, 0.62, 0.94, 0.9, from: h0, courses: 2)
     }
 }
