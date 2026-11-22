@@ -23,9 +23,9 @@ import Testing
     // A warfighter at work is drawn standing (`SpriteCache`), so its working pose need not be drawn.
     let keys = SpriteKey.required(through: .industrial).filter { key in
         if case .unit(let kind, _) = key.subject, kind.isWarfighter, key.pose == .working { return false }
-        // The boats' art is drawn age by age: the Stone age's is drawn, the later ages' are placeholders until then.
+        // The boats' art is drawn age by age: the Stone and Bronze ages' are drawn, the later ages' are placeholders until then.
         switch key.subject {
-        case .unit(.boat, let age), .building(.boatHouse, let age): if age != .stone { return false }
+        case .unit(.boat, let age), .building(.boatHouse, let age): if age > .bronze { return false }
         default: break
         }
         return true
