@@ -42,6 +42,10 @@ private enum Boathouse {
     static var doorMiddle: Double { gableLength / 2 }
     /// The long wall's length.
     static var sideLength: Double { (x1 - x0) * 32 }
+    /// The dock (ruled 2026-11-22), in the side view's frame: a stone quay from
+    /// the footprint's edge out over the water, as wide as the slipway it
+    /// continues and at its height, its steps down to the water at its end.
+    static let dockX0 = 1.0, dockX1 = 1.88, dockStep = 0.065
 
     /// Where a place given in the side view's frame (`a` along x, toward the
     /// water; `b` along y) lies on the map: the same place in the side view,
@@ -62,7 +66,10 @@ private enum Boathouse {
 extension AlchemyOldBuildingsPainter {
     /// The boat house, complete or under construction, in the side view
     /// (its water toward +x) or the back view (its water toward -y).
+    /// The quay's dock runs out over the water beyond the footprint: behind
+    /// everything in the back view, before everything in the side view.
     mutating func boatHouse(complete: Bool, back: Bool = false) {
+        if back { dock(complete: complete, back: true) }
         cobbles(1, height: Boathouse.h0)
         switch (complete, back) {
         case (true, false): stoneBoathouse()
@@ -70,6 +77,7 @@ extension AlchemyOldBuildingsPainter {
         case (true, true): stoneBoathouseFromBehind()
         case (false, true): stoneBoathouseRisingFromBehind()
         }
+        if !back { dock(complete: complete, back: false) }
     }
 
     // MARK: The complete boat house
@@ -604,5 +612,82 @@ extension AlchemyOldBuildingsPainter {
         basket(at: iso(0.84, -0.46, h0), size: 0.9)
         ladder(foot: iso(0.82, -0.1, h0), iso(0.82, -0.24, h0), head: iso(x1 + 0.26, -0.1, h0 + 13), iso(x1 + 0.26, -0.24, h0 + 13), rungs: 4)
         blocks(0.72, 0.62, 0.94, 0.9, from: h0, courses: 2)
+    }
+
+    // MARK: The dock
+
+    /// The dock (ruled 2026-11-22): a quay of dressed stone running on from
+    /// the slipway straight out over the water, about a tile beyond the
+    /// footprint, on a footing of darker stone with the water ringed about
+    /// it; its flags at the slipway's height, two steps down to the water at
+    /// its end, an iron mooring ring on its long side and a bollard by the
+    /// steps. Under construction: its footing laid the whole way out, the
+    /// first part raised in fresh stone, and a block waiting on the footing.
+    /// In the side view's frame, turned for the back view.
+    private mutating func dock(complete: Bool, back: Bool) {
+        typealias I = AlchemyOldBuildingsInk
+        typealias B = Boathouse
+        let (a0, a1, b0, b1, h) = (B.dockX0, B.dockX1, B.slipY0, B.slipY1, B.h0 + B.slip)
+        let foot = 0.9, out = 0.03, end = a1 + 2 * B.dockStep
+        func at(_ a: Double, _ b: Double, _ z: Double) -> P {
+            let p = B.turn(a, b, back: back)
+            return iso(p.x, p.y, z)
+        }
+        /// A block given in the side view's frame.
+        func box(_ a0: Double, _ b0: Double, _ a1: Double, _ b1: Double, _ z0: Double, _ z1: Double, _ top: String, _ lit: String,
+                 _ shade: String, width: Double = 0.9) {
+            let (p, q) = (B.turn(a0, b0, back: back), B.turn(a1, b1, back: back))
+            block(min(p.x, q.x), min(p.y, q.y), max(p.x, q.x), max(p.y, q.y), z0, z1, top: .colour(top), left: .colour(lit),
+                  right: .colour(shade), width: width)
+        }
+        // The water ringed about the footing: at its far corners and along its sides.
+        let reach = complete ? end : a1
+        for (a, b) in [(reach + out, b0 - out), (reach + out, b1 + out), (a0 + 0.3, b0 - out), (a0 + 0.62, b0 - out),
+                       (a0 + 0.3, b1 + out), (a0 + 0.62, b1 + out)] {
+            waterRing(at: at(a, b, 0), size: 1)
+        }
+        // The footing, the whole way out.
+        box(a0, b0 - out, reach + out, b1 + out, 0, foot, complete ? I.footing : I.rawStoneShade, complete ? I.footing : I.rawStone,
+            complete ? I.footingShade : I.rawStoneShade)
+        guard complete else {
+            // The first part raised in fresh stone, a block waiting on the footing beyond it.
+            box(a0, b0, a0 + 0.42, b1, foot, h, I.rawStoneTop, I.rawStone, I.rawStoneShade)
+            var joints = PathData()
+            for a in stride(from: a0 + 0.14, to: a0 + 0.42, by: 0.14) { joints.move(at(a, b0, h)); joints.line(at(a, b1, h)) }
+            svg.path(joints, stroke: .colour(I.line), width: 0.4, opacity: 0.45)
+            box(a0 + 0.6, b0 + 0.06, a0 + 0.74, b0 + 0.2, foot, foot + 2.4, I.rawStoneTop, I.rawStone, I.rawStoneShade, width: 0.7)
+            return
+        }
+        // The steps down to the water: from the back, the lower one is the farther and is drawn first.
+        let steps = [(a1, a1 + B.dockStep, h * 2 / 3), (a1 + B.dockStep, end, h / 3)]
+        if back { for (s0, s1, top) in steps.reversed() { box(s0, b0, s1, b1, foot, top, I.stoneTop, I.stone, I.stoneShade, width: 0.8) } }
+        box(a0, b0, a1, b1, foot, h, I.stoneTop, I.stone, I.stoneShade)
+        if !back { for (s0, s1, top) in steps { box(s0, b0, s1, b1, foot, top, I.stoneTop, I.stone, I.stoneShade, width: 0.8) } }
+        // The flags, their joints across the quay and down its middle, and the wet toward its end.
+        var joints = PathData()
+        for a in stride(from: a0 + 0.14, to: a1 - 0.05, by: 0.14) { joints.move(at(a, b0, h)); joints.line(at(a, b1, h)) }
+        joints.move(at(a0, (b0 + b1) / 2, h)); joints.line(at(a1, (b0 + b1) / 2, h))
+        svg.path(joints, stroke: .colour(I.line), width: 0.45, opacity: 0.45)
+        colour([at(a1 - 0.16, b0 + 0.02, h), at(a1 - 0.02, b0 + 0.02, h), at(a1 - 0.02, b1 - 0.02, h), at(a1 - 0.16, b1 - 0.02, h)],
+               .colour(I.glass), opacity: 0.4)
+        // The iron mooring ring on the quay's long side toward the viewer.
+        let side = B.turn(a0, b1, back: back)
+        wall(back ? .right : .left, from: side.x, side.y, at: foot) { p in
+            // The joints of the dressed stones along it.
+            p.courses(0, (a1 - a0) * 32, 0, h - foot, course: h - foot, brick: 6.4, opacity: 0.5)
+            let u = (a1 - a0) * 32 * 0.55
+            p.shape(p.panel(u - 1, h - foot - 1.3, u + 1, h - foot - 0.3), .colour(I.ironDark), width: 0.4)
+            p.svg.ellipse(p.uv(u, h - foot - 2.2), 1.5, 1.3, fill: .none, stroke: .colour(I.line), width: 1.1)
+            p.svg.ellipse(p.uv(u, h - foot - 2.2), 1.5, 1.3, fill: .none, stroke: .colour(I.ironLight), width: 0.45)
+        }
+        // A bollard by the head of the steps, on the side toward the viewer.
+        bollard(at: at(a1 - 0.09, b1 - 0.09, h))
+    }
+
+    /// A ring on the water about the foot of something standing in it, at `p` on the screen.
+    private mutating func waterRing(at p: P, size s: Double) {
+        typealias I = AlchemyOldBuildingsInk
+        svg.ellipse(p + P(0, 0.4), 4.2 * s, 1.8 * s, fill: .none, stroke: .colour(I.glassLight), width: 0.8, opacity: 0.85)
+        svg.ellipse(p + P(0, 0.6), 6.2 * s, 2.7 * s, fill: .none, stroke: .colour(I.glassLight), width: 0.5, opacity: 0.5)
     }
 }
