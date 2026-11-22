@@ -12,7 +12,9 @@ import Testing
 @Suite struct StoneBuildingsTests {
     private static let kinds: [BuildingKind] = [.townCentre, .house, .storagePit, .boatHouse]
     private static let poses: [SpritePose] = [.complete, .underConstruction]
-    private static let keys = kinds.flatMap { kind in poses.map { SpriteKey(.building(kind, .stone), $0) } }
+    /// The boat house seen from behind, so that it can face water on any edge (ruled 2026-11-22).
+    private static let backKeys = poses.map { SpriteKey(.building(.boatHouse, .stone), $0, view: .back) }
+    private static let keys = kinds.flatMap { kind in poses.map { SpriteKey(.building(kind, .stone), $0) } } + backKeys
 
     /// An image's pixels as premultiplied RGBA, top row first.
     private struct Pixels {
@@ -117,7 +119,59 @@ import Testing
             others.append(SpriteKey(.building(kind, .stone), .complete))
             others.append(SpriteKey(.building(kind, .stone), .underConstruction))
         }
+        // No view but the side, but for the boat house from behind.
+        for kind in Self.kinds {
+            for pose in Self.poses {
+                for view in SpriteView.allCases where view != .side && !(kind == .boatHouse && view == .back) {
+                    others.append(SpriteKey(.building(kind, .stone), pose, view: view))
+                }
+            }
+        }
+        for frame in 1..<SpriteKey.framesPerPose {
+            others.append(SpriteKey(.building(.boatHouse, .stone), .complete, frame: frame, view: .back))
+        }
+        for pose in [SpritePose.standing, .walking, .working, .fighting, "ruined"] {
+            others.append(SpriteKey(.building(.boatHouse, .stone), pose, view: .back))
+        }
+        for age in Age.allCases where age != .stone {
+            others.append(SpriteKey(.building(.boatHouse, age), .complete, view: .back))
+        }
         for key in others { #expect(source.sprite(key) == nil, "\(key) should be nil") }
+    }
+
+    /// The boat house from behind stands on the same canvas and anchor as from
+    /// the side, carries a team mask where the side does, and is a different picture.
+    @Test func theBackViewMatchesTheSideInSizeAndAnchor() throws {
+        let source = StoneBuildingSprites()
+        for back in Self.backKeys {
+            var sideKey = back
+            sideKey.view = .side
+            let side = try #require(source.sprite(sideKey)), behind = try #require(source.sprite(back))
+            #expect(behind.base.width == side.base.width && behind.base.height == side.base.height, "\(back)")
+            #expect(behind.anchor == side.anchor, "\(back)")
+            #expect((behind.teamMask == nil) == (side.teamMask == nil), "\(back)")
+            #expect(Pixels(behind.base).bytes != Pixels(side.base).bytes, "\(back): the same picture as the side")
+        }
+    }
+
+    /// Only the boat house is drawn in another view, and the game's sprites
+    /// reach this batch for it rather than falling back to the side.
+    @Test func onlyTheBoatHouseGainsAView() throws {
+        let source = StoneBuildingSprites()
+        #expect(source.drawsViews(of: .building(.boatHouse, .stone)))
+        for kind in BuildingKind.allCases where kind != .boatHouse {
+            #expect(!source.drawsViews(of: .building(kind, .stone)), "\(kind)")
+        }
+        for age in Age.allCases where age != .stone { #expect(!source.drawsViews(of: .building(.boatHouse, age)), "\(age)") }
+        #expect(!source.drawsViews(of: .unit(.boat, .stone)))
+        let game = GameSprites()
+        for back in Self.backKeys {
+            var sideKey = back
+            sideKey.view = .side
+            let behind = try #require(game.sprite(back)), side = try #require(game.sprite(sideKey))
+            #expect(Pixels(behind.base).bytes == Pixels(try #require(source.sprite(back)).base).bytes, "\(back)")
+            #expect(Pixels(behind.base).bytes != Pixels(side.base).bytes, "\(back)")
+        }
     }
 
     /// Two sources, each drawing afresh, give the same pixels for every key.
