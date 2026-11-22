@@ -6,8 +6,8 @@ import GameCore
 
 // The boat house of the Stone age seen from behind (ruled 2026-11-22): the
 // same shelter as the side view (StoneBuildingsBoatHouse.swift), its plan
-// turned a quarter so that the open end and the landing stage face −y, the
-// screen's upper right, running away from the viewer toward the water. The
+// turned a quarter so that the open end, the landing stage and the dock face
+// −y, the screen's upper right, running away from the viewer toward the water. The
 // long side with the painted front board faces the lower right, in shade; the
 // landward end faces the viewer: a gable wall of daub with a low doorway hung
 // with a hide, a log for a step, paddles leaning by the door, and a pot and a
@@ -81,8 +81,10 @@ extension StoneBuildingsSketch {
     }
 
     /// The landing stage, running from the open end of the shed away from the
-    /// viewer to the footprint's edge, with the mooring post at its end.
+    /// viewer to the footprint's edge, with the mooring post at its end, and
+    /// the dock beyond it, its far end clear of the building.
     private mutating func backStage() {
+        stoneDock(complete: true, turn: turn)
         let s = StoneBoatShed.self
         let (sx0, sx1, sy0, sy1, h) = (s.x1 - 0.02, s.stageX1, s.stageY0, s.stageY1, s.stage)
         shadow(StoneBuildingsOutline([spot(sx0, sy0), spot(sx1 + 0.02, sy0), spot(sx1 + 0.02, sy1 + 0.1), spot(sx0, sy1 + 0.1)]),
@@ -100,15 +102,6 @@ extension StoneBuildingsSketch {
             pole(spot(x, y, -1), spot(x, y, h - 1), width: 2.6, colour: Ink.wood)
         }
         mooringPost(at: spot(sx1 - 0.03, sy1 + 0.02))
-        // From behind the shed hides its stage; a line from the post's coil
-        // runs on to a stake at the water's edge, beyond the eaves.
-        let coil = spot(sx1 - 0.03, sy1 + 0.02) - P(-2.2, 10.2)
-        let stake = StoneBuildingsSketch.at(0.44, -0.97)
-        pole(stake + P(0, 1), stake - P(0, 7), width: 2.2, colour: Ink.wood, line: 0.9)
-        var line = StoneBuildingsOutline()
-        line.move(coil)
-        line.quad((coil + stake) * 0.5 + P(0, 4), stake - P(0, 5.5))
-        stroke(line, width: 1, colour: StoneBuildingsInk.straw)
     }
 
     /// The deck's two faces toward the viewer: the long one painted in the
@@ -288,7 +281,8 @@ extension StoneBuildingsSketch {
         let (rx0, rx1, ry, reach) = (s.roofX0 + 0.04, s.roofX1 - 0.04, s.ridgeY, s.eaveReach - 0.08)
         shadow(StoneBuildingsOutline([spot(x1 + 0.08, y0), spot(x1 + 0.08, y1 + 0.16), spot(x0, y1 + 0.16), spot(x0, y0 + 0.1)]),
                opacity: 0.12)
-        // The stage's piles, set, with no deck on them yet, the farthest first.
+        // The dock begun, and the stage's piles, set, with no deck on them yet, the farthest first.
+        stoneDock(complete: false, turn: turn)
         for (x, y) in [(s.stageX1 - 0.03, s.stageY0 + 0.02), (0.68, s.stageY0 + 0.02), (s.stageX1 - 0.03, s.stageY1 - 0.02),
                        (0.68, s.stageY1 - 0.02)] {
             pole(spot(x, y, -1), spot(x, y, s.stage), width: 2.6, colour: Ink.wood)

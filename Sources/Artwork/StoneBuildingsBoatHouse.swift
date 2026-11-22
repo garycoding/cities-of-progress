@@ -12,7 +12,8 @@ import GameCore
 // landing stage runs from the open end to the edge of the footprint, with a
 // mooring post at its end; fish hang to dry on a rack, and reeds grow at the
 // footprint's corners. The footprint lies on land and the water may lie
-// beside any of its edges, so the stage reads as the way down to it. Under
+// beside any of its edges, so the stage reads as the way down to it, and a
+// log pier on stakes runs on from it a tile out over the water. Under
 // construction: the piles and part of the deck, the rafters of the roof tied
 // to the ridge pole with the pennant on them, sheaves of thatch, and a log
 // being hollowed into a canoe, an adze left in it.
@@ -29,6 +30,10 @@ enum StoneBoatShed {
     static let eaveReach = 0.62, eave = 23.0
     /// The landing stage, from the open end to the footprint's edge.
     static let stageX1 = 0.96, stageY0 = -0.2, stageY1 = 0.12, stage = 5.5
+    /// The dock (ruled 2026-11-22): a log pier continuing the stage out over
+    /// the water, a tile beyond the footprint's edge, on pairs of stakes at `stakesX`.
+    static let dockX0 = 0.96, dockX1 = 2.0, dockY0 = -0.24, dockY1 = 0.12
+    static let stakesX = [1.28, 1.62, 1.96]
 }
 
 private func spot(_ x: Double, _ y: Double, _ h: Double = 0) -> P { StoneBuildingsSketch.at(x, y, h) }
@@ -72,6 +77,7 @@ extension StoneBuildingsSketch {
         // The piles behind, in the shade under the deck.
         for (x, y) in [(x0, y0), (x1, y0), (-0.2, y0)] { boatHousePile(x, y, top: deck, colour: Ink.handle) }
         stage()
+        stoneDock(complete: true)
         deckBoards()
         // The open end of the shed, and what shows through it.
         let gable = [spot(x1, y1, deck), spot(x1, y0, deck), spot(StoneBoatShed.roofX1, StoneBoatShed.ridgeY - StoneBoatShed.eaveReach, StoneBoatShed.eave),
@@ -229,6 +235,58 @@ extension StoneBuildingsSketch {
         for (x, y) in [(sx1 - 0.03, sy1 - 0.02), (0.68, sy1 - 0.02)] { pole(spot(x, y, -1), spot(x, y, h - 1), width: 2.6, colour: Ink.wood) }
     }
 
+    /// The dock: a pier of logs laid across two stringers, on pairs of stakes
+    /// driven into the water, each with a ring of water about its foot, the
+    /// last pair standing taller to moor to. Under construction: the stakes,
+    /// the stringers on the landward half, and a few logs laid over them.
+    mutating func stoneDock(complete: Bool, turn: StoneBoatHouseTurn = .side) {
+        let s = StoneBoatShed.self
+        let (x0, x1, y0, y1, h) = (s.dockX0, s.dockX1, s.dockY0, s.dockY1, s.stage)
+        let stakes = s.stakesX.flatMap { x in [(x, y0 + 0.03), (x, y1 - 0.03)] }
+        // The rings of water about the stakes, under everything.
+        for (x, y) in stakes {
+            let foot = turn(x, y)
+            var ring = PathData()
+            ring.move(foot + P(-3.4, -0.3))
+            ring.quad(foot + P(0, 2.6), foot + P(3.4, -0.3))
+            svg.path(ring, stroke: .colour(TerrainInk.shallowLight), width: 0.9, opacity: 0.95)
+            var wake = PathData()
+            wake.move(foot + P(-5, 1.4))
+            wake.quad(foot + P(-1.6, 3.4), foot + P(-0.6, 3))
+            svg.path(wake, stroke: .colour(TerrainInk.shallowLight), width: 0.7, opacity: 0.8)
+            colour([foot + P(-1.4, 0), foot + P(1.4, 0), foot + P(1.1, 1.8), foot + P(-1.1, 1.8)], .colour(Ink.line), shift: P(0, 0),
+                   opacity: 0.22)
+        }
+        // On the screen, the farther stakes and logs first: from the side the
+        // dock runs toward the viewer, from behind away from it.
+        let outward = turn == .side
+        let order: (Double, Double) -> Bool = { outward ? $0 < $1 : $0 > $1 }
+        func stake(_ x: Double, _ y: Double, colour: String) {
+            let top = x == s.stakesX.last ? h + 9 : h + 1.2
+            pole(turn(x, y, -0.4), turn(x, y, top), width: 2.8, colour: colour)
+            svg.ellipse(turn(x, y, top) + P(-0.1, 0.1), 1.2, 0.5, fill: .colour(StoneBuildingsInk.woodEnd))
+            if x == s.stakesX.last { stroke([turn(x, y, h + 1.6) + P(-1.6, 0), turn(x, y, h + 1.6) + P(1.6, 0)], width: 1, colour: Ink.darkHide) }
+        }
+        for (x, y) in stakes.filter({ $0.1 < 0 }).sorted(by: { order($0.0, $1.0) }) { stake(x, y, colour: Ink.handle) }
+        let laid = complete ? x1 : x0 + (x1 - x0) * 0.5
+        for y in [y0 + 0.04, y1 - 0.04] {
+            pole(turn(x0, y, h - 1.2), turn(laid, y, h - 1.2), width: 2.2, colour: Ink.handle)
+        }
+        let logs = stride(from: x0 + 0.04, through: (complete ? x1 : x0 + (x1 - x0) * 0.3) - 0.03, by: 0.08).map { $0 }
+        for x in logs.sorted(by: order) {
+            pole(turn(x, y0 - 0.01, h), turn(x, y1 + 0.01, h), width: 2.6, colour: Ink.wood, line: 0.8)
+            svg.ellipse(turn(x, y1 + 0.01, h), 1.1, 1.1, fill: .colour(StoneBuildingsInk.woodEnd), stroke: .colour(Ink.line), width: 0.5)
+        }
+        // Lashings where the logs cross the stringers, here and there.
+        if complete {
+            for x in stride(from: x0 + 0.2, to: x1, by: 0.32) {
+                stroke([turn(x, y1 - 0.04, h + 0.6) + P(-1.2, -0.4), turn(x, y1 - 0.04, h + 0.6) + P(1.2, 0.4)], width: 1.1,
+                       colour: Ink.darkHide)
+            }
+        }
+        for (x, y) in stakes.filter({ $0.1 > 0 }).sorted(by: { order($0.0, $1.0) }) { stake(x, y, colour: Ink.wood) }
+    }
+
     /// The mooring post at the stage's end, a rope coiled round its head.
     mutating func mooringPost(at foot: P) {
         pole(foot + P(0, 1), foot - P(0, 15), width: 3, colour: Ink.wood)
@@ -335,6 +393,7 @@ extension StoneBuildingsSketch {
                        (0.68, StoneBoatShed.stageY1 - 0.02)] {
             pole(spot(x, y, -1), spot(x, y, StoneBoatShed.stage), width: 2.6, colour: Ink.wood)
         }
+        stoneDock(complete: false)
         sheaves(at: spot(-0.3, 0.82))
         logBeingHollowed(at: spot(0.62, 0.58))
     }

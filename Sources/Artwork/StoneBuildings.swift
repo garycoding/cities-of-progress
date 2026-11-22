@@ -86,6 +86,9 @@ struct StoneBuildingsPiece: Hashable, Sendable {
         switch kind {
         case .townCentre: Canvas(minX: -100, minY: -128, width: 200, height: 180, pixelsPerUnit: 2)
         case .storagePit: Canvas(minX: -68, minY: -92, width: 136, height: 128, pixelsPerUnit: 2)
+        // The boat house's canvas reaches past the footprint for its dock
+        // (ruled 2026-11-22): 16 points to the right and 10 down, as in every age.
+        case .boatHouse: Canvas(minX: -68, minY: -108, width: 152, height: 154, pixelsPerUnit: 2)
         default: Canvas(minX: -68, minY: -108, width: 136, height: 144, pixelsPerUnit: 2)
         }
     }
