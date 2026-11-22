@@ -21,6 +21,14 @@ import Testing
         [SpriteKey(.building(kind, .alchemy), .complete), SpriteKey(.building(kind, .alchemy), .underConstruction)]
     }
 
+    /// The boat house from behind, complete and under construction (ruled 2026-11-22).
+    private static let back: [SpriteKey] = [SpritePose.complete, .underConstruction].map {
+        SpriteKey(.building(.boatHouse, .alchemy), $0, view: .back)
+    }
+
+    /// Every sprite the batch draws: the side view of each key, and the boat house's back view.
+    private static let drawn = batch + back
+
     @Test func theBatchIsTheBuildingsOfTheEarlierAges() {
         #expect(Set(Self.kinds) == Set(AlchemyOldBuildingsArt.kinds))
         #expect(Self.batch.count == 24)
@@ -40,9 +48,36 @@ import Testing
             keys.append(SpriteKey(key.subject, key.pose, frame: 11))
             keys.append(SpriteKey(key.subject, .standing))
             keys.append(SpriteKey(key.subject, .working))
+            for view in SpriteView.allCases {
+                keys.append(key.seen(view))
+                keys.append(SpriteKey(key.subject, key.pose, frame: 1, view: view))
+            }
         }
         let supplied = Set(keys.filter { Self.source.sprite($0) != nil })
-        #expect(supplied == Set(Self.batch))
+        #expect(supplied == Set(Self.drawn))
+    }
+
+    /// The boat house is drawn from behind as well, so that it faces water on
+    /// any edge; nothing else of the batch gains a view, and `GameSprites`
+    /// asks the batch for the boat house's back view alone.
+    @Test func theBoatHouseAloneIsDrawnFromBehind() throws {
+        for kind in BuildingKind.allCases {
+            for age in Age.allCases {
+                #expect(Self.source.drawsViews(of: .building(kind, age)) == (kind == .boatHouse && age == .alchemy), "\(kind) \(age)")
+            }
+        }
+        #expect(!Self.source.drawsViews(of: .unit(.boat, .alchemy)))
+        for key in Self.back {
+            let back = try #require(Self.source.sprite(key), "\(key)")
+            let side = try #require(Self.source.sprite(key.seen(.side)))
+            #expect(back.base.width == side.base.width && back.base.height == side.base.height, "\(key)")
+            #expect(back.anchor == side.anchor, "\(key)")
+            #expect((back.teamMask == nil) == (side.teamMask == nil), "\(key)")
+            #expect(AlchemyOldBuildingsPixels(back.base).bytes != AlchemyOldBuildingsPixels(side.base).bytes, "\(key)")
+            // The game's sources ask this batch for the back view: without it they would answer nothing.
+            let game = try #require(GameSprites().sprite(key), "\(key)")
+            #expect(game.base.width == back.base.width && game.base.height == back.base.height && game.anchor == back.anchor, "\(key)")
+        }
     }
 
     /// A building takes the look of its owner's age: once its owner is in the
@@ -61,7 +96,7 @@ import Testing
     }
 
     @Test func everySpriteCarriesTeamColour() throws {
-        for key in Self.batch {
+        for key in Self.drawn {
             let sprite = try #require(Self.source.sprite(key), "\(key)")
             let mask = try #require(sprite.teamMask, "no mask for \(key)")
             #expect(mask.width == sprite.base.width && mask.height == sprite.base.height)
@@ -77,7 +112,7 @@ import Testing
     /// the anchor is what the drawing covers, reaching its left, bottom and right
     /// corners and overhanging none of them.
     @Test func theAnchorIsTheCentreOfTheFootprintsDiamond() throws {
-        for key in Self.batch {
+        for key in Self.drawn {
             guard case .building(let kind, _) = key.subject else { continue }
             let sprite = try #require(Self.source.sprite(key))
             let footprint = Catalogue.standard.stats(kind).footprint
@@ -87,12 +122,24 @@ import Testing
             // Two pixels a point: a tile's diamond is 128 by 64 pixels.
             let halfWidth = Double(footprint.x + footprint.y) * 32, halfHeight = Double(footprint.x + footprint.y) * 16
             let drawn = try #require(pixels.bounds(alphaAbove: 128), "\(key) is empty")
-            #expect(drawn.minY > 0 && drawn.minX > 0 && drawn.maxX < pixels.width - 1 && drawn.maxY < pixels.height - 1,
+            // The boat house's dock runs out over the water beyond the footprint, toward the right in both its views
+            // (ruled 2026-11-22): its right corner is not the diamond's, and in the side view its far end lies a little
+            // below the diamond's bottom corner. It may meet its canvas's right and bottom edges, as it does on the
+            // canvas from before the dock, which crops it.
+            let dock = kind == .boatHouse
+            #expect(drawn.minY > 0 && drawn.minX > 0 && (dock || (drawn.maxX < pixels.width - 1 && drawn.maxY < pixels.height - 1)),
                     "\(key) reaches the edge of its picture \(drawn) \(pixels.width)x\(pixels.height)")
             let tolerance = 5.0
             #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
-            #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
-            #expect(abs(Double(drawn.maxY + 1) - (centreY + halfHeight)) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+            if dock {
+                #expect(Double(drawn.maxX + 1) >= centreX + halfWidth, "\(key): the dock ends at \(drawn.maxX + 1), short of the footprint")
+            } else {
+                #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance,
+                        "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+            }
+            let bottom = Double(drawn.maxY + 1) - (centreY + halfHeight)
+            #expect(dock ? bottom >= -tolerance && bottom <= 8 * 2 : abs(bottom) <= tolerance,
+                    "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
         }
     }
 
@@ -124,7 +171,7 @@ import Testing
 
     @Test func theSameKeyGivesTheSamePixels() throws {
         let first = AlchemyOldBuildingSprites(), second = AlchemyOldBuildingSprites()
-        for key in Self.batch {
+        for key in Self.drawn {
             let a = try #require(first.sprite(key)), b = try #require(second.sprite(key))
             #expect(AlchemyOldBuildingsPixels(a.base).bytes == AlchemyOldBuildingsPixels(b.base).bytes, "\(key)")
             let maskA = try #require(a.teamMask), maskB = try #require(b.teamMask)

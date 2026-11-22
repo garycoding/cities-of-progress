@@ -140,6 +140,29 @@ public enum Placement {
         return false
     }
 
+    /// The edge of a building's footprint that faces the water most: the one
+    /// with most water tiles along it, ties going to +x, +y, −y, −x in that
+    /// order (the edges toward the viewer first); +x when no edge touches
+    /// water. A boat house is drawn facing it (ruled 2026-11-22). Terrain never
+    /// changes in a match, so this is worked out, not stored.
+    public static func waterEdge(_ kind: BuildingKind, at origin: GridPoint, width: Int, height: Int, terrain: [Terrain],
+                                 catalogue: Catalogue = .standard) -> FootprintEdge {
+        let size = catalogue.stats(kind).footprint
+        func water(_ tiles: [GridPoint]) -> Int {
+            tiles.filter { $0.x >= 0 && $0.y >= 0 && $0.x < width && $0.y < height && terrain[$0.y * width + $0.x].isWater }.count
+        }
+        let alongX = (0..<size.x).map { origin.x + $0 }, alongY = (0..<size.y).map { origin.y + $0 }
+        let counts: [(FootprintEdge, Int)] = [
+            (.plusX, water(alongY.map { GridPoint(origin.x + size.x, $0) })),
+            (.plusY, water(alongX.map { GridPoint($0, origin.y + size.y) })),
+            (.minusY, water(alongX.map { GridPoint($0, origin.y - 1) })),
+            (.minusX, water(alongY.map { GridPoint(origin.x - 1, $0) })),
+        ]
+        var best = counts[0]
+        for c in counts.dropFirst() where c.1 > best.1 { best = c }
+        return best.0
+    }
+
     /// The same rule as the player sees it: for the drawing's outline and the
     /// computer player. The simulation applies it to its full state. An
     /// outcrop (`PlayerView.outcrops`) is a deposit not yet revealed, and
@@ -159,5 +182,29 @@ public enum Placement {
         return canPlace(kind, at: origin, width: view.mapWidth, height: view.mapHeight, terrain: view.terrain,
                         occupied: occupied, explored: { view.visibility(at: $0) != .unexplored }, catalogue: catalogue,
                         wanted: wanted)
+    }
+}
+
+/// An edge of a building's footprint, by the map axis it faces.
+public enum FootprintEdge: Sendable, Hashable, CaseIterable {
+    /// Toward +x: the screen's lower right.
+    case plusX
+    /// Toward +y: the screen's lower left.
+    case plusY
+    /// Toward −y: the screen's upper right.
+    case minusY
+    /// Toward −x: the screen's upper left.
+    case minusX
+
+    /// How a boat house is drawn to face this edge (ruled 2026-11-22). Each
+    /// age's side view has its water side toward +x and its back view toward
+    /// −y; mirroring on the screen swaps +x with +y and −y with −x.
+    public var boatHouseView: (view: SpriteView, mirrored: Bool) {
+        switch self {
+        case .plusX: (.side, false)
+        case .plusY: (.side, true)
+        case .minusY: (.back, false)
+        case .minusX: (.back, true)
+        }
     }
 }

@@ -71,6 +71,99 @@ struct AlchemyBoatsRenders {
         try write(context.makeImage()!, "boat-house")
     }
 
+    /// The back view beside the side view, complete and under construction,
+    /// enlarged on the cobbled quay: the same building turned a quarter, its
+    /// water toward the upper right instead of the lower right.
+    @Test func boatHouseBack() throws {
+        let large = AlchemyOldBuildingsArt.canvas(.boatHouse).scaled(to: 4.4)
+        let cellW = large.pixelWidth + 40, cellH = large.pixelHeight + 60
+        let width = cellW * 2, height = cellH * 2 + 70
+        let context = Raster.bitmap(width: width, height: height)!
+        context.draw(Preview.ground(width: width, height: height, tile: 256), in: CGRect(x: 0, y: 0, width: width, height: height))
+        for (row, complete) in [true, false].enumerated() {
+            for (column, back) in [false, true].enumerated() {
+                let drawn = try #require(Raster.render(on: large) { svg in
+                    var painter = AlchemyOldBuildingsPainter(layer: svg.layer)
+                    painter.boatHouse(complete: complete, back: back)
+                    svg = painter.svg
+                })
+                let x = column * cellW + 20, y = height - 70 - (row + 1) * cellH + 50
+                context.draw(Preview.tinted(base: drawn.base, mask: drawn.mask, colour: colour),
+                             in: CGRect(x: x, y: y, width: large.pixelWidth, height: large.pixelHeight))
+                Preview.label("\(back ? "back: water toward the upper right" : "side: water toward the lower right"), "
+                              + (complete ? "complete" : "under construction"),
+                              in: context, at: CGPoint(x: Double(x) + 10, y: Double(y) - 36), size: 20)
+            }
+        }
+        Preview.label("The Alchemy age's boat house in its two views, in Sumer's colour", in: context,
+                      at: CGPoint(x: 28, y: Double(height) - 48), size: 26)
+        try write(context.makeImage()!, "boat-house-back")
+    }
+
+    /// A lake at play size with a boat house on each of its four shores, each
+    /// on land with water along one edge of its footprint, drawn as the map
+    /// draws it: the view and mirror `FootprintEdge.boatHouseView` gives for
+    /// the edge `Placement.waterEdge` finds, so that each faces its water.
+    @Test func boatHousesFacingALake() throws {
+        let sprites = GameSprites()
+        let size = 16
+        func terrain(_ x: Int, _ y: Int) -> Terrain {
+            if x >= 4 && x <= 9 && y >= 4 && y <= 9 { return x >= 6 && x <= 7 && y >= 6 && y <= 7 ? .deepWater : .shallowWater }
+            if x >= 3 && x <= 10 && y >= 3 && y <= 10 { return .sand }
+            return .grass
+        }
+        let map = (0..<size * size).map { terrain($0 % size, $0 / size) }
+        let width = 1500, height = 1060
+        let origin = CGPoint(x: 750, y: 1000)
+        let context = Raster.bitmap(width: width, height: height)!
+        try StoneBoatsRenders.lay(terrain, reach: 26, origin: origin, scale: 1, in: context)
+        struct Thing { var depth: Double; var key: SpriteKey; var at: (Double, Double); var mirrored: Bool }
+        var things: [Thing] = []
+        // One boat house on each shore, two of them still being built.
+        let places: [(GridPoint, Bool)] = [(GridPoint(2, 6), true), (GridPoint(6, 2), false), (GridPoint(10, 6), true), (GridPoint(6, 10), false)]
+        for (place, complete) in places {
+            let edge = Placement.waterEdge(.boatHouse, at: place, width: size, height: size, terrain: map)
+            let (view, mirrored) = edge.boatHouseView
+            let key = SpriteKey(.building(.boatHouse, .alchemy), complete ? .complete : .underConstruction, view: view)
+            things.append(Thing(depth: Double(place.x + place.y) + 2, key: key, at: (Double(place.x) + 1, Double(place.y) + 1),
+                                mirrored: mirrored))
+        }
+        // Two smacks on the lake, for scale.
+        for (x, y, view, mirrored) in [(5.0, 5.4, SpriteView.side, false), (8.6, 8.4, .frontQuarter, true)] {
+            things.append(Thing(depth: x + y, key: SpriteKey(.unit(.boat, .alchemy), .standing, view: view), at: (x, y), mirrored: mirrored))
+        }
+        func draw(_ things: [Thing], in context: CGContext) throws {
+            for thing in things.sorted(by: { $0.depth < $1.depth }) {
+                let sprite = try #require(sprites.sprite(thing.key), "\(thing.key)")
+                let image = Preview.tinted(base: sprite.base, mask: sprite.teamMask, colour: colour)
+                let at = StoneBoatsRenders.screen(thing.at.0, thing.at.1, origin: origin, scale: 1)
+                context.saveGState()
+                if thing.mirrored {
+                    context.translateBy(x: at.x * 2, y: 0)
+                    context.scaleBy(x: -1, y: 1)
+                }
+                Preview.place(image, anchor: sprite.anchor, at: at, in: context)
+                context.restoreGState()
+            }
+        }
+        let ground = context.makeImage()!
+        try draw(things, in: context)
+        Preview.label("At play size: the Alchemy age's boat house on each shore of a lake, each facing its water",
+                      in: context, at: CGPoint(x: 24, y: Double(height) - 40), size: 22, colour: .white)
+        try write(context.makeImage()!, "boat-houses-facing-a-lake")
+        // The same, every boat house complete.
+        let complete = Raster.bitmap(width: width, height: height)!
+        complete.draw(ground, in: CGRect(x: 0, y: 0, width: width, height: height))
+        try draw(things.map { thing in
+            var thing = thing
+            if case .building = thing.key.subject { thing.key.pose = .complete }
+            return thing
+        }, in: complete)
+        Preview.label("At play size: the same, every boat house complete",
+                      in: complete, at: CGPoint(x: 24, y: Double(height) - 40), size: 22, colour: .white)
+        try write(complete.makeImage()!, "boat-houses-facing-a-lake-complete")
+    }
+
     // MARK: The fishing smack
 
     /// Each of the smack's poses in each view, its 12 frames enlarged in rows

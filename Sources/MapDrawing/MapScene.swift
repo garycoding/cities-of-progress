@@ -186,7 +186,8 @@ public final class MapScene: SKScene {
             if let place = e.bridgePlace { decks[e.tile] = place }
         }
         return DrawContext(cache: cache, catalogue: session.catalogue, players: players, me: view.player,
-                           myTeam: players[view.player]?.team, frame: animationFrame, decks: decks)
+                           myTeam: players[view.player]?.team, frame: animationFrame, decks: decks,
+                           terrain: view.terrain, mapWidth: view.mapWidth, mapHeight: view.mapHeight)
     }
 
     /// Build and update the nodes from the session's view: the only per-view work.
