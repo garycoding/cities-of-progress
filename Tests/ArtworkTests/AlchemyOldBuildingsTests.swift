@@ -122,12 +122,24 @@ import Testing
             // Two pixels a point: a tile's diamond is 128 by 64 pixels.
             let halfWidth = Double(footprint.x + footprint.y) * 32, halfHeight = Double(footprint.x + footprint.y) * 16
             let drawn = try #require(pixels.bounds(alphaAbove: 128), "\(key) is empty")
-            #expect(drawn.minY > 0 && drawn.minX > 0 && drawn.maxX < pixels.width - 1 && drawn.maxY < pixels.height - 1,
+            // The boat house's dock runs out over the water beyond the footprint, toward the right in both its views
+            // (ruled 2026-11-22): its right corner is not the diamond's, and in the side view its far end lies a little
+            // below the diamond's bottom corner. It may meet its canvas's right and bottom edges, as it does on the
+            // canvas from before the dock, which crops it.
+            let dock = kind == .boatHouse
+            #expect(drawn.minY > 0 && drawn.minX > 0 && (dock || (drawn.maxX < pixels.width - 1 && drawn.maxY < pixels.height - 1)),
                     "\(key) reaches the edge of its picture \(drawn) \(pixels.width)x\(pixels.height)")
             let tolerance = 5.0
             #expect(abs(Double(drawn.minX) - (centreX - halfWidth)) <= tolerance, "\(key): left \(drawn.minX), corner \(centreX - halfWidth)")
-            #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance, "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
-            #expect(abs(Double(drawn.maxY + 1) - (centreY + halfHeight)) <= tolerance, "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
+            if dock {
+                #expect(Double(drawn.maxX + 1) >= centreX + halfWidth, "\(key): the dock ends at \(drawn.maxX + 1), short of the footprint")
+            } else {
+                #expect(abs(Double(drawn.maxX + 1) - (centreX + halfWidth)) <= tolerance,
+                        "\(key): right \(drawn.maxX + 1), corner \(centreX + halfWidth)")
+            }
+            let bottom = Double(drawn.maxY + 1) - (centreY + halfHeight)
+            #expect(dock ? bottom >= -tolerance && bottom <= 8 * 2 : abs(bottom) <= tolerance,
+                    "\(key): bottom \(drawn.maxY + 1), corner \(centreY + halfHeight)")
         }
     }
 
