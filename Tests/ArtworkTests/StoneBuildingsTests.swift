@@ -56,7 +56,9 @@ import Testing
     /// in points: the trodden ground drawn on the footprint (a little inside
     /// it, its corners rounded) covers the points most of the way from the
     /// anchor to each corner, nothing lies just beyond the side and front
-    /// corners, and nothing at all lies below the front corner.
+    /// corners, and nothing at all lies below the front corner, but for the
+    /// boat house's dock, which runs out over the water to the lower right
+    /// in the side view (ruled 2026-11-22).
     @Test func theAnchorIsTheCentreOfTheFootprint() throws {
         let source = StoneBuildingSprites()
         for key in Self.keys {
@@ -79,8 +81,11 @@ import Testing
             #expect(pixels.alpha(x + left.0 - 6, y + left.1) == 0, "\(key): drawn beyond the left corner")
             let below = Int((y + front.1 + 3).rounded())
             #expect(below < pixels.height, "\(key): no room below the front corner")
+            // The side view's dock lies more than 26 points right of the anchor.
+            let docked = kind == .boatHouse && key.view == .side
+            let columns = docked ? 0..<Int(x + 48) : 0..<pixels.width
             for row in below..<pixels.height {
-                for column in 0..<pixels.width where pixels.alpha(Double(column), Double(row)) != 0 {
+                for column in columns where pixels.alpha(Double(column), Double(row)) != 0 {
                     Issue.record("\(key): drawn below the front corner at (\(column), \(row))")
                     return
                 }
@@ -137,6 +142,23 @@ import Testing
             others.append(SpriteKey(.building(.boatHouse, age), .complete, view: .back))
         }
         for key in others { #expect(source.sprite(key) == nil, "\(key) should be nil") }
+    }
+
+    /// The boat house's dock runs a tile out over the water beyond the edge it
+    /// faces: its logs lie toward the lower right from the side, toward the
+    /// upper right from behind (ruled 2026-11-22).
+    @Test func theBoatHouseHasADockOverTheWater() throws {
+        let source = StoneBuildingSprites()
+        for view in [SpriteView.side, .back] {
+            let key = SpriteKey(.building(.boatHouse, .stone), .complete, view: view)
+            let sprite = try #require(source.sprite(key))
+            let pixels = Pixels(sprite.base)
+            let x = sprite.anchor.x * Double(pixels.width), y = (1 - sprite.anchor.y) * Double(pixels.height)
+            // The dock's top, 1.8 tiles out along its middle, in pixels from the anchor (y downward).
+            let (mx, my) = view == .side ? (1.8, -0.06) : (-0.06, -1.8)
+            let dx = (mx - my) * Projection.tileWidth, dy = (mx + my) * Projection.tileHeight - 2 * StoneBoatShed.stage
+            #expect(pixels.alpha(x + dx, y + dy) > 200, "\(key): no dock at (\(dx), \(dy))")
+        }
     }
 
     /// The boat house from behind stands on the same canvas and anchor as from
