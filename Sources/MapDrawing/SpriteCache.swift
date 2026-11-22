@@ -123,7 +123,7 @@ final class SpriteCache {
             people[key] = sprite
             return sprite
         case .building(let building):
-            if let found = suppliedWithFallback(subject, pose: pose, frame: frame, fallback: .complete) { return found }
+            if let found = suppliedWithFallback(subject, pose: pose, frame: frame, fallback: .complete, view: view) { return found }
             let constructing = pose == .underConstruction
             let key = BuildingKey(kind: building, civilization: civilization, constructing: constructing)
             if let known = buildings[key] { return known }

@@ -16,6 +16,19 @@ struct DrawContext {
     var frame: Int
     /// The finished bridge pieces by tile, on whose decks people ride (ruled 2026-11-21).
     var decks: [GridPoint: BridgePlace] = [:]
+    /// The map's ground, so that a boat house can face its water (ruled 2026-11-22).
+    var terrain: [Terrain] = []
+    var mapWidth = 0
+    var mapHeight = 0
+
+    /// The view and the mirror a building is drawn in: a boat house faces the
+    /// edge of its footprint that touches water (`FootprintEdge.boatHouseView`);
+    /// every other building is seen from the side.
+    func buildingView(_ kind: BuildingKind, at origin: GridPoint) -> (view: SpriteView, mirrored: Bool) {
+        guard kind == .boatHouse, terrain.count == mapWidth * mapHeight, mapWidth > 0 else { return (.side, false) }
+        return Placement.waterEdge(kind, at: origin, width: mapWidth, height: mapHeight, terrain: terrain,
+                                   catalogue: catalogue).boatHouseView
+    }
 
     /// How high a deck raises someone at `position`, in points: nothing off a bridge.
     func deckHeight(at position: MapPosition) -> Double {
@@ -48,7 +61,8 @@ final class EntityNode: SKNode {
         var age: Age
         var pose: SpritePose
         var frame: Int
-        /// The view a person is seen from (`Facing.view`); `.side` for a building.
+        /// The view a person is seen from (`Facing.view`); for a building, `.side`,
+        /// or `.back` for a boat house whose water lies behind it.
         var view: SpriteView = .side
     }
 
@@ -133,8 +147,10 @@ final class EntityNode: SKNode {
         if entity.kind == .building(.bridge) {
             pose = (entity.bridgePlace ?? BridgePlace(run: .alongX, lane: 0, index: 0, count: 1)).pose(complete: pose == .complete)
         }
+        var buildingView = (view: SpriteView.side, mirrored: false)
+        if case .building(let kind) = entity.kind { buildingView = context.buildingView(kind, at: entity.tile) }
         let newLook = Look(kind: entity.kind, civilization: summary?.civilization ?? .sumer, age: summary?.age ?? .stone,
-                           pose: pose, frame: context.frame, view: isBuilding ? .side : entity.facing.view)
+                           pose: pose, frame: context.frame, view: isBuilding ? buildingView.view : entity.facing.view)
         if newLook != look {
             let first = look == nil
             look = newLook
@@ -143,6 +159,8 @@ final class EntityNode: SKNode {
         }
         if !isBuilding, previous?.facing != entity.facing || previous == nil {
             body.xScale = entity.facing.mirrored ? -1 : 1
+        } else if isBuilding {
+            body.xScale = buildingView.mirrored ? -1 : 1
         }
 
         isSelected = selected
