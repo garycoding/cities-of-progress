@@ -64,10 +64,16 @@ struct RootView: View {
         }
     }
 
+    /// Centred in the window, and scrolled up and down where it is taller than the window.
     private func centred(@ViewBuilder _ content: () -> some View) -> some View {
-        content()
-            .padding(24)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        let content = content()
+        return GeometryReader { window in
+            ScrollView(.vertical) {
+                content
+                    .padding(24)
+                    .frame(minWidth: window.size.width, minHeight: window.size.height)
+            }
+        }
     }
 }
 
