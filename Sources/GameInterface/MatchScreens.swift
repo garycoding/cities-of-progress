@@ -239,8 +239,9 @@ private struct SeatPanel: View {
                                 Button("Team \(team + 1)") { model.setTeam(team, forSeat: seatID) }
                             }
                         } label: {
-                            Text("Team \(seat.team + 1)").font(Typeface.text(11, bold: true))
+                            Text("Team \(seat.team + 1)").font(Typeface.text(11, bold: true)).foregroundStyle(Palette.ink)
                         }
+                        .tint(Palette.ink)
                         .menuStyle(.borderlessButton)
                         .fixedSize()
                         .accessibilityLabel("Team for this seat")
